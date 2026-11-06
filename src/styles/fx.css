@@ -294,6 +294,7 @@
   top: 0;
   z-index: 2;
   display: grid;
+  justify-items: start;
   gap: 1px;
   pointer-events: none;
   font-size: 9px;
@@ -314,6 +315,214 @@
 }
 .gl-tag--hazard b {
   background: var(--c-hazard);
+}
+.gl-tag--crimson b {
+  background: var(--c-crimson);
+}
+.gl-tag--acid b {
+  background: var(--c-acid);
+}
+
+/* big vertical word composited over a 3D view */
+.gl-word {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.gl-word__big {
+  position: absolute;
+  left: 16%;
+  top: 50%;
+  transform: translateY(-50%);
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-size: clamp(36px, 7vh, 72px);
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+  color: var(--c-bone);
+}
+.gl-word__tag {
+  position: absolute;
+  left: calc(16% - 28px);
+  top: 12%;
+  writing-mode: vertical-rl;
+  color: var(--c-mute);
+}
+.gl-word__tag--b {
+  top: auto;
+  bottom: 12%;
+}
+
+/* --- floating perf HUD ------------------------------------------------ */
+.perf {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 70;
+  width: 300px;
+  font-family: var(--f-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-bone);
+  background: rgba(0, 0, 0, 0.92);
+  border: 1px solid var(--c-line-hi);
+  user-select: none;
+}
+.perf[hidden] {
+  display: none;
+}
+.perf:not(.is-open) {
+  width: auto;
+}
+.perf.is-drag {
+  border-color: var(--c-acid);
+}
+.perf__bar {
+  display: flex;
+  align-items: stretch;
+  height: 24px;
+  cursor: grab;
+  touch-action: none;
+}
+.perf.is-drag .perf__bar {
+  cursor: grabbing;
+}
+.perf__grip {
+  display: grid;
+  grid-template-columns: 3px 3px;
+  gap: 2px;
+  align-content: center;
+  padding: 0 6px;
+  border-right: 1px solid var(--c-line-hi);
+}
+.perf__grip i {
+  width: 3px;
+  height: 3px;
+  background: var(--c-mute);
+}
+.perf__be {
+  display: grid;
+  place-items: center;
+  padding: 0 8px;
+  font-family: var(--f-pixel);
+  font-weight: 400;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: var(--c-void);
+  background: var(--c-mute-2);
+}
+.perf__be[data-be='WebGPU'] {
+  background: var(--c-acid);
+}
+.perf__be[data-be='WebGL2'] {
+  background: var(--c-hazard);
+}
+.perf__v {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border-right: 1px solid var(--c-line-hi);
+}
+.perf__v i {
+  font-style: normal;
+  font-family: var(--f-pixel);
+  font-size: 11px;
+  color: var(--c-acid);
+  min-width: 2ch;
+  text-align: right;
+}
+.perf__v--r i {
+  color: var(--c-cobalt-hi);
+  min-width: 4ch;
+}
+.perf__v small {
+  font-size: 8px;
+  color: var(--c-mute);
+}
+.perf__tog {
+  width: 24px;
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: var(--c-bone);
+  font-family: var(--f-pixel);
+  cursor: pointer;
+}
+.perf__tog:hover {
+  background: var(--c-cobalt);
+}
+.perf__body {
+  display: none;
+  border-top: 1px solid var(--c-line-hi);
+}
+.perf.is-open .perf__body {
+  display: block;
+}
+.perf__graph {
+  position: relative;
+  height: 40px;
+  border-bottom: 1px solid var(--c-line);
+}
+.perf__graph canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.perf__graph span {
+  position: absolute;
+  right: 4px;
+  top: 3px;
+  color: var(--c-mute);
+  font-size: 8px;
+}
+.perf__grid {
+  display: grid;
+  grid-template-columns: 62px 1fr;
+  gap: 3px 8px;
+  margin: 0;
+  padding: 8px;
+}
+.perf__grid dt {
+  color: var(--c-mute);
+}
+.perf__grid dd {
+  margin: 0;
+  color: var(--c-bone);
+  text-transform: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.perf__stages {
+  display: grid;
+  border-top: 1px solid var(--c-line);
+  max-height: 160px;
+  overflow-y: auto;
+}
+.perf__stages > div {
+  display: grid;
+  grid-template-columns: 1fr 40px 46px 34px 64px;
+  gap: 4px;
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--c-line);
+}
+.perf__stages > div.is-off {
+  color: var(--c-mute-2);
+}
+.perf__stages b {
+  font-weight: 400;
+  color: var(--c-acid);
+}
+.perf__stages > div.is-off b {
+  color: var(--c-mute-2);
+}
+.perf__stages span {
+  text-align: right;
 }
 .gl-badge {
   position: absolute;

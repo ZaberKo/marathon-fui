@@ -102,8 +102,8 @@ export default function mount(root: HTMLElement) {
   // 3D hero
   b.add(
     mountGL(root.querySelector('#boot-gl')!, async (host) => {
-      const m = await import('../three/scenes');
-      const h = await m.mountSliceRunner(host, { fps: 12 });
+      const m = await import('../three/scenes/runner');
+      const h = await m.mountRunner(host, { fps: 12 });
       root.querySelector('#boot-backend')!.textContent = h.stage.backend;
       return h;
     }),

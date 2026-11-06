@@ -878,7 +878,41 @@
 }
 .sp-view {
   position: relative;
-  height: 420px;
+  height: 440px;
+}
+.sp-cell.is-wide {
+  grid-column: 1 / -1;
+}
+.sp-cell.is-wide .sp-view {
+  height: min(640px, 70vh);
+}
+.sp-max {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 18px;
+  margin-left: 4px;
+  padding: 0;
+  border: 1px solid var(--c-line-hi);
+  background: transparent;
+  color: var(--c-mute);
+  cursor: pointer;
+}
+.sp-max:hover,
+.sp-cell.is-wide .sp-max {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.sp-toolbar__note {
+  flex: 1;
+  align-self: center;
+  min-width: 220px;
+  text-align: right;
+}
+.sp-nolabels .gl-tag,
+.sp-nolabels .gl-word {
+  display: none;
 }
 .sp-view .gl-host {
   position: absolute;

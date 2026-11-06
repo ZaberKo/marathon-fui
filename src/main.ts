@@ -13,6 +13,7 @@ import { ROUTES } from './routes';
 import { barWipe, scramble } from './lib/motion';
 import { pixelIcon, crosshair } from './lib/glyphs';
 import { hex, pad, stepLoop, type Cleanup } from './lib/util';
+import { mountPerfHud } from './lib/perfHud';
 
 const app = document.getElementById('app')!;
 const STATES = ['nominal', 'link', 'caution', 'cobalt'] as const;
@@ -26,6 +27,7 @@ app.innerHTML = `
     <div class="tb-hide-m">BUF <span class="tb-val" id="tb-buf">0000</span></div>
     <div class="tb-spacer"></div>
     <button class="tb-toggle tb-hide-m" id="tb-state" title="Cycle accent state" style="background:none;border:0;border-left:1px solid var(--c-line)">ACCENT <span class="tb-val" id="tb-state-v">NOMINAL</span></button>
+    <button class="tb-toggle tb-hide-m" id="tb-perf" style="background:none;border:0;border-left:1px solid var(--c-line)">PERF <span class="tb-val">ON</span></button>
     <button class="tb-toggle tb-hide-m" id="tb-ret" aria-pressed="true" style="background:none;border:0;border-left:1px solid var(--c-line)">RETICLE <span class="tb-val">ON</span></button>
     <div>T <span class="tb-val" id="tb-clock">00:00:00</span></div>
   </header>
@@ -115,3 +117,16 @@ window.addEventListener('pointermove', (e) => {
   retXY.textContent = `${pad(x, 4)}.${pad(y, 4)}`;
 });
 document.addEventListener('pointerleave', () => ret.classList.remove('is-on'));
+
+/* --- floating perf HUD -------------------------------------------- */
+const perf = mountPerfHud();
+const perfBtn = document.getElementById('tb-perf')!;
+const syncPerf = () => {
+  perfBtn.setAttribute('aria-pressed', String(perf.on));
+  perfBtn.querySelector('.tb-val')!.textContent = perf.on ? 'ON' : 'OFF';
+};
+syncPerf();
+perfBtn.addEventListener('click', () => {
+  perf.toggle();
+  syncPerf();
+});

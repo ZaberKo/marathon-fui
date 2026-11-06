@@ -1,5 +1,5 @@
 /** Lazy, cancel-safe mounting of a 3D scene into a host element. */
-import type { SceneHandle } from '../three/scenes';
+import type { SceneHandle } from '../three/scenes/index';
 
 const FALLBACK_EVENT = 'gpu-fallback'; // mirrors GPU_FALLBACK_EVENT in three/core (kept local so this stays lazy)
 
