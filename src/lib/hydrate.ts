@@ -11,12 +11,53 @@
  *  .k-tabs                 tablist switching
  *  .k-seg-ctl              single-select segmented control
  *  .k-stepper              +/- numeric
+ *  data-mark="checker"     animated vector mark (see lib/marks.ts)
+ *  ENTER selector          stepped block-wipe entrance on scroll-in
  */
-import { glitch, scramble } from './motion';
-import { $$, bag, on } from './util';
+import { glitch, reveal, scramble } from './motion';
+import { markOptsFrom, mountMark } from './marks';
+import { $$, bag, on, reducedMotion } from './util';
+
+/** Elements that get the stepped block-wipe entrance when scrolled in. */
+const ENTER = '.spec, .k-panel, .k-cta, .sig-sw, .gly-icon, .mo-monitor, .flt-trigger, .sp-toolbar, .ts-row';
 
 export function hydrate(root: HTMLElement) {
   const b = bag();
+
+  $$('[data-mark]', root).forEach((el) => b.add(mountMark(el, el.dataset.mark!, markOptsFrom(el))));
+
+  // page head choreography: title lines clip in, meta decodes
+  const title = root.querySelector<HTMLElement>('.page-title');
+  if (title && !reducedMotion()) {
+    reveal(title, { from: 'left', steps: 6, duration: 0.42 });
+    $$('.page-meta .t-micro', root).forEach((m, i) => setTimeout(() => scramble(m, m.textContent ?? '', { duration: 0.5 }), 120 + i * 90));
+  }
+
+  // stepped block-wipe entrances
+  if (!reducedMotion()) {
+    let batch = 0;
+    let batchT = 0;
+    const enterIO = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (!e.isIntersecting) return;
+          enterIO.unobserve(e.target);
+          const el = e.target as HTMLElement;
+          // stagger elements that enter together
+          clearTimeout(batchT);
+          batchT = window.setTimeout(() => (batch = 0), 120);
+          el.style.setProperty('--enter-d', `${Math.min(batch++, 8) * 0.06}s`);
+          el.classList.add('fx-in');
+        });
+      },
+      { rootMargin: '0px 0px -40px 0px' },
+    );
+    $$(ENTER, root).forEach((el) => {
+      el.classList.add('fx-enter');
+      enterIO.observe(el);
+    });
+    b.add(() => enterIO.disconnect());
+  }
 
   $$('[data-scramble-hover]', root).forEach((el) => {
     const target = el.querySelector<HTMLElement>('[data-label]') ?? el;

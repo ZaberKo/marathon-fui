@@ -82,7 +82,7 @@ export default function mount(root: HTMLElement) {
     <div class="spec-grid">
       <a class="k-cta" href="#/spatial">
         <span class="k-cta__code">CTA-01 / GPU</span>
-        <span class="k-cta__meta">Open spatial module<br>WebGPU renderer<br>4 scenes</span>
+        <span class="k-cta__meta">Open spatial module<br>WebGPU renderer<br>7 scenes</span>
         <span class="k-cta__label">Enter shell</span>
         <span class="k-cta__arrow">${pixelIcon('arrow-r', { size: 22 })}</span>
       </a>

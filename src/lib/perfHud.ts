@@ -114,8 +114,9 @@ export function mountPerfHud() {
     const vis = st.filter((s) => s.visible);
     const be = adapter.backend || (st[0]?.backend !== '—' ? st[0]?.backend : '') || '';
     const beEl = $k('be');
-    beEl.textContent = be ? be.toUpperCase() : 'NO GPU';
-    beEl.dataset.be = be || 'none';
+    beEl.textContent = be ? be.toUpperCase() : 'NO 3D';
+    // dim the backend tag when no 3D stage is mounted on the current page
+    beEl.dataset.be = be && st.length ? be : 'none';
     $k('fps').textContent = pageMeter.fps ? pageMeter.fps.toFixed(0) : '--';
     const rf = vis.length ? vis.reduce((a, s) => a + s.fps, 0) / vis.length : 0;
     const tf = vis.length ? vis.reduce((a, s) => a + s.targetFps, 0) / vis.length : 0;

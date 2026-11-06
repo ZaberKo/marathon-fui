@@ -14,6 +14,7 @@ import { barWipe, scramble } from './lib/motion';
 import { pixelIcon, crosshair } from './lib/glyphs';
 import { hex, pad, stepLoop, type Cleanup } from './lib/util';
 import { mountPerfHud } from './lib/perfHud';
+import { mountAmbient } from './lib/ambient';
 
 const app = document.getElementById('app')!;
 const STATES = ['nominal', 'link', 'caution', 'cobalt'] as const;
@@ -34,6 +35,7 @@ app.innerHTML = `
   <nav class="rail" aria-label="Modules">
     ${ROUTES.map((r) => `<a href="#/${r.id}" data-id="${r.id}"><span class="r-num">${r.num}</span><span class="r-label">${r.label}</span></a>`).join('')}
   </nav>
+  <canvas class="ambient" aria-hidden="true"></canvas>
   <main class="stage" id="stage"></main>
   <footer class="ticker"><div class="k-marquee" style="--dur:60s"><div class="k-marquee__track">${'<span>RUNTIME//KIT — GRAPHIC REALISM COMPONENT LIBRARY ▚ STEPPED MOTION ONLY ▚ PURE BLACK NEGATIVE SPACE ▚ COLOUR ENCODES STATE ▚ ASSERT SHELL.INTEGRITY ▚ LIMINAL BUFFER STABLE ▚ </span>'.repeat(4)}</div></div></footer>
 </div>
@@ -130,3 +132,6 @@ perfBtn.addEventListener('click', () => {
   perf.toggle();
   syncPerf();
 });
+
+/* --- ambient pixel field behind the stage ------------------------- */
+mountAmbient(document.querySelector<HTMLCanvasElement>('.ambient')!);

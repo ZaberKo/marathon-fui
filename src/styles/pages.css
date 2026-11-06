@@ -133,6 +133,15 @@
 .boot-log div:last-child {
   color: var(--c-acid);
 }
+.boot-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px 24px;
+  padding: 12px 0;
+  border-top: 1px solid var(--c-line);
+  border-bottom: 1px solid var(--c-line);
+}
 .boot-ringrow {
   display: flex;
   gap: 16px;
@@ -476,6 +485,28 @@
   background: var(--accent);
   color: var(--accent-ink);
 }
+.gly-icon:hover svg,
+.gly-icon.is-glitch svg {
+  animation: gly-draw 0.32s linear;
+}
+.gly-icon.is-glitch {
+  background: var(--c-cobalt);
+}
+@keyframes gly-draw {
+  0% { clip-path: inset(0 0 100% 0); transform: translateX(-3px); }
+  25% { clip-path: inset(0 0 66% 0); transform: translateX(2px); }
+  50% { clip-path: inset(0 0 33% 0); transform: translateX(-1px); }
+  75% { clip-path: inset(0 0 0 0); transform: none; }
+  100% { clip-path: none; }
+}
+.gly-marks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+  gap: var(--gap);
+}
+.gly-marks .spec-body {
+  min-height: 170px;
+}
 .gly-icon:hover span {
   color: var(--accent-ink);
 }
@@ -773,6 +804,19 @@
 .mo-btn .k-btn__code {
   text-transform: none;
 }
+.mo-wall {
+  border-top: 1px solid var(--c-line);
+  border-bottom: 1px solid var(--c-line);
+  padding: 6px 0;
+  background: #000;
+}
+.mo-wall-tags {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+  color: var(--c-bone);
+}
 .mo-marquees {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -1038,6 +1082,8 @@
   right: 0;
   display: grid;
   grid-template-rows: auto auto 1fr auto;
+  /* explicit min-0 column: marquee tracks are max-content wide */
+  grid-template-columns: minmax(0, 1fr);
   background: var(--bg);
   color: var(--fg);
   overflow: hidden;
@@ -1074,6 +1120,25 @@
 .flt-marq--b .t-outline {
   -webkit-text-stroke-width: 1.5px;
 }
+.flt-wall {
+  position: relative;
+  border-bottom: 2px solid #000;
+}
+.flt-wall .k-textwall {
+  --wall-line: #000;
+  --wall-hot: var(--c-hazard);
+  font-size: clamp(26px, 3.4vw, 48px);
+}
+.flt-wall .k-textwall__row.is-hot {
+  background: #000;
+}
+.flt-tri [data-mark] {
+  display: block;
+}
+.flt-tri [data-mark] svg {
+  width: 100%;
+  height: auto;
+}
 .flt-grid {
   position: relative;
   display: grid;
@@ -1099,9 +1164,6 @@
   padding: 14px 18px;
   background: #000;
   color: var(--c-crimson);
-}
-.flt-alarm svg {
-  animation: k-blink 0.5s steps(1, end) infinite;
 }
 .flt-code {
   display: flex;

@@ -549,3 +549,72 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
+
+/* --- animated marks --------------------------------------------------- */
+.mk {
+  display: inline-block;
+  line-height: 0;
+}
+.mk svg {
+  display: block;
+  overflow: visible;
+}
+
+/* --- stepped block-wipe entrance (added by hydrate) ------------------ */
+/* NB: hide with opacity, not clip-path — IntersectionObserver treats a
+   fully clipped target as non-intersecting, so it would never enter. */
+.fx-enter {
+  opacity: 0;
+}
+.fx-enter.fx-in {
+  animation: fx-enter 0.5s linear var(--enter-d, 0s) forwards;
+}
+@keyframes fx-enter {
+  0% { opacity: 1; clip-path: inset(0 100% 0 0); filter: none; }
+  14% { clip-path: inset(0 78% 0 0); }
+  28% { clip-path: inset(0 52% 0 0); }
+  42% { clip-path: inset(0 22% 0 0); }
+  56% { clip-path: inset(0 0 0 0); filter: invert(1); }
+  70% { clip-path: inset(0 0 0 0); filter: none; }
+  84% { clip-path: inset(0 0 0 0); filter: invert(1) hue-rotate(180deg); }
+  100% { opacity: 1; clip-path: none; filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fx-enter { opacity: 1; }
+}
+
+/* --- text wall --------------------------------------------------------- */
+.k-textwall {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  overflow: hidden;
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-stretch: 100%;
+  font-size: clamp(28px, 4vw, 56px);
+  line-height: 1;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  --wall-line: var(--c-acid-lo);
+  --wall-hot: var(--c-hazard);
+}
+.k-textwall__row {
+  color: transparent;
+  -webkit-text-stroke: 1px var(--wall-line);
+}
+.k-textwall__row.is-hot {
+  -webkit-text-stroke: 0;
+  color: var(--wall-hot);
+}
+.k-textwall__row.is-hot em {
+  font-style: normal;
+  color: transparent;
+  -webkit-text-stroke: 1px var(--wall-line);
+}
+.k-textwall__row.is-hot b {
+  font-weight: inherit;
+  padding: 0 0.15em;
+}
+.k-textwall .k-marquee__track > * {
+  padding-right: 0;
+}

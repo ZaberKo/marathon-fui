@@ -288,7 +288,7 @@
   min-height: 132px;
   padding: 12px 14px;
   border: 1px solid var(--accent);
-  background: transparent;
+  background: rgba(0, 0, 0, 0.88);
   color: var(--c-bone);
   text-align: left;
   cursor: pointer;
@@ -914,6 +914,22 @@
 }
 .k-scan {
   background: repeating-linear-gradient(0deg, var(--accent) 0 1px, transparent 1px 4px);
+}
+.k-scan--anim {
+  animation: k-scan-roll 0.5s steps(4, end) infinite;
+}
+@keyframes k-scan-roll {
+  to {
+    background-position: 0 4px;
+  }
+}
+.k-checker--anim {
+  animation: k-ck-shift 1.2s steps(2, end) infinite;
+}
+@keyframes k-ck-shift {
+  to {
+    background-position: calc(var(--ck) * 2) 0;
+  }
 }
 
 /* --- RULE with ticks ------------------------------------------------- */

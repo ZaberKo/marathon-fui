@@ -1,22 +1,25 @@
 import gsap from 'gsap';
 import { pageHead, section, spec } from './_ui';
-import { blockText, checker, segRing } from '../lib/glyphs';
+import { checker } from '../lib/glyphs';
 import { hydrate } from '../lib/hydrate';
+import { markOptsFrom, mountMark } from '../lib/marks';
+import { animateTextWall, textWall } from '../lib/compose';
 import { barWipe, flashBlocks, glitch, scramble } from '../lib/motion';
 import { bag, on, stepLoop, $, $$ } from '../lib/util';
 
+// slides carry live marks (data-mark) that are mounted when the slide is shown
 const SLIDES = [
   `<div class="mo-slide" style="background:var(--c-cobalt)">
-     <span style="color:#fff">${checker(2, 2, { size: 64 })}</span>
-     <div style="display:grid;gap:4px"><span class="t-micro" style="color:#fff">LATCH · PULL · KL2 KL4</span><b class="t-display" style="color:var(--c-acid);font-size:clamp(36px,5vw,72px)">Stand by</b><i class="k-hazard" style="--h-a:var(--c-acid);--h-b:var(--c-cobalt);height:10px;--h-w:4px"></i></div>
-     <span style="color:#fff">${checker(2, 2, { size: 64, invert: true })}</span>
+     <span style="color:#fff" data-mark="checker" data-size="64" data-mode="invert"></span>
+     <div style="display:grid;gap:4px"><span class="t-micro" style="color:#fff">LATCH · PULL · KL2 KL4</span><b class="t-display" style="color:var(--c-acid);font-size:clamp(36px,5vw,72px)">Stand by</b><i class="k-hazard k-hazard--anim" style="--h-a:var(--c-acid);--h-b:var(--c-cobalt);height:10px;--h-w:4px"></i></div>
+     <span style="color:#fff" data-mark="checker" data-size="64" data-mode="invert" data-fps="5"></span>
    </div>`,
   `<div class="mo-slide" style="background:#000;justify-content:flex-start;padding-left:10%">
      <b class="t-display" style="color:var(--c-acid);font-size:clamp(40px,6vw,90px);writing-mode:vertical-rl;transform:rotate(180deg)">Initiating</b>
-     <div style="display:grid;gap:6px;width:40%"><i style="height:22px;background:var(--c-cobalt)"></i><i style="height:22px;background:var(--c-cobalt);width:70%"></i><i style="height:8px;background:var(--c-acid);width:20%"></i></div>
+     <span data-mark="scanblock" data-size="360"></span>
    </div>`,
   `<div class="mo-slide" style="background:#000">
-     <span style="color:var(--c-acid)">${blockText('OK', { size: 200 })}</span>
+     <span style="color:var(--c-acid)" data-mark="blocktext" data-text="OK" data-size="200"></span>
      <span class="t-micro c-acid" style="align-self:flex-end">NEURAL SUBROUTINE<br>07/07 MOUNTED</span>
    </div>`,
   `<div class="mo-slide" style="background:var(--c-crimson);flex-direction:column;gap:0">
@@ -24,7 +27,7 @@ const SLIDES = [
      <span class="t-micro" style="color:#000">RUNTIME EXCEPTION 0x3F · LIMINAL BUFFER CRITICAL</span>
    </div>`,
   `<div class="mo-slide" style="background:#000">
-     <span style="color:var(--c-lime)" class="fx-spin-steps">${segRing(2, { size: 150 })}</span>
+     <span style="color:var(--c-lime)" data-mark="segring" data-size="150"></span>
      <b class="t-display t-wide" style="color:var(--c-lime);font-size:clamp(24px,3vw,40px)">Loading<br>memory</b>
    </div>`,
 ];
@@ -72,7 +75,15 @@ export default function mount(root: HTMLElement) {
       ${spec({ code: 'LD-02', title: 'Checker spin', cls: '.mo-ld-check', body: `<div class="mo-ld-check">${checker(2, 2, { size: 36 })}</div><div class="mo-ld-check" style="color:var(--c-acid);animation-duration:.6s">${checker(3, 3, { size: 36 })}</div>` })}
       ${spec({ code: 'LD-03', title: 'Pixel snake', cls: '.mo-ld-snake', body: `<div class="mo-ld-snake">${'<i></i>'.repeat(9)}</div><div class="mo-ld-snake" style="--c:var(--c-hazard)">${'<i></i>'.repeat(9)}</div>` })}
       ${spec({ code: 'LD-04', title: 'Glyph cycle', cls: 'stepLoop + text', body: `<span class="t-pixel c-acid" style="font-size:22px" id="ld-glyph">▖</span><span class="t-mono" id="ld-dots" style="font-size:14px">LOADING</span><span class="t-mono c-cobalt" id="ld-bar" style="font-size:14px;color:var(--c-cobalt-hi)">[          ]</span>` })}
+      ${spec({ code: 'LD-05', title: 'Count ring', cls: 'data-mark="countring"', body: `<span class="c-bone" data-state="critical" data-mark="countring" data-size="120"></span><span class="c-bone" data-mark="countring" data-size="84" data-max="100" data-label="SYNC" data-fps="16"></span>` })}
+      ${spec({ code: 'LD-06', title: 'Plug sequence', cls: 'data-mark="link"', body: `<span class="c-lime" data-mark="link" data-cols="4" data-rows="1" data-size="220" data-fps="10"></span>` })}
+      ${spec({ code: 'LD-07', title: 'Scan block', cls: 'data-mark="scanblock"', body: `<span data-mark="scanblock" data-size="240"></span>` })}
+      ${spec({ code: 'LD-08', title: 'Chevrons + bars', cls: 'chevrons · bars', body: `<span class="c-acid" data-mark="chevrons" data-count="7" data-size="120"></span><span class="c-bone" data-mark="bars" data-count="9" data-size="72"></span>` })}
     </div>
+
+    ${section('Text wall', 'textWall() · animateTextWall()')}
+    <div class="mo-wall" id="mo-wall">${textWall({ word: 'PASSPHRASE_', hot: 'COHESION_', hotFill: 'FAIL_', rows: 5 })}</div>
+    <div class="mo-wall-tags t-micro"><span>anRTKL a005 <b class="c-hazard">LATCH</b></span><span>PULL ● KL2 KL4</span><span class="c-hazard" data-mark="chevrons" data-count="5" data-size="70"></span></div>
 
     ${section('Marquee', '.k-marquee')}
     <div class="mo-marquees">
@@ -93,9 +104,14 @@ export default function mount(root: HTMLElement) {
   const fxEl = $('#mon-fx', root);
   let idx = 0;
   let busy = false;
+  let slideStops: (() => void)[] = [];
+  b.add(() => slideStops.forEach((f) => f()));
+  b.add(animateTextWall($('#mo-wall .k-textwall', root), ['COHESION_', 'FAILURE_', 'ESTABLISHING_', 'LINK_']));
   const next = () => {
     idx = (idx + 1) % SLIDES.length;
+    slideStops.forEach((f) => f());
     stageEl.innerHTML = SLIDES[idx];
+    slideStops = $$('[data-mark]', stageEl).map((el) => mountMark(el, el.dataset.mark!, markOptsFrom(el)));
     idxEl.textContent = `FRAME ${String(idx + 1).padStart(2, '0')}/${String(SLIDES.length).padStart(2, '0')}`;
   };
   const run = async (fx: string) => {

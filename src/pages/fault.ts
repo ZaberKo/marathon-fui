@@ -1,6 +1,7 @@
 import gsap from 'gsap';
 import { pageHead, section, spec } from './_ui';
-import { dotMatrix, pixelIcon, triTile } from '../lib/glyphs';
+import { pixelIcon } from '../lib/glyphs';
+import { animateTextWall, textWall } from '../lib/compose';
 import { mountDefragRing, mountTerminal } from '../lib/hud';
 import { hydrate } from '../lib/hydrate';
 import { flashBlocks, glitch } from '../lib/motion';
@@ -77,10 +78,10 @@ export default function mount(root: HTMLElement) {
   <div class="flt-overlay" id="flt" data-state="fault" hidden>
     <div class="flt-bgword t-display">Fault</div>
     <div class="flt-marq flt-marq--a"><div class="k-marquee" style="--dur:9s;--marq-steps:90"><div class="k-marquee__track">${'<span class="t-display">Error_error_</span>'.repeat(6)}</div></div></div>
-    <div class="flt-marq flt-marq--b"><div class="k-marquee k-marquee--rev" style="--dur:12s;--marq-steps:120"><div class="k-marquee__track">${'<span class="t-display t-outline">Runtime exception_</span>'.repeat(6)}</div></div></div>
+    <div class="flt-wall">${textWall({ word: 'RUNTIME_', hot: 'WARNING_', hotFill: 'WARN_', rows: 3, hotRow: 1, dur: 10 })}</div>
     <div class="flt-grid">
-      <div class="flt-tri">${triTile(8, 6, 13, { size: 320, alt: '#000' })}</div>
-      <div class="flt-alarm">${dotMatrix(3, 6, () => true, { size: 54 })}</div>
+      <div class="flt-tri"><span data-mark="tri" data-cols="14" data-rows="10" data-size="640" data-seed="13" data-fps="5"></span></div>
+      <div class="flt-alarm"><span data-mark="dots" data-cols="3" data-rows="6" data-size="54" data-mode="alarm" data-fps="4"></span></div>
       <div class="flt-code t-mono">
         <b class="t-display t-wide">Runtime error</b>
         <div>EXCEPTION 0x0000003F</div>
@@ -99,6 +100,7 @@ export default function mount(root: HTMLElement) {
   b.add(hydrate(root));
   b.add(mountDefragRing($('#flt-ring', root), { rings: 3, segs: 30 }));
   b.add(mountTerminal($('#flt-log', root), { max: 9 }));
+  b.add(animateTextWall($('.flt-wall .k-textwall', root), ['WARNING_', 'RUNTIME_', 'FAULT_'], 1800));
 
   const overlay = $('#flt', root);
   const nEl = $('#flt-n', root);

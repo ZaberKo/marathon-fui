@@ -28,11 +28,8 @@ export default function mount(root: HTMLElement) {
       <div class="boot-left">
         <div class="boot-vert" data-boot="vert">INITIATING</div>
         <div class="boot-micro t-micro">${micro}</div>
-        <div class="boot-blocks">
-          <i style="--c:var(--c-cobalt);--w:80%"></i><i style="--c:var(--c-cobalt);--w:60%"></i>
-          <i style="--c:var(--c-acid);--w:14%"></i><i style="--c:var(--c-cobalt);--w:92%"></i>
-          <i style="--c:var(--c-cobalt-lo);--w:40%"></i>
-        </div>
+        <div class="boot-blocks" data-state="nominal"><span data-mark="scanblock" data-size="104"></span></div>
+        <div class="c-acid"><span data-mark="checker" data-cols="3" data-rows="2" data-size="42" data-mode="invert"></span></div>
       </div>
 
       <div class="boot-stage">
@@ -64,6 +61,11 @@ export default function mount(root: HTMLElement) {
         <div class="k-meter">
           <div class="k-meter__row"><span>LOADING MEMORY</span><b id="boot-pct">000</b></div>
           <div class="k-progress k-progress--tall" id="boot-bar" style="--p:0%"></div>
+        </div>
+        <div class="boot-links">
+          <span class="c-lime" data-state="cobalt" data-mark="link" data-cols="4" data-rows="1" data-size="200" data-fps="8"></span>
+          <span class="c-acid" data-mark="chevrons" data-count="6" data-size="84"></span>
+          <span class="c-bone" data-mark="barcode" data-size="150" data-bars="28" data-seed="12"></span>
         </div>
         <div class="boot-ringrow">
           <div class="boot-ring"><canvas id="boot-ring"></canvas><span class="t-pixel">DEFRAG</span></div>
