@@ -1,0 +1,342 @@
+/* ==========================================================================
+   FX + HUD instruments
+   ========================================================================== */
+
+/* --- marquee ------------------------------------------------------------ */
+.k-marquee {
+  --dur: 20s;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  width: 100%;
+  white-space: nowrap;
+}
+.k-marquee__track {
+  display: inline-flex;
+  animation: k-marq var(--dur) steps(var(--marq-steps, 240), end) infinite;
+}
+.k-marquee__track > * {
+  flex: none;
+  padding-right: 2em;
+}
+.k-marquee--rev .k-marquee__track {
+  animation-direction: reverse;
+}
+@keyframes k-marq {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* big warning band */
+.k-band {
+  display: flex;
+  align-items: center;
+  height: 48px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-stretch: 125%;
+  font-size: 22px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+/* --- glitch / flash layers --------------------------------------------- */
+.fx-glitch-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: inherit;
+  align-items: inherit;
+  justify-content: inherit;
+  padding: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  white-space: inherit;
+  background: transparent;
+  mix-blend-mode: screen;
+}
+.fx-flash-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+.fx-flash-layer i {
+  position: absolute;
+  display: block;
+}
+
+/* hover-able stepped blink */
+.fx-blink {
+  animation: k-blink 1s steps(1, end) infinite;
+}
+.fx-blink-fast {
+  animation: k-blink 0.24s steps(1, end) infinite;
+}
+
+/* stepped spin */
+.fx-spin-steps {
+  animation: fx-spin 2.4s steps(12, end) infinite;
+}
+@keyframes fx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* CRT/scanline overlay utility */
+.fx-scanlines {
+  position: relative;
+}
+.fx-scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.45) 0 1px, transparent 1px 3px);
+}
+
+/* dither — ordered-dither style dot overlay */
+.fx-dither {
+  position: relative;
+}
+.fx-dither::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle, rgba(0, 0, 0, 0.9) 30%, transparent 32%) 0 0 / 3px 3px,
+    radial-gradient(circle, rgba(0, 0, 0, 0.6) 30%, transparent 32%) 1.5px 1.5px / 3px 3px;
+  mix-blend-mode: multiply;
+}
+
+/* --- HUD: memory grid ------------------------------------------------- */
+.hud-mem {
+  --cols: 12;
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  gap: 3px;
+  width: 100%;
+}
+.hud-mem i {
+  aspect-ratio: 1;
+  border: 1px solid var(--c-line-hi);
+}
+.hud-mem i.on {
+  background: var(--c-lime);
+  border-color: var(--c-lime);
+}
+.hud-mem i.half {
+  background: repeating-linear-gradient(0deg, var(--c-cyan) 0 1px, transparent 1px 3px);
+  border-color: var(--c-cyan);
+}
+.hud-mem i.hot {
+  background: var(--c-bone);
+}
+.hud-mem i.cur {
+  outline: 2px solid var(--c-bone);
+  outline-offset: 1px;
+}
+
+/* --- HUD: terminal ---------------------------------------------------- */
+.hud-term {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 2px;
+  height: 100%;
+  min-height: 220px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--c-bone);
+  overflow: hidden;
+}
+.hud-term > div {
+  display: grid;
+  grid-template-columns: 4ch 5ch 1fr;
+  gap: 10px;
+  white-space: nowrap;
+}
+.hud-term > div span {
+  color: var(--c-mute);
+}
+.hud-term > div:last-child {
+  color: var(--accent);
+}
+.hud-term > div.warn {
+  color: var(--c-hazard);
+}
+.hud-term > div.err {
+  background: var(--c-crimson);
+  color: var(--c-void);
+}
+.hud-term > div.err span {
+  color: var(--c-void);
+}
+
+/* --- HUD: gauge ------------------------------------------------------- */
+.hud-gauge {
+  position: relative;
+  width: 160px;
+  aspect-ratio: 1;
+}
+.hud-gauge svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.hud-gauge .g-read {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  gap: 4px;
+}
+.hud-gauge b {
+  font-family: var(--f-display);
+  font-stretch: 62%;
+  font-weight: 800;
+  font-size: 40px;
+  line-height: 0.8;
+  color: var(--c-bone);
+}
+.hud-gauge .g-read span {
+  font-size: 7px;
+  letter-spacing: 0.12em;
+  color: var(--c-mute);
+  max-width: 70px;
+}
+
+/* --- HUD: tracker ----------------------------------------------------- */
+.hud-tracker {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 240px;
+  overflow: hidden;
+  cursor: none;
+  background:
+    radial-gradient(circle, var(--c-mute-2) 1px, transparent 1.5px) 0 0 / 16px 16px;
+}
+.hud-tracker .tk-h,
+.hud-tracker .tk-v {
+  position: absolute;
+  background: var(--c-cobalt);
+}
+.hud-tracker .tk-h {
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+}
+.hud-tracker .tk-v {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+}
+.hud-tracker .tk-box {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 56px;
+  height: 56px;
+  border: 1px solid var(--c-bone);
+}
+.hud-tracker .tk-box span {
+  position: absolute;
+  left: 62px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+.hud-tracker .tk-xy {
+  top: 0;
+  color: var(--c-bone);
+}
+.hud-tracker .tk-st {
+  top: 14px;
+  color: var(--c-mute);
+}
+.hud-tracker.is-locked .tk-box {
+  border: 2px solid var(--accent);
+  background: repeating-linear-gradient(-45deg, transparent 0 4px, var(--accent-lo) 4px 6px);
+}
+.hud-tracker.is-locked .tk-st {
+  color: var(--accent-ink);
+  background: var(--accent);
+  padding: 0 4px;
+}
+
+/* --- GL stage + labels ------------------------------------------------ */
+.gl-host {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 300px;
+  overflow: hidden;
+  background: #000;
+}
+.gl-canvas {
+  display: block;
+  position: absolute;
+  inset: 0;
+}
+.gl-tag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  gap: 1px;
+  pointer-events: none;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.gl-tag b {
+  font-weight: 400;
+  background: var(--c-bone);
+  color: var(--c-void);
+  padding: 1px 4px;
+  font-family: var(--f-pixel);
+}
+.gl-tag span {
+  color: var(--c-bone);
+  padding: 0 4px;
+}
+.gl-tag--hazard b {
+  background: var(--c-hazard);
+}
+.gl-badge {
+  position: absolute;
+  z-index: 3;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--c-mute);
+  pointer-events: none;
+}
+.gl-badge b {
+  color: var(--c-acid);
+  font-weight: 400;
+}
+.gl-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  text-align: center;
+  color: var(--c-crimson);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}

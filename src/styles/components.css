@@ -1,0 +1,960 @@
+/* ==========================================================================
+   Components (k-*) — reusable, state-aware via --accent / --frame
+   All motion uses steps() — nothing glides.
+   ========================================================================== */
+
+/* --- BUTTON ------------------------------------------------------------ */
+
+.k-btn {
+  --b-fg: var(--c-bone);
+  --b-bg: transparent;
+  --b-bd: var(--c-line-hi);
+  --b-fill: var(--accent);
+  --b-fill-ink: var(--accent-ink);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 18px;
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-stretch: 125%;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--b-fg);
+  background:
+    linear-gradient(var(--b-fill), var(--b-fill)) no-repeat left / 0% 100%,
+    var(--b-bg);
+  border: 1px solid var(--b-bd);
+  border-radius: 0;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-size var(--step-fast) steps(4, end),
+    color 0s linear calc(var(--step-fast) / 2),
+    border-color 0s;
+}
+.k-btn:hover {
+  background-size: 100% 100%, auto;
+  color: var(--b-fill-ink);
+  border-color: var(--b-fill);
+}
+.k-btn:active {
+  transform: translate(1px, 1px);
+}
+.k-btn:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 3px;
+}
+.k-btn[disabled],
+.k-btn.is-disabled {
+  cursor: not-allowed;
+  color: var(--c-mute-2);
+  border-color: var(--c-mute-2);
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent 0 4px,
+    rgba(58, 63, 107, 0.35) 4px 5px
+  );
+  transform: none;
+}
+.k-btn__code {
+  font-family: var(--f-mono);
+  font-weight: 400;
+  font-stretch: 100%;
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  opacity: 0.7;
+}
+.k-btn__ico {
+  display: inline-block;
+  line-height: 0;
+}
+.k-btn__ico svg {
+  display: block;
+}
+
+.k-btn--sm {
+  height: 28px;
+  padding: 0 12px;
+  font-size: 10px;
+}
+.k-btn--lg {
+  height: 56px;
+  padding: 0 28px;
+  font-size: 14px;
+}
+
+.k-btn--solid {
+  --b-fg: var(--accent-ink);
+  --b-bg: var(--accent);
+  --b-bd: var(--accent);
+  --b-fill: var(--c-bone);
+  --b-fill-ink: var(--c-void);
+}
+.k-btn--cobalt {
+  --b-fg: var(--c-bone);
+  --b-bg: var(--c-cobalt);
+  --b-bd: var(--c-cobalt);
+  --b-fill: var(--c-acid);
+  --b-fill-ink: var(--c-void);
+}
+.k-btn--hazard {
+  --b-fg: var(--c-void);
+  --b-bg: var(--c-hazard);
+  --b-bd: var(--c-hazard);
+  --b-fill: var(--c-void);
+  --b-fill-ink: var(--c-hazard);
+}
+.k-btn--hazard:hover {
+  background:
+    repeating-linear-gradient(-45deg, var(--c-void) 0 6px, var(--c-hazard) 6px 12px);
+  background-size: 33.94px 33.94px;
+  color: var(--c-void);
+  text-shadow: 0 0 0 transparent;
+  animation: k-stripe-crawl 0.6s steps(4, end) infinite;
+}
+.k-btn--hazard:hover > * {
+  background: var(--c-hazard);
+  padding: 2px 4px;
+}
+.k-btn--danger {
+  --b-fg: var(--c-crimson);
+  --b-bd: var(--c-crimson);
+  --b-fill: var(--c-crimson);
+  --b-fill-ink: var(--c-void);
+}
+.k-btn--ghost {
+  --b-bd: transparent;
+  --b-fill: transparent;
+  --b-fill-ink: var(--accent);
+  padding: 0 4px;
+}
+.k-btn--ghost::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 8px;
+  height: 2px;
+  background: currentColor;
+  transform: scaleX(0.2);
+  transform-origin: left;
+  transition: transform var(--step-fast) steps(4, end);
+}
+.k-btn--ghost:hover::after {
+  transform: scaleX(1);
+}
+
+/* square icon-only */
+.k-btn--icon {
+  width: 40px;
+  padding: 0;
+}
+.k-btn--icon.k-btn--sm {
+  width: 28px;
+}
+
+/* notched corner (solid variants look best) */
+.k-btn--notch {
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+}
+
+/* [ bracket ] — corners jump outward on hover */
+.k-btn--bracket {
+  --b-bd: transparent;
+  --b-fill: transparent;
+  --b-fill-ink: var(--accent);
+}
+.k-btn--bracket::before,
+.k-btn--bracket::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  width: 8px;
+  border: 1px solid var(--c-bone);
+  transition:
+    transform var(--step-fast) steps(2, end),
+    border-color 0s;
+}
+.k-btn--bracket::before {
+  left: -1px;
+  border-right: none;
+}
+.k-btn--bracket::after {
+  right: -1px;
+  border-left: none;
+}
+.k-btn--bracket:hover::before {
+  transform: translateX(-6px);
+  border-color: var(--accent);
+}
+.k-btn--bracket:hover::after {
+  transform: translateX(6px);
+  border-color: var(--accent);
+}
+
+/* pixel — chunky 8-bit border */
+.k-btn--pixel {
+  font-family: var(--f-pixel);
+  font-weight: 400;
+  font-stretch: 100%;
+  letter-spacing: 0.04em;
+  border: none;
+  --b-bg: var(--c-void);
+  box-shadow:
+    0 -4px 0 0 var(--accent),
+    0 4px 0 0 var(--accent),
+    -4px 0 0 0 var(--accent),
+    4px 0 0 0 var(--accent);
+  margin: 4px;
+}
+.k-btn--pixel:hover {
+  box-shadow:
+    0 -4px 0 0 var(--c-bone),
+    0 4px 0 0 var(--c-bone),
+    -4px 0 0 0 var(--c-bone),
+    4px 0 0 0 var(--c-bone);
+}
+
+/* split: label + code cell */
+.k-btn--split {
+  padding: 0 0 0 16px;
+  gap: 0;
+}
+.k-btn--split .k-btn__cell {
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  min-width: 40px;
+  margin-left: 16px;
+  border-left: 1px solid currentColor;
+}
+
+/* loading state: segmented crawler */
+.k-btn.is-loading {
+  pointer-events: none;
+  color: transparent;
+}
+.k-btn.is-loading::after {
+  content: '';
+  position: absolute;
+  inset: 12px 14px;
+  background: repeating-linear-gradient(90deg, var(--accent) 0 6px, transparent 6px 9px);
+  mask: linear-gradient(90deg, #000 0 30%, transparent 30%);
+  mask-size: 300% 100%;
+  animation: k-crawl 0.9s steps(10, end) infinite;
+}
+
+/* hold-to-confirm: --p (0..1) driven by JS */
+.k-hold {
+  --p: 0;
+  overflow: hidden;
+}
+.k-hold::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--c-crimson);
+  transform: scaleX(var(--p));
+  transform-origin: left;
+  z-index: 0;
+}
+.k-hold > * {
+  position: relative;
+  z-index: 1;
+}
+.k-hold.is-armed {
+  color: var(--c-void);
+}
+.k-hold.is-done {
+  --p: 1;
+  color: var(--c-void);
+  animation: k-blink 0.12s steps(1, end) 6;
+}
+
+/* Big call-to-action block */
+.k-cta {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto 1fr;
+  width: 100%;
+  min-height: 132px;
+  padding: 12px 14px;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--c-bone);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  isolation: isolate;
+}
+.k-cta::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  transform: translateY(101%);
+  transition: transform var(--step-med) steps(5, end);
+  z-index: -1;
+}
+.k-cta:hover::before {
+  transform: translateY(0);
+}
+.k-cta:hover {
+  color: var(--accent-ink);
+}
+.k-cta__code {
+  font-family: var(--f-pixel);
+  font-size: 10px;
+  color: var(--accent);
+}
+.k-cta:hover .k-cta__code,
+.k-cta:hover .k-cta__meta {
+  color: inherit;
+}
+.k-cta__meta {
+  font-size: var(--t-micro);
+  line-height: 1.35;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-mute);
+  grid-column: 1 / -1;
+  grid-row: 2;
+  margin-top: 6px;
+  max-width: 40ch;
+}
+.k-cta__label {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  align-self: end;
+  padding: 14px 34px 0 0;
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-stretch: 100%;
+  font-size: clamp(24px, 2.2vw, 36px);
+  line-height: 0.85;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+.k-cta__arrow {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  line-height: 0;
+  transition: transform var(--step-fast) steps(2, end);
+}
+.k-cta:hover .k-cta__arrow {
+  transform: translateX(8px);
+}
+
+/* --- BUTTON GROUP / SEGMENTED ----------------------------------------- */
+
+.k-seg-ctl {
+  display: inline-flex;
+  border: 1px solid var(--c-line-hi);
+}
+.k-seg-ctl button {
+  height: 30px;
+  min-width: 44px;
+  padding: 0 12px;
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--c-line-hi);
+  color: var(--c-mute);
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.k-seg-ctl button:last-child {
+  border-right: 0;
+}
+.k-seg-ctl button:hover {
+  color: var(--c-bone);
+  background: var(--c-cobalt-deep);
+}
+.k-seg-ctl button[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* --- TABS --------------------------------------------------------------- */
+
+.k-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--c-line-hi);
+  width: 100%;
+}
+.k-tabs button {
+  position: relative;
+  padding: 10px 14px 8px;
+  background: none;
+  border: 0;
+  color: var(--c-mute);
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-stretch: 125%;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.k-tabs button span {
+  display: block;
+  font-family: var(--f-pixel);
+  font-weight: 400;
+  font-stretch: 100%;
+  font-size: 8px;
+  margin-bottom: 4px;
+  color: var(--c-mute-2);
+}
+.k-tabs button::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 3px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transition: transform var(--step-fast) steps(3, end);
+}
+.k-tabs button:hover {
+  color: var(--c-bone);
+}
+.k-tabs button[aria-selected='true'] {
+  color: var(--c-bone);
+}
+.k-tabs button[aria-selected='true'] span {
+  color: var(--accent);
+}
+.k-tabs button[aria-selected='true']::after {
+  transform: scaleX(1);
+}
+.k-tabpanel {
+  padding: 14px 2px 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--c-mute);
+  min-height: 70px;
+}
+
+/* --- SWITCH ------------------------------------------------------------- */
+
+.k-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.k-switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.k-switch__track {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 76px;
+  height: 24px;
+  border: 1px solid var(--c-line-hi);
+  font-family: var(--f-pixel);
+  font-size: 8px;
+}
+.k-switch__track::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  width: calc(50% - 2px);
+  background: var(--c-mute-2);
+  transition:
+    transform var(--step-fast) steps(3, end),
+    background 0s calc(var(--step-fast));
+}
+.k-switch__track span {
+  position: relative;
+  display: grid;
+  place-items: center;
+  color: var(--c-mute);
+}
+.k-switch__track span:first-child {
+  color: var(--c-bone);
+}
+.k-switch input:checked + .k-switch__track::before {
+  transform: translateX(calc(100% - 2px));
+  background: var(--accent);
+}
+.k-switch input:checked + .k-switch__track span:first-child {
+  color: var(--c-mute);
+}
+.k-switch input:checked + .k-switch__track span:last-child {
+  color: var(--accent-ink);
+}
+.k-switch input:focus-visible + .k-switch__track {
+  outline: 1px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* --- CHECKBOX / RADIO -------------------------------------------------- */
+
+.k-check,
+.k-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.k-check input,
+.k-radio input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.k-check i,
+.k-radio i {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--c-line-hi);
+  flex: none;
+}
+.k-check i::after,
+.k-radio i::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  background: var(--accent);
+  transform: scale(0);
+  transition: transform 0.1s steps(2, end);
+}
+.k-check input:checked + i,
+.k-radio input:checked + i {
+  border-color: var(--accent);
+}
+.k-check input:checked + i::after,
+.k-radio input:checked + i::after {
+  transform: scale(1);
+}
+.k-check:hover i,
+.k-radio:hover i {
+  border-color: var(--c-bone);
+}
+/* checkbox "X" variant */
+.k-check--x input:checked + i::after {
+  background:
+    linear-gradient(45deg, transparent 43%, var(--accent) 43% 57%, transparent 57%),
+    linear-gradient(-45deg, transparent 43%, var(--accent) 43% 57%, transparent 57%);
+  inset: 1px;
+}
+.k-radio i {
+  transform: rotate(45deg) scale(0.85);
+}
+.k-check input:focus-visible + i,
+.k-radio input:focus-visible + i {
+  outline: 1px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* --- RANGE ------------------------------------------------------------- */
+
+.k-range {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 12px;
+  align-items: center;
+  width: 100%;
+}
+.k-range__label {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+}
+.k-range__out {
+  font-family: var(--f-pixel);
+  font-size: 12px;
+  color: var(--accent);
+  min-width: 4ch;
+  text-align: right;
+}
+.k-range input {
+  --val: 50%;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 22px;
+  margin: 0;
+  background:
+    linear-gradient(var(--accent), var(--accent)) no-repeat 0 50% / var(--val) 6px,
+    repeating-linear-gradient(90deg, var(--c-line-hi) 0 1px, transparent 1px 10%) 0 100% / 100% 6px no-repeat,
+    linear-gradient(var(--c-line), var(--c-line)) no-repeat 0 50% / 100% 6px;
+  cursor: pointer;
+}
+.k-range input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 22px;
+  background: var(--c-bone);
+  border: none;
+  border-radius: 0;
+  box-shadow: 0 0 0 2px var(--c-void);
+}
+.k-range input::-moz-range-thumb {
+  width: 10px;
+  height: 22px;
+  background: var(--c-bone);
+  border: none;
+  border-radius: 0;
+}
+.k-range input:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 4px;
+}
+
+/* --- TEXT FIELD ------------------------------------------------------- */
+
+.k-field {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+}
+.k-field__label {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--t-micro);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--c-mute);
+}
+.k-field__label em {
+  font-style: normal;
+  color: var(--accent);
+}
+.k-field__box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 40px;
+  border: 1px solid var(--c-line-hi);
+  background: var(--c-ink-1);
+}
+.k-field__box::after {
+  content: '';
+  position: absolute;
+  left: -1px;
+  bottom: -1px;
+  width: 12px;
+  height: 3px;
+  background: var(--c-line-hi);
+  transition: width var(--step-fast) steps(4, end);
+}
+.k-field__prefix {
+  padding: 0 10px;
+  color: var(--c-mute);
+  font-family: var(--f-pixel);
+}
+.k-field input,
+.k-field select {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 10px 0 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  font-family: var(--f-mono);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-bone);
+  caret-color: var(--accent);
+}
+.k-field select {
+  appearance: none;
+  padding-left: 10px;
+  cursor: pointer;
+  background:
+    linear-gradient(45deg, transparent 50%, var(--accent) 50%) no-repeat calc(100% - 16px) 50% / 6px 6px,
+    linear-gradient(-45deg, transparent 50%, var(--accent) 50%) no-repeat calc(100% - 10px) 50% / 6px 6px;
+}
+.k-field select option {
+  background: var(--c-ink-2);
+}
+.k-field input::placeholder {
+  color: var(--c-mute-2);
+}
+.k-field:focus-within .k-field__box {
+  border-color: var(--accent);
+}
+.k-field:focus-within .k-field__box::after {
+  width: calc(100% + 2px);
+  background: var(--accent);
+}
+.k-field:focus-within .k-field__prefix {
+  color: var(--accent);
+  animation: k-blink 0.8s steps(1, end) infinite;
+}
+.k-field__hint {
+  font-size: var(--t-micro);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-mute-2);
+}
+.k-field.is-error .k-field__box {
+  border-color: var(--c-crimson);
+}
+.k-field.is-error .k-field__hint,
+.k-field.is-error .k-field__prefix {
+  color: var(--c-crimson);
+}
+.k-field.is-error .k-field__box::after {
+  width: calc(100% + 2px);
+  background: var(--c-crimson);
+}
+
+/* --- STEPPER --------------------------------------------------------- */
+
+.k-stepper {
+  display: inline-grid;
+  grid-template-columns: 32px 72px 32px;
+  height: 32px;
+  border: 1px solid var(--c-line-hi);
+}
+.k-stepper button {
+  background: none;
+  border: 0;
+  color: var(--c-bone);
+  cursor: pointer;
+  font-family: var(--f-pixel);
+}
+.k-stepper button:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.k-stepper output {
+  display: grid;
+  place-items: center;
+  border-left: 1px solid var(--c-line-hi);
+  border-right: 1px solid var(--c-line-hi);
+  font-family: var(--f-pixel);
+  color: var(--accent);
+}
+
+/* --- PROGRESS (pure CSS, set --p 0..100%) ------------------------------ */
+
+.k-progress {
+  --p: 40%;
+  --cell: 6px;
+  --gap: 2px;
+  position: relative;
+  width: 100%;
+  height: 14px;
+  background:
+    linear-gradient(var(--accent), var(--accent)) no-repeat 0 0 / var(--p) 100%,
+    var(--c-line);
+  mask: repeating-linear-gradient(90deg, #000 0 var(--cell), transparent var(--cell) calc(var(--cell) + var(--gap)));
+}
+.k-progress--thin {
+  height: 4px;
+  mask: none;
+}
+.k-progress--tall {
+  height: 28px;
+  --cell: 3px;
+  --gap: 3px;
+}
+.k-progress--indet {
+  background:
+    linear-gradient(var(--accent), var(--accent)) no-repeat 0 0 / 22% 100%,
+    var(--c-line);
+  animation: k-indet 1.2s steps(12, end) infinite;
+}
+.k-meter {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+}
+.k-meter__row {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--t-micro);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--c-mute);
+}
+.k-meter__row b {
+  font-weight: 400;
+  color: var(--accent);
+  font-family: var(--f-pixel);
+}
+
+/* --- TAG / CHIP / KEY ------------------------------------------------- */
+
+.k-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 18px;
+  padding: 0 6px;
+  border: 1px solid currentColor;
+  font-family: var(--f-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.k-tag--solid {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.k-tag--dot::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  background: currentColor;
+}
+.k-tag--blink::before {
+  animation: k-blink 0.7s steps(1, end) infinite;
+}
+.k-key {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border: 1px solid var(--c-line-hi);
+  border-bottom-width: 3px;
+  font-family: var(--f-pixel);
+  font-size: 9px;
+  color: var(--c-bone);
+}
+
+/* --- PANEL ----------------------------------------------------------- */
+
+.k-panel {
+  position: relative;
+  border: 1px solid var(--frame);
+  background: var(--c-ink-1);
+}
+.k-panel__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  background: var(--frame);
+  color: var(--c-void);
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-stretch: 125%;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.k-panel[data-state='cobalt'] .k-panel__head,
+.k-panel:not([data-state]) .k-panel__head {
+  color: var(--c-bone);
+}
+.k-panel__body {
+  padding: 12px;
+}
+
+/* --- PATTERN BLOCKS ---------------------------------------------------- */
+
+.k-hazard {
+  --h-a: var(--c-hazard);
+  --h-b: var(--c-void);
+  --h-w: 10px;
+  height: 18px;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--h-a) 0 var(--h-w),
+    var(--h-b) var(--h-w) calc(var(--h-w) * 2)
+  );
+  background-size: calc(var(--h-w) * 2.8284) calc(var(--h-w) * 2.8284);
+}
+.k-hazard--bw {
+  --h-a: var(--c-bone);
+}
+.k-hazard--red {
+  --h-a: var(--c-crimson);
+}
+.k-hazard--anim {
+  animation: k-hazard-crawl 0.8s steps(4, end) infinite;
+}
+.k-checker {
+  --ck: 8px;
+  --ck-a: var(--c-bone);
+  --ck-b: transparent;
+  background: repeating-conic-gradient(var(--ck-a) 0 25%, var(--ck-b) 0 50%) 0 0 / calc(var(--ck) * 2) calc(var(--ck) * 2);
+}
+.k-dots {
+  --d: 6px;
+  --d-c: var(--c-bone);
+  background: radial-gradient(circle, var(--d-c) 35%, transparent 38%) 0 0 / var(--d) var(--d);
+}
+.k-scan {
+  background: repeating-linear-gradient(0deg, var(--accent) 0 1px, transparent 1px 4px);
+}
+
+/* --- RULE with ticks ------------------------------------------------- */
+
+.k-rule {
+  height: 9px;
+  border-top: 1px solid var(--c-line-hi);
+  background: repeating-linear-gradient(90deg, var(--c-line-hi) 0 1px, transparent 1px 8px) 0 0 / 100% 5px no-repeat,
+    repeating-linear-gradient(90deg, var(--c-bone) 0 1px, transparent 1px 64px) 0 0 / 100% 9px no-repeat;
+}
+
+/* --- shared keyframes ------------------------------------------------- */
+
+@keyframes k-blink {
+  50% {
+    opacity: 0;
+  }
+}
+@keyframes k-stripe-crawl {
+  to {
+    background-position: 33.94px 0;
+  }
+}
+@keyframes k-hazard-crawl {
+  to {
+    background-position: calc(var(--h-w) * 2.8284) 0;
+  }
+}
+@keyframes k-crawl {
+  from {
+    mask-position: 100% 0;
+  }
+  to {
+    mask-position: -50% 0;
+  }
+}
+@keyframes k-indet {
+  from {
+    background-position: -30% 0, 0 0;
+  }
+  to {
+    background-position: 130% 0, 0 0;
+  }
+}

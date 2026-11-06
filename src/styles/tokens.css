@@ -1,0 +1,107 @@
+/* ==========================================================================
+   RUNTIME//KIT — design tokens
+   Pure black negative space + flat, unblended signal colours.
+   Colour is never decoration: it encodes system state.
+   ========================================================================== */
+
+:root {
+  /* --- base ------------------------------------------------------------ */
+  --c-void: #000000;
+  --c-ink-1: #04050b;      /* panel fill */
+  --c-ink-2: #090b1c;      /* raised panel */
+  --c-line: #1a1e5c;       /* hairline / grid (dim cobalt) */
+  --c-line-hi: #2c33a8;
+  --c-bone: #ececec;       /* primary text on black */
+  --c-mute: #6c7199;       /* micro-copy */
+  --c-mute-2: #3a3f6b;
+
+  /* --- signal palette -------------------------------------------------- */
+  --c-cobalt: #2424ff;
+  --c-cobalt-hi: #5257ff;
+  --c-cobalt-lo: #10127a;
+  --c-cobalt-deep: #06073a;
+
+  --c-acid: #7dff1a;
+  --c-acid-lo: #1f4a06;
+  --c-lime: #d4ff00;       /* "link" yellow-green */
+
+  --c-hazard: #ffe000;
+  --c-hazard-lo: #4a4100;
+
+  --c-crimson: #ff2a17;
+  --c-crimson-lo: #4d0904;
+
+  --c-cyan: #38f5d4;
+  --c-magenta: #ff2d8a;
+
+  /* --- semantic (overridden by [data-state]) --------------------------- */
+  --accent: var(--c-acid);
+  --accent-ink: var(--c-void);  /* text on accent */
+  --accent-lo: var(--c-acid-lo);
+  --frame: var(--c-cobalt);
+  --bg: var(--c-void);
+  --fg: var(--c-bone);
+
+  /* --- type ------------------------------------------------------------ */
+  --f-display: 'Archivo Variable', 'Archivo', 'Helvetica Neue', Arial, sans-serif;
+  --f-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --f-pixel: 'Silkscreen', var(--f-mono);
+
+  --t-micro: 9px;
+  --t-small: 11px;
+  --t-body: 13px;
+  --t-h3: clamp(18px, 1.6vw, 24px);
+  --t-h2: clamp(28px, 3vw, 44px);
+  --t-h1: clamp(56px, 9vw, 148px);
+
+  /* --- grid ------------------------------------------------------------ */
+  --u: 8px;
+  --gap: 16px;
+  --rail-w: 76px;
+  --bar-h: 36px;
+  --ticker-h: 26px;
+
+  /* --- motion ---------------------------------------------------------- */
+  --step-fast: 0.16s;
+  --step-med: 0.32s;
+  --steps: steps(4, end);
+}
+
+/* State themes — flip the whole UI by setting data-state on any ancestor */
+[data-state='nominal'] {
+  --accent: var(--c-acid);
+  --accent-lo: var(--c-acid-lo);
+  --frame: var(--c-cobalt);
+}
+[data-state='link'] {
+  --accent: var(--c-lime);
+  --accent-lo: #3d4a00;
+  --frame: var(--c-cobalt);
+}
+[data-state='caution'] {
+  --accent: var(--c-hazard);
+  --accent-lo: var(--c-hazard-lo);
+  --frame: var(--c-hazard);
+}
+[data-state='critical'] {
+  --accent: var(--c-crimson);
+  --accent-lo: var(--c-crimson-lo);
+  --frame: var(--c-crimson);
+}
+[data-state='cobalt'] {
+  --accent: var(--c-cobalt);
+  --accent-ink: var(--c-bone);
+  --accent-lo: var(--c-cobalt-deep);
+  --frame: var(--c-cobalt);
+}
+/* Inverted error surface: red field, ink type */
+[data-state='fault'] {
+  --bg: var(--c-crimson);
+  --fg: var(--c-void);
+  --accent: var(--c-cobalt);
+  --accent-ink: var(--c-crimson);
+  --accent-lo: #9c1206;
+  --frame: var(--c-void);
+  --c-line: #b31a0b;
+  --c-mute: #5a0800;
+}

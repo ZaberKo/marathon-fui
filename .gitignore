@@ -1,0 +1,7 @@
+node_modules
+dist
+*.log
+# large binary reference material (153MB) — keep out of git
+reference_videos/
+# local tooling (not part of the project)
+tools/
