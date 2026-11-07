@@ -17,6 +17,10 @@ pnpm build      # typecheck + production build → dist/
   draw calls / triangles / lines / GPU memory. Double-click or `+` expands it; its position is remembered.
 - **Lab viewer (dev only):** `/lab.html?s=runner` renders one scene full-window. Keys: `runner`,
   `shell`, `psyche`, `orbital`, `dropzone`, `headscan`, `terrain`.
+- **Film — SHELL 07:** `/cinema.html` plays a 2:19 web film built from the kit, with sound (see below).
+  - Keys: Space play/pause · ←/→ 1 s (Shift: 1 frame) · C captions EN/中文/off · M mute · F fullscreen · Q 3D quality.
+  - URL: `?t=81` opens paused at that time; `?capture` shows a bare 1920×1080 frame (no audio, no UI);
+    `?perf` shows the perf tag.
 
 ## Pages
 
@@ -31,12 +35,13 @@ pnpm build      # typecheck + production build → dist/
 | 06 | `#/motion`   | Easing comparison, transition monitor, loaders (count ring, plug sequence, scan block…), text wall, marquees |
 | 07 | `#/spatial`  | 7 WebGPU scenes (below), lazy-mounted, with fps / pixel / label controls and a wide toggle |
 | 08 | `#/fault`    | Full-screen runtime-error inversion with a text wall, alarm grid, triangle field; alerts, banner, modal |
+| 09 | `#/study`    | Film page for SHELL 07: synopsis, design notes, and a shot list (with its voice-over) that deep-links into the player |
 
 ### 3D scenes (`src/three/scenes/`)
 
 | Key | Scene | Technique |
 |-----|-------|-----------|
-| `runner`   | Contour runner   | Skinned GLB, black occluder body, 1px world-Y iso-lines + rim + scan band; marks ride skinned vertices; leader lines |
+| `runner`   | Contour runner   | Generated SDF body on the motion rig, black occluder body, 1px world-Y iso-lines + rim + scan band; marks ride skinned vertices; leader lines |
 | `shell`    | Shell / dot cloud | Bayer 4×4 ordered dither on facing ratio; cyan joint plates; outline triangles pop in steps; bezier fan |
 | `psyche`   | Psyche link      | Procedural ridged-noise brain in local-space contours on a grid plate; yellow connectors to a contour figure |
 | `orbital`  | Orbital uplink   | Earth = latitude slices only over land (Natural Earth); wire satellites; nadir line, footprint, uplink arcs |
@@ -67,7 +72,40 @@ src/three/core.ts          createStage(): WebGPURenderer, quantised time, perf s
 src/three/materials.ts     contourMaterial(): TSL iso-lines (fwidth), 2nd family, rim, Bayer dither, scan
 src/three/overlay.ts       LineBatch / FillBatch: billboarded px-sized marks, connectors, beziers, rings
 src/three/procedural.ts    brain, satellite, marching squares, pixel planet texture
-src/three/assets.ts        meshopt GLB loader, skinned vertex sampling, Natural Earth land mask
+src/three/assets.ts        generated-model loader, skinned vertex sampling, Natural Earth land mask
+
+src/cine/main.ts           film player: the audio clock drives the picture, gate, captions, scrubber
+src/cine/engine.ts         seekable shot timeline, shared WebGPU/WebGL2 renderer, stepped-time helpers
+src/cine/post.ts           screen layers: uniform block mosaic (screen + multiply), grain, scanlines, vignette
+src/cine/backdrop.ts       layered UI-panel walls (3 depths, parallax, blur) — replaces flat random fields
+src/cine/anatomy2d.ts      2D anatomical plate in smooth line work: nerve bundles in several colours, hatched
+                           muscles, organs, brain with gyri, optic pathway; live nerve pulses and scan
+src/cine/draw.ts           Canvas2D frame kit: measured palette, type, scanlines, data field, stripes,
+                           checkers, bitmap/sigil glyphs, glitch blocks, triangle field
+src/cine/rings.ts          defragRing (frame-scale, stepped, re-sorting) · streakRing · progressRing
+src/cine/mats.ts           xray (additive fresnel) · toon (two-tone cel) · screenDots · screenPixels
+src/cine/models/sdf.ts     SDF primitives, Surface Nets mesher, skin weights from primitive proximity
+src/cine/models/body.ts    SDF humanoid on the motion rig (runner / armor / slim), authored poses
+src/cine/models/anatomy.ts neutral SDF head for the scene library; brain geometry re-export
+src/cine/models/hard.ts    hard-surface kit: decks, plinths, ribs, any merged geometry; world-lit toon; sweep
+src/cine/models/mecharm.ts mechanical prosthetic forearm + hand (articulated hard-surface assemblies)
+src/cine/models/floor.ts   flat floor with painted graphics (numerals, hazard bands, barcode rows, ring), 2 palettes
+src/cine/models/circuits.ts dense short brain circuits with activation times + flow material for pulses
+src/cine/models/voxels.ts  uniform voxel bodies from the mesh grid + WireCubes renderer + analytic burst
+src/cine/models/stickers.ts stencil decals laid on the body surface, parented to bones
+src/cine/models/colony.ts  the colony set: domes, habitat tubes, towers, pad, solar rows, wall, rubble
+src/cine/models/head2.ts   sculpted SDF head, wire eyes, internal wiring, the visual pathway as ~70 fibres/eye
+src/cine/models/slices.ts  cross-sections of a posed skinned mesh along any axis (print fronts)
+src/cine/film/*.ts         the film's 26 shots + cues.ts (generated cue sheet: VO timings, music anchors)
+
+scripts/                   offline audio pipeline (Lyria needs GOOGLE_API_KEY in .env; voice needs edge-tts; ffmpeg with rubberband):
+  film-script.mjs            voice-over script (EN + 中文 captions) and delivery notes
+  gen-voice.mjs              edge-tts (en-US-AriaNeural) → loudness-calibrated ffmpeg chain (voice-chains/A|B)
+  gen-voice-gemini.mjs       previous engine (gemini-3.8-flash-tts), kept for reference
+  gen-music.mjs              Lyria 3.5 score from a timed brief
+  analyze-audio.py, analyze-sections.py, anchors.py  loudness / onsets / silences → music anchors for the edit
+  cues.mjs, build-audio.mjs  edit decision list → mix (ducking, SFX, loudness) → public/audio/film.mp3 + cues.ts
+  listen.mjs                 asks a multimodal Gemini model to QA audio (transcription, artefacts, balance)
 ```
 
 ## The rules that hold the look together
@@ -78,8 +116,26 @@ src/three/assets.ts        meshopt GLB loader, skinned vertex sampling, Natural 
 4. **Three type voices:** a wide or condensed display grotesque (Archivo variable, `wdth` 62–125), mono micro-copy as texture, and a pixel face for codes.
 5. **3D is drafted, not rendered.** No PBR and no lights. Use black occluders, 1px contours, dither dots and wire, then add a vector layer of triangles, rings, brackets and connector lines on top.
 
+**Corrections learned while making the film:**
+
+- **Rule 3 only holds between beats.** Hold frames and fault frames flood the whole field with one flat colour (cobalt,
+  yellow, orange-red, crimson).
+- **Scale is part of the style.** Rings, words and figures are cropped by the frame edge.
+- **Flats are never clean.** Add scanlines, stepped pixel edges and a dim data layer behind them.
+- **Pick the render style per shot.** One skeleton can be drawn as contour, x-ray, cel, halftone, voxels or triangle
+  shards; the style changes between beats.
+
 ## Credits
 
-- `public/models/soldier.glb`, `xbot.glb` are Mixamo characters/animations as distributed with the three.js examples.
-- `public/models/head.glb` is the Lee Perry-Smith head scan, CC BY 3.0.
-- Land outlines come from `world-atlas` (Natural Earth, public domain). See `public/models/CREDITS.md`.
+- **All meshes are generated in code** (`src/cine/models/`). No third-party geometry is included.
+- `public/anim/rig.glb` holds only the skeleton and motion clips, with every mesh stripped. The clips are Mixamo
+  animations as distributed with the three.js examples (`Xbot.glb`).
+- Land outlines come from `world-atlas` (Natural Earth, public domain). See `public/anim/CREDITS.md`.
+- **SHELL 07** is an original story in the graphic-realism idiom. Its world names are our own: Periapt IV,
+  ICAR Colonial Authority and ORA. It contains no footage, audio, logos or text from any existing trailer.
+- **Audio is AI-generated for this project.**
+  - The score comes from Google Lyria 3.5.
+  - The narrator voice is Microsoft edge-tts (en-US-AriaNeural, rate −10 %, pitch −8 Hz), processed with ffmpeg:
+    frequency-shift sheen, cold EQ, a 4.5 ms metallic comb and even compression; alarm lines add a monotone
+    robot undertone and an octave double.
+  - The SFX are synthesised with ffmpeg.

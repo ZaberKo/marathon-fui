@@ -19,4 +19,5 @@ export const ROUTES: Route[] = [
   { id: 'motion', num: '06', label: 'Motion', code: 'MOT.STEP', load: () => import('./pages/motion') },
   { id: 'spatial', num: '07', label: 'Spatial', code: 'GPU.SCENE', load: () => import('./pages/spatial') },
   { id: 'fault', num: '08', label: 'Fault', code: 'ERR.STATE', load: () => import('./pages/fault') },
+  { id: 'study', num: '09', label: 'Film', code: 'CIN.FILM', load: () => import('./pages/study') },
 ];

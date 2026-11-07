@@ -5,3 +5,8 @@ dist
 reference_videos/
 # local tooling (not part of the project)
 tools/
+
+# secrets
+.env
+.env.*
+scripts/.cache/

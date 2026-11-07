@@ -1290,3 +1290,26 @@
     transform: scaleX(0);
   }
 }
+
+/* --- 09 study ------------------------------------------------------------ */
+.st-open { margin: 28px 0 8px; max-width: 760px; }
+.st-gaps { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.st-gap p { margin: 0 0 10px; line-height: 1.5; color: var(--c-bone); }
+.st-gap .st-fix { color: var(--c-acid); }
+.st-gap code { font-family: var(--f-mono, 'IBM Plex Mono', monospace); color: var(--c-lime); }
+.st-shots { display: grid; border-top: 1px solid var(--c-line); }
+.st-row {
+  display: grid; grid-template-columns: 52px 150px minmax(160px, 260px) 1fr; gap: 14px; align-items: baseline;
+  padding: 9px 6px; border-bottom: 1px solid var(--c-line); color: var(--c-bone); text-decoration: none;
+  font: 12px/1.45 'IBM Plex Mono', monospace;
+}
+.st-row:hover { background: var(--c-cobalt); }
+.st-row:hover .st-note, .st-row:hover .st-time { color: var(--c-bone); }
+.st-id { color: var(--c-acid); font-weight: 700; }
+.st-time { color: var(--c-mute); font-variant-numeric: tabular-nums; }
+.st-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.st-note { color: var(--c-mute); }
+@media (max-width: 760px) { .st-row { grid-template-columns: 44px 1fr; } .st-note, .st-time { grid-column: 2; } }
+.st-facts { margin: 18px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; max-width: 820px; font: 13px/1.5 'IBM Plex Mono', monospace; color: var(--c-bone); }
+.st-facts b { color: var(--c-acid); font-weight: 700; margin-right: 6px; }
+.st-note i { color: var(--c-bone); font-style: normal; }

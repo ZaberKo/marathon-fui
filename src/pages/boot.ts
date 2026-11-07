@@ -16,6 +16,7 @@ const DESC: Record<string, string> = {
   motion: 'Stepped easing, hard cuts, glitch slices, block flashes, wipes, marquees.',
   spatial: 'WebGPU scenes: slice-line figures, neural voxels, bar-field planets, CAD bays.',
   fault: 'Runtime-error state: red inversion, alarm grid, error marquee, recovery.',
+  study: 'SHELL 07 — a 2-minute web film built from the kit: score, AI voice, generated 3D, seekable timeline.',
 };
 
 export default function mount(root: HTMLElement) {
@@ -82,7 +83,7 @@ export default function mount(root: HTMLElement) {
 
     <div class="k-band boot-band"><div class="k-marquee" style="--dur:24s"><div class="k-marquee__track">${'<span>STAND BY ▚ LINK ESTABLISHED ▚ TRANSFER WINDOW OPEN ▚ </span>'.repeat(6)}</div></div></div>
 
-    <h2 class="section-label">Module index <span class="t-micro">08 DEMO SURFACES / ALL COMPONENTS REUSABLE</span></h2>
+    <h2 class="section-label">Module index <span class="t-micro">09 DEMO SURFACES / ALL COMPONENTS REUSABLE</span></h2>
     <div class="boot-index">
       ${ROUTES.slice(1)
         .map(

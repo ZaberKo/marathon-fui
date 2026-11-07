@@ -17,6 +17,7 @@ import { adapter, registerStage } from '../lib/perf';
 /* ------------------------------------------------------------------ */
 let preferWebGL = new URLSearchParams(location.search).get('gl') === 'webgl';
 export const GPU_FALLBACK_EVENT = 'gpu-fallback';
+export const wantsWebGL = () => preferWebGL;
 export function gpuFallback(reason: string) {
   if (preferWebGL) return;
   preferWebGL = true;
@@ -26,7 +27,7 @@ export function gpuFallback(reason: string) {
   window.dispatchEvent(new CustomEvent(GPU_FALLBACK_EVENT));
 }
 
-async function describeAdapter(renderer: THREE.WebGPURenderer, backend: 'WebGPU' | 'WebGL2') {
+export async function describeAdapter(renderer: THREE.WebGPURenderer, backend: 'WebGPU' | 'WebGL2') {
   adapter.backend = backend;
   if (adapter.name) return;
   try {

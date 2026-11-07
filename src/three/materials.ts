@@ -13,7 +13,7 @@
  */
 import * as THREE from 'three/webgpu';
 import {
-  abs, float, floor, fract, fwidth, max, min, mix, normalView, positionLocal, positionWorld,
+  abs, atan, float, floor, fract, fwidth, max, min, mix, normalView, positionLocal, positionWorld,
   screenCoordinate, smoothstep, step, uniform, vec3,
 } from 'three/tsl';
 
@@ -22,7 +22,7 @@ import {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type N = any;
 
-type Axis = 'x' | 'y' | 'z';
+type Axis = 'x' | 'y' | 'z' | 'theta';
 
 export type ContourOpts = {
   line?: number;
@@ -88,7 +88,8 @@ export function contourMaterial(o: ContourOpts = {}) {
     lineMix: uniform(1),
   };
   const P: N = o.space === 'local' ? positionLocal : positionWorld;
-  const axisOf = (a: Axis | undefined): N => P[a ?? 'y'];
+  // 'theta' = angle around the Y axis (−1…1), giving meridian lines — with 'y' a lat/long grid
+  const axisOf = (a: Axis | undefined): N => (a === 'theta' ? atan(P.x, P.z).div(Math.PI) : P[a ?? 'y']);
 
   let col: N = vec3(u.body);
 

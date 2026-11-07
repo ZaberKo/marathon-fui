@@ -11,6 +11,7 @@ import { FillBatch, LineBatch } from '../overlay';
 import { loadModel, meshesOf, sampleVerts } from '../assets';
 import { PAL, type SceneHandle, type SceneOpts } from './common';
 import { rng } from '../../lib/util';
+import { HEAD } from '../../cine/models/anatomy';
 
 export async function mountHeadscan(host: HTMLElement, { fps = 12, pixel = 1, labels = true }: SceneOpts = {}): Promise<SceneHandle> {
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
@@ -53,14 +54,11 @@ export async function mountHeadscan(host: HTMLElement, { fps = 12, pixel = 1, la
   const diamonds = sampleVerts(mesh, 14, r, (p) => p.z > 0.1 && p.y > topY - 0.95);
 
   // eyes: measured from the mesh at eye height (bbox includes shoulders)
-  const eyeY = topY - 0.57;
-  let half = 0;
-  for (let i = 0; i < pos.count; i++) if (Math.abs(pos.getY(i) - eyeY) < 0.03) half = Math.max(half, Math.abs(pos.getX(i)));
-  const eyeX = half * 0.42;
-  let front = -Infinity;
-  for (let i = 0; i < pos.count; i++)
-    if (Math.abs(pos.getY(i) - eyeY) < 0.04 && Math.abs(Math.abs(pos.getX(i)) - eyeX) < 0.04) front = Math.max(front, pos.getZ(i));
+  const eyeY = (HEAD.eyeY - c0.y) * s0;
+  const eyeX = HEAD.eyeX * s0;
+  const front = (HEAD.eyeZ - c0.z) * s0;
   const eyes = [new THREE.Vector3(-eyeX, eyeY, front - 0.03), new THREE.Vector3(eyeX, eyeY, front - 0.03)];
+  void pos;
 
   // internal Manhattan traces (head-local)
   const traces: THREE.Vector3[][] = [];

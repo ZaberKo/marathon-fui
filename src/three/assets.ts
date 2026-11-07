@@ -3,29 +3,28 @@
  * and a land/ocean mask rasterised from Natural Earth (world-atlas).
  */
 import * as THREE from 'three/webgpu';
-import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
-import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
 export type ModelName = 'soldier' | 'xbot' | 'head';
 
-const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-const cache = new Map<ModelName, Promise<GLTF>>();
-
-export function loadGLTF(name: ModelName) {
-  let p = cache.get(name);
-  if (!p) {
-    p = loader.loadAsync(`${import.meta.env.BASE_URL}models/${name}.glb`);
-    cache.set(name, p);
-  }
-  return p;
-}
-
-/** Returns a fresh (skeleton-safe) clone + the shared animation clips. */
+/**
+ * Models are generated in-house (src/cine/models): SDF bodies skinned to a
+ * motion-only rig (public/anim/rig.glb — Mixamo clips, no meshes) and an SDF
+ * head. The names are kept for the scenes that use them:
+ *   soldier → armoured runner · xbot → slim runner · head → head bust
+ */
 export async function loadModel(name: ModelName) {
-  const gltf = await loadGLTF(name);
-  const root = SkeletonUtils.clone(gltf.scene) as unknown as THREE.Object3D;
-  return { root, clips: gltf.animations as unknown as THREE.AnimationClip[] };
+  if (name === 'head') {
+    const { headGeometry } = await import('../cine/models/anatomy');
+    const root = new THREE.Group();
+    const mesh = new THREE.Mesh(headGeometry().clone(), new THREE.MeshBasicMaterial());
+    mesh.name = 'head';
+    root.add(mesh);
+    return { root: root as THREE.Object3D, clips: [] as THREE.AnimationClip[] };
+  }
+  const { makeBody } = await import('../cine/models/body');
+  const body = await makeBody(name === 'soldier' ? 'armor' : 'runner', new THREE.MeshBasicMaterial());
+  body.mesh.name = 'surface';
+  return { root: body.root, clips: body.clips };
 }
 
 /** Normalise an object so its height is `h` and its feet sit on y=0, centred on x/z. */

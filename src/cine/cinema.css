@@ -1,0 +1,85 @@
+@import '../styles/fx.css';
+
+html, body.cine-body { margin: 0; height: 100%; background: #000; color: var(--c-bone); overflow: hidden; }
+body.cine-body { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.04em; }
+
+.cine-stage { position: fixed; inset: 0 0 64px 0; display: grid; place-items: center; }
+:fullscreen .cine-stage, .is-capture .cine-stage { inset: 0; }
+.is-capture .cine-stage { place-items: start; }
+.cine-frame { position: relative; overflow: hidden; background: #000; isolation: isolate; }
+.cine-frame > canvas, .cine-frame > .cine-glhost {
+  position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+}
+.cine-glhost canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; display: block; }
+
+/* ---- global screen layers (see post.ts) ---- */
+.cine-post { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+canvas.cine-post { image-rendering: pixelated; }
+.cine-post--lift { mix-blend-mode: screen; }
+.cine-post--mottle { mix-blend-mode: multiply; }
+.cine-post--grain { mix-blend-mode: overlay; background-size: 256px 256px; image-rendering: pixelated; }
+.cine-post--scan {
+  mix-blend-mode: multiply;
+  background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.55) 0, rgba(0, 0, 0, 0.55) calc(1px * var(--s, 1)), transparent calc(1px * var(--s, 1)), transparent calc(3px * var(--s, 1)));
+}
+.cine-post--vignette { mix-blend-mode: multiply; background: radial-gradient(ellipse 75% 70% at 50% 50%, #fff 55%, #6a6a78 100%); }
+
+/* ---- captions ---- */
+.cine-cap {
+  position: absolute; left: 4.2%; bottom: 6.5%; max-width: 62%; z-index: 5;
+  display: flex; gap: calc(14px * var(--s, 1)); align-items: baseline;
+  font: 500 calc(22px * var(--s, 1)) / 1.35 'IBM Plex Mono', monospace; letter-spacing: 0.02em;
+  color: #e9ecff; text-shadow: 0 0 calc(6px * var(--s, 1)) #000, 0 0 calc(2px * var(--s, 1)) #000;
+}
+.cine-cap b { color: #77f600; font-weight: 700; font-size: 0.72em; letter-spacing: 0.12em; white-space: nowrap; }
+.cine-cap[hidden] { display: none; }
+.is-capture .cine-cap { display: none !important; }
+
+/* ---- start gate ---- */
+.cine-gate {
+  position: absolute; inset: 0; z-index: 10; display: grid; place-items: center;
+  background: rgba(0, 0, 0, 0.82); backdrop-filter: blur(2px);
+  transition: opacity 0.25s steps(3);
+}
+.cine-gate.is-open { opacity: 0; pointer-events: none; }
+.cine-gate__in { display: grid; gap: calc(14px * var(--s, 1)); justify-items: start; width: 46%; }
+.cine-gate__code { font: 700 calc(13px * var(--s, 1)) 'IBM Plex Mono', monospace; color: #6c7199; letter-spacing: 0.2em; }
+.cine-gate__title {
+  font: 800 calc(150px * var(--s, 1)) / 0.85 'Archivo Variable', sans-serif; font-stretch: 62%;
+  color: #e9ecff; letter-spacing: -0.01em;
+}
+.cine-gate__title span { color: #0518fa; margin-left: 0.08em; }
+.cine-gate__msg { font: 700 calc(14px * var(--s, 1)) 'IBM Plex Mono', monospace; color: #2ee866; letter-spacing: 0.16em; }
+.cine-gate__bar { display: block; width: 100%; height: calc(6px * var(--s, 1)); background: #0a1060; }
+.cine-gate__bar i { display: block; height: 100%; width: 0; background: #0518fa; transition: width 0.1s steps(2); }
+.cine-gate__go {
+  font: 800 calc(30px * var(--s, 1)) 'Archivo Variable', sans-serif; font-stretch: 125%; letter-spacing: 0.06em;
+  color: #000; background: #77f600; border: 0; padding: calc(10px * var(--s, 1)) calc(26px * var(--s, 1)); cursor: pointer;
+}
+.cine-gate__go:disabled { background: #1a3a08; color: #3a5a1a; cursor: wait; }
+.cine-gate__go:not(:disabled):hover { background: #e9ecff; }
+.cine-gate__hint { font: 400 calc(12px * var(--s, 1)) 'IBM Plex Mono', monospace; color: #6c7199; letter-spacing: 0.14em; }
+
+/* ---- controls ---- */
+.cine-ui {
+  position: fixed; left: 0; right: 0; bottom: 0; height: 64px; background: #000; border-top: 1px solid #1a1e5c; z-index: 20;
+  transition: opacity 0.3s steps(3);
+}
+.is-capture .cine-ui, .is-capture .perf { display: none !important; }
+:fullscreen .cine-ui { background: rgba(0, 0, 0, 0.85); }
+.is-playing.is-idle .cine-ui { opacity: 0; }
+.is-playing.is-idle { cursor: none; }
+.cine-bar { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px; }
+.cine-bar button, .cine-back {
+  font: inherit; color: var(--c-bone); background: #000; border: 1px solid #2c33a8; height: 24px; padding: 0 10px;
+  cursor: pointer; text-decoration: none; display: inline-grid; place-items: center; letter-spacing: 0.1em;
+}
+.cine-bar button:hover, .cine-back:hover { background: #0518fa; border-color: #0518fa; }
+.cine-time { color: #2ee866; min-width: 150px; font-variant-numeric: tabular-nums; }
+.cine-shot { color: #6c7199; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cine-sp { flex: 1; }
+.cine-scrub { position: relative; height: 22px; margin: 4px 12px 0; cursor: crosshair; }
+.cine-ticks span { position: absolute; top: 4px; height: 12px; border-left: 1px solid #2c33a8; background: #060a30; box-sizing: border-box; }
+.cine-ticks span:nth-child(odd) { background: #0a1060; }
+.cine-ticks span:hover { background: #0518fa; }
+.cine-scrub i { position: absolute; top: 0; width: 2px; height: 20px; background: #2ee866; margin-left: -1px; pointer-events: none; }

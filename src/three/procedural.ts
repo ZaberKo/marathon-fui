@@ -186,3 +186,53 @@ export function pixelSurfaceTexture({ w = 512, h = 256, base = '#1d1dff', dark =
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
+
+/** Planet sensor texture with large-scale structure (noise landmasses, craters, specks). */
+export function terrainTexture({ w = 2048, h = 1024, seed = 21 } = {}) {
+  const noise = new SimplexNoise({ random: rng(seed) });
+  const cv = document.createElement('canvas');
+  cv.width = w;
+  cv.height = h;
+  const g = cv.getContext('2d')!;
+  const img = g.createImageData(w, h);
+  const cell = 4;
+  for (let y = 0; y < h; y += cell)
+    for (let x = 0; x < w; x += cell) {
+      const u = (x / w) * Math.PI * 2;
+      const v = (y / h) * Math.PI;
+      const px = Math.cos(u) * Math.sin(v);
+      const py = Math.cos(v);
+      const pz = Math.sin(u) * Math.sin(v);
+      const n = noise.noise3d(px * 1.6, py * 1.6, pz * 1.6) * 0.6 + noise.noise3d(px * 5, py * 5, pz * 5) * 0.3 + noise.noise3d(px * 14, py * 14, pz * 14) * 0.12;
+      let c: [number, number, number];
+      if (n > 0.32) c = [3, 6, 58];
+      else if (n > 0.1) c = [10, 16, 176];
+      else if (n > -0.25) c = [22, 32, 255];
+      else c = [40, 58, 255];
+      for (let j = 0; j < cell; j++)
+        for (let i = 0; i < cell; i++) {
+          const k = ((y + j) * w + (x + i)) * 4;
+          img.data[k] = c[0];
+          img.data[k + 1] = c[1];
+          img.data[k + 2] = c[2];
+          img.data[k + 3] = 255;
+        }
+    }
+  g.putImageData(img, 0, 0);
+  const r = rng(seed + 1);
+  g.strokeStyle = '#03063a';
+  g.lineWidth = 3;
+  for (let i = 0; i < 70; i++) {
+    g.beginPath();
+    g.arc(r() * w, r() * h, 4 + r() * 26, 0, Math.PI * 2);
+    g.stroke();
+  }
+  g.fillStyle = '#03063a';
+  for (let i = 0; i < 1600; i++) g.fillRect(Math.floor(r() * w), Math.floor(r() * h), 2 + Math.floor(r() * 6), 2);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.NearestFilter;
+  tex.generateMipmaps = false;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
