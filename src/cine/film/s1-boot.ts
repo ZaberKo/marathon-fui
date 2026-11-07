@@ -7,7 +7,7 @@ import { clamp01, hash } from '../engine';
 import { C, F, checker, dashStack, microRows, plus, rect, scanlines, text } from '../draw';
 import { backdrop } from '../backdrop';
 import { defragSort } from '../rings';
-import { ANCHORS } from './cues';
+import { ST } from './times';
 import { printFigure } from './figure';
 import { canvasPlane, cutGlitch, easeInOutCubic, easeOutExpo, persp, smooth, span, typeOn } from './kit';
 
@@ -60,8 +60,8 @@ function initiating(f: Frame, slide: number, zoom: number, zx: number, zy: numbe
 export const s1: ShotDef[] = [
   {
     id: 'S00',
-    t0: 0,
-    t1: ANCHORS.boom,
+    t0: ST.S00[0],
+    t1: ST.S00[1],
     title: 'Boot',
     note: 'Silence and a screen waking up: the block mask fades in, the boot log types, three blips land on the score’s clicks.',
     build: () => ({
@@ -88,8 +88,8 @@ export const s1: ShotDef[] = [
   },
   {
     id: 'S01',
-    t0: ANCHORS.boom,
-    t1: 7.8,
+    t0: ST.S01[0],
+    t1: ST.S01[1],
     title: 'Initiating',
     note: 'The slab slams in on the boom. Green link lines drop from above into the crown of the empty shell — the consciousness connecting — while the body prints in four segments at once, each hanging from its own comb. A camera push isolates the print.',
     build: async (k) => {
@@ -115,8 +115,8 @@ export const s1: ShotDef[] = [
   },
   {
     id: 'S02',
-    t0: 7.8,
-    t1: 11.4,
+    t0: ST.S02[0],
+    t1: ST.S02[1],
     title: 'Defragmentation ring',
     note: 'Memory blocks are lifted out of the ring, travel, and drop back sorted — defragmentation shown literally. The ring is a texture on a plane in 3D so the camera can tilt through it.',
     build: () => {

@@ -7,7 +7,7 @@
  *
  * Keys: Space play/pause · ←/→ 1 s (Shift: 1 frame) · C captions EN/中文/off
  *       M mute · F fullscreen · Q 3D quality · Home restart
- * URL:  ?t=12.3 (start paused there) · ?capture (bare 1920×1080 frame, no audio) · ?perf (perf tag)
+ * URL:  ?t=12.3 (start paused there) · ?capture (bare 1920×1080 frame, no audio) · ?noperf (hide the performance window)
  */
 import '@fontsource-variable/archivo/wdth.css';
 import '@fontsource/ibm-plex-mono/400.css';
@@ -138,8 +138,8 @@ const clock = () => {
   // dev aid: ?only=S13,S24 builds just those shots (faster captures)
   const only = params.get('only')?.split(',');
   const tl = new Timeline(only ? SHOTS.filter((s) => only.includes(s.id)) : SHOTS, DURATION, { gl });
-  if (!capture && params.has('perf')) {
-    mountPerfHud();
+  if (!capture && !params.has('noperf')) {
+    mountPerfHud({ reserveBottom: 72, key: 'cine-perf', dock: 'top' });
     startPageMeter();
   }
   ui.ticks.innerHTML = tl.defs

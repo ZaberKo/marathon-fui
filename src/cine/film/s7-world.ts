@@ -10,18 +10,29 @@
 import * as THREE from 'three/webgpu';
 import type { Frame, ShotDef } from '../engine';
 import { clamp01, hash } from '../engine';
-import { C, F, line, plus, rect, sigil, text, tri } from '../draw';
+import { C, F, line, plus, rect, text, tri } from '../draw';
 import { makeBody } from '../models/body';
-import { HAZE, Hard, toonLit } from '../models/hard';
-import { buildColony } from '../models/colony';
-import { satellite, terrainTexture } from '../../three/procedural';
+import { Hard, toonLit } from '../models/hard';
+import { stationModel } from '../models/station';
+import { SimplexNoise } from 'three/addons/math/SimplexNoise.js';
+import { isoSegments, terrainTexture } from '../../three/procedural';
 import { glitchToon, lineMat, screenDots, xray } from '../mats';
 import { addStickers } from '../models/stickers';
 import { WireCubes, voxelPositions, voxelize } from '../models/voxels';
 import { ANCHORS } from './cues';
+import { ST } from './times';
 import { cutGlitch, easeInOutCubic, persp, px, smooth, span, vlabel } from './kit';
 
 const G = '#2fd62a';
+const lerpHex = (a: number, b: number, k: number) => `#${new THREE.Color(a).lerp(new THREE.Color(b), k).getHexString()}`;
+/** small deterministic PRNG for SimplexNoise */
+const mulberry = (a: number) => () => {
+  a |= 0;
+  a = (a + 0x6d2b79f5) | 0;
+  let t = Math.imul(a ^ (a >>> 15), 1 | a);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+};
 const GD = '#0d7a0a';
 
 function circle(r: number, color: number, y = 0, segs = 256, opacity = 1) {
@@ -29,36 +40,50 @@ function circle(r: number, color: number, y = 0, segs = 256, opacity = 1) {
   return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), lineMat(color, opacity));
 }
 
-const HANDOFF = 85.0;
 const T0 = ANCHORS.swell;
-const T1 = ANCHORS.hostile;
+const HANDOFF = T0 + 3.0;
+const DROP = ANCHORS.drop;
+const DIVE = ANCHORS.survey - 1.0;
+const T1 = ANCHORS.survey;
+
+/** a label block with a dark backing plate (never sits on top of a bright planet unreadably) */
+function plate(fg: CanvasRenderingContext2D, x: number, y: number, lines: [string, number, string, boolean][], w: number) {
+  const h = lines.reduce((a, l) => a + l[1] + 8, 10);
+  rect(fg, x - 10, y - lines[0][1] - 6, w, h, 'rgba(0,0,0,0.78)');
+  let yy = y;
+  for (const [s, size, color, mono] of lines) {
+    text(fg, s, x, yy, { size, weight: 800, color, family: mono ? F.mono : undefined });
+    yy += size + 8;
+  }
+}
 
 export const s7: ShotDef[] = [
   {
-    id: 'S15',
-    t0: T0,
-    t1: T1,
-    title: 'Periapt IV — continuous descent',
-    note: 'One camera move across three orders of magnitude: a drafted system chart (orbits with ticks and lanes, a corona star, a ringed giant) → the planet, passing its relay satellite → a low glide over the silent colony (domes, habitat tubes, stepped towers, landing pad, solar rows). The planet turns from dithered schematic to pixel sensor feed at an exactly matched scale handoff.',
+    id: 'S14',
+    t0: ST.S14[0],
+    t1: ST.S14[1],
+    title: 'Periapt IV — from the system to the drop',
+    note: 'One camera move: a drafted system chart (a corona star that dwarfs its planets, orbits with ticks and lanes, a ringed giant) → the planet, at an exactly matched scale handoff from dithered schematic to sensor imagery → high orbit behind the station, which drops runners down arcs onto every remaining signal; the camera follows one drop down toward its zone. Labels sit on dark plates beside the planet and move to a side panel once the planet fills the view.',
     build: () => {
       /* ---------------- scene A: system chart ---------------- */
       const A = new THREE.Scene();
-      const camA = persp(36, 0.05, 600);
-      const star = new THREE.Mesh(new THREE.SphereGeometry(0.7, 32, 16), new THREE.MeshBasicMaterial({ color: 0xe8ecff }));
+      const camA = persp(36, 0.05, 800);
+      const STAR_R = 3.0;
+      const star = new THREE.Mesh(new THREE.SphereGeometry(STAR_R, 48, 24), new THREE.MeshBasicMaterial({ color: 0xe8ecff }));
       A.add(star);
       const corona: number[] = [];
-      for (let i = 0; i < 72; i++) {
-        const a = (i / 72) * Math.PI * 2;
-        const l = 1.0 + hash(i, 1) * (i % 6 === 0 ? 2.6 : 0.9);
-        corona.push(Math.cos(a) * 0.9, 0, Math.sin(a) * 0.9, Math.cos(a) * l, 0, Math.sin(a) * l);
+      for (let i = 0; i < 120; i++) {
+        const a = (i / 120) * Math.PI * 2;
+        const l = STAR_R * (1.12 + hash(i, 1) * (i % 6 === 0 ? 0.95 : 0.35));
+        corona.push(Math.cos(a) * STAR_R * 1.05, 0, Math.sin(a) * STAR_R * 1.05, Math.cos(a) * l, 0, Math.sin(a) * l);
       }
       const cg = new THREE.BufferGeometry();
       cg.setAttribute('position', new THREE.Float32BufferAttribute(corona, 3));
       A.add(new THREE.LineSegments(cg, lineMat(0xe8ecff, 0.7)));
-      const orbits = [6, 10, 16, 23, 31];
+      for (const k of [1.25, 1.5]) A.add(circle(STAR_R * k, 0xe8ecff, 0, 180, 0.35));
+      const orbits = [9, 13, 18, 25, 33];
       orbits.forEach((r, i) => {
         A.add(circle(r, i === 2 ? 0x2fd62a : 0x0d6a0a, 0, 360, i === 2 ? 1 : 0.8));
-        // ticks every 5° (longer every 30°) + a direction chevron
         const tk: number[] = [];
         for (let k = 0; k < 72; k++) {
           const a = (k / 72) * Math.PI * 2;
@@ -81,11 +106,10 @@ export const s7: ShotDef[] = [
         A.add(new THREE.LineSegments(tg, lineMat(i === 2 ? 0x2fd62a : 0x0d6a0a, 0.9)));
       });
       const thP = 0.9;
-      const Pp = new THREE.Vector3(Math.cos(thP) * 16, 0, Math.sin(thP) * 16);
+      const Pp = new THREE.Vector3(Math.cos(thP) * orbits[2], 0, Math.sin(thP) * orbits[2]);
       const planetA = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 48), screenDots({ color: 0x2fd62a, cell: 7, gain: 1.05, bg: 0x010a02 }).mat);
       planetA.position.copy(Pp);
       A.add(planetA);
-      // wire graticule on the target
       const grat = new THREE.Group();
       for (let i = -3; i <= 3; i++) {
         const lat = (i / 8) * Math.PI;
@@ -98,8 +122,7 @@ export const s7: ShotDef[] = [
       }
       grat.position.copy(Pp);
       A.add(grat);
-      // other bodies: a ringed giant, two small rocks
-      [[1, 0.6, false], [3, 1.4, true], [4, 0.45, false], [0, 0.35, false]].forEach(([oi, rad, ringed]) => {
+      [[1, 0.6, false], [3, 1.5, true], [4, 0.5, false], [0, 0.35, false]].forEach(([oi, rad, ringed]) => {
         const r = orbits[oi as number];
         const a = hash(oi as number, 3) * Math.PI * 2;
         const p = new THREE.Mesh(new THREE.SphereGeometry(rad as number, 32, 24), screenDots({ color: 0x2fd62a, cell: 5, gain: 1.2, bg: 0x010a02 }).mat);
@@ -118,14 +141,7 @@ export const s7: ShotDef[] = [
       const ringP = circle(2.1, 0x2fd62a, 0, 128);
       ringP.position.copy(Pp);
       A.add(ringP);
-      const satA = satellite({ body: 0xe8ecff, panel: 0x1a2cff, panelLine: 0x8aa0ff, accent: 0xcde404 });
-      satA.scale.setScalar(0.9);
-      A.add(satA);
-      const satOrbit = (T: number, center: THREE.Vector3, R: number) => {
-        const a = 2.1 + (T - T0) * 0.12;
-        return new THREE.Vector3(center.x + Math.cos(a) * R, center.y + Math.sin(a * 0.7) * R * 0.18 + R * 0.25, center.z + Math.sin(a) * R);
-      };
-      /* ---------------- scene B: planet ×100 + colony ---------------- */
+      /* ---------------- scene B: planet ×100, the station, the drop ---------------- */
       const B = new THREE.Scene();
       const camB = persp(36, 0.02, 3000);
       const R = 100;
@@ -144,48 +160,61 @@ export const s7: ShotDef[] = [
       const atm = new THREE.Mesh(new THREE.SphereGeometry(R * 1.025, 96, 64), xray({ inner: 0x000000, rim: 0x3a52ff, power: 3, gain: 0.9 }).mat);
       atm.material.side = THREE.BackSide;
       B.add(atm);
-      const satB = satellite({ body: 0xe8ecff, panel: 0x1a2cff, panelLine: 0x8aa0ff, accent: 0xcde404 });
-      satB.scale.setScalar(90);
-      B.add(satB);
       const dirA = new THREE.Vector3(0.35, 0.42, 1).normalize();
       const nT = new THREE.Vector3(0.22, 0.62, 0.75).normalize();
       const site = nT.clone().multiplyScalar(R);
       const east = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), nT).normalize();
       const north = new THREE.Vector3().crossVectors(nT, east).normalize();
-      const fwd = dirA.clone().negate().projectOnPlane(nT).normalize();
-      const colony = buildColony({ seed: 4, haze: true, ruined: 0.35 });
-      colony.scale.setScalar(0.1);
-      const basis = new THREE.Matrix4().makeBasis(east, nT, north.clone().negate());
-      colony.quaternion.setFromRotationMatrix(basis);
-      colony.position.copy(site).addScaledVector(nT, -0.005);
-      B.add(colony);
-      const Cf = site.clone().addScaledVector(nT, 2.1).addScaledVector(fwd, -4.6);
-      const altF = Cf.length() - R;
-      const nF = Cf.clone().normalize();
-      const ahead = site.clone().addScaledVector(fwd, 0.8);
-      const drops = [[-0.2, -0.2], [0.4, 0.2], [-1.2, 0.9], [1.6, -1.4], [0.6, 1.4], [-1.8, -1.2], [2.0, 0.8]].map(([x, z]) => site.clone().addScaledVector(east, x).addScaledVector(north, z).addScaledVector(nT, 0.05));
+      const onSphere = (x: number, z: number, lift = 0) => site.clone().addScaledVector(east, x).addScaledVector(north, z).normalize().multiplyScalar(R + lift);
+      // the station, high over the site
+      const station = stationModel();
+      station.scale.setScalar(1.4);
+      const SP = onSphere(-7, -10, 15);
+      station.position.copy(SP);
+      station.lookAt(onSphere(0, 30, 15));
+      B.add(station);
+      // camera framing in orbit: behind and above the station, looking down-range
+      const camOrbit = onSphere(0, -36, 19);
+      const lookOrbit = onSphere(1, 14, 2);
+      // targets and drop arcs (3D lines revealed in steps)
+      const targets = [[-9, 6], [-3, 12], [4, 9], [10, 16], [1, 22], [-7, 20], [13, 7]].map(([x, z]) => onSphere(x, z, 0.05));
+      const DIVE_I = 2;
+      const arcs = targets.map((tp, i) => {
+        const a = SP.clone().add(new THREE.Vector3().subVectors(onSphere(-7, -10, 13), SP));
+        const up2 = SP.clone().normalize();
+        const c1 = a.clone().addScaledVector(up2, 4).addScaledVector(north, 6 + i);
+        const c2 = tp.clone().addScaledVector(tp.clone().normalize(), 10);
+        const pts = Array.from({ length: 65 }, (_, k) => {
+          const t = k / 64;
+          const it = 1 - t;
+          return new THREE.Vector3().addScaledVector(a, it * it * it).addScaledVector(c1, 3 * it * it * t).addScaledVector(c2, 3 * it * t * t).addScaledVector(tp, t * t * t);
+        });
+        const line2 = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), lineMat(i === DIVE_I ? 0xe8f0a0 : 0x9dff3a, 0.9));
+        line2.geometry.setDrawRange(0, 0);
+        B.add(line2);
+        return { pts, line: line2, at: DROP + 0.25 + i * 0.42 };
+      });
       const up = new THREE.Vector3();
+      const tmp = new THREE.Vector3();
+      const fpx = (cam: THREE.PerspectiveCamera) => 540 / Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
       return {
         draw(f: Frame) {
           const { fg, T, t } = f;
           if (T < HANDOFF) {
             const u = span(T, T0, HANDOFF);
             const e = easeInOutCubic(u);
-            const d = 70 * Math.pow(3.0 / 70, e);
+            const d = 90 * Math.pow(3.0 / 90, e);
             const look = new THREE.Vector3().lerpVectors(new THREE.Vector3(4, 0, 4), Pp, smooth(clamp01(u * 1.4)));
             const dir0 = new THREE.Vector3(-0.2, 0.75, 1).normalize();
             const dir = new THREE.Vector3().lerpVectors(dir0, dirA, smooth(u)).normalize();
             camA.position.copy(Pp).addScaledVector(dir, d);
-            camA.position.lerp(new THREE.Vector3(10, 52, 60), (1 - smooth(clamp01(u * 1.6))) * 0.8);
+            camA.position.lerp(new THREE.Vector3(12, 66, 76), (1 - smooth(clamp01(u * 1.6))) * 0.8);
             camA.lookAt(look);
             camA.updateMatrixWorld();
             moon.position.set(Pp.x + Math.cos(T * 0.6) * 2.1, 0, Pp.z + Math.sin(T * 0.6) * 2.1);
-            satA.position.copy(satOrbit(T, Pp, 1.6));
-            satA.lookAt(Pp);
             planetA.rotation.y = T * 0.08;
             grat.rotation.y = T * 0.08;
             f.three = { scene: A, camera: camA };
-            // chart frame
             for (const [x, y, sx, sy] of [[60, 60, 1, 1], [1860, 60, -1, 1], [60, 1020, 1, -1], [1860, 1020, -1, -1]] as const) {
               rect(fg, x, y, sx * 40, 2 * sy, G);
               rect(fg, x, y, 2 * sx, sy * 40, G);
@@ -193,17 +222,17 @@ export const s7: ShotDef[] = [
             for (let k = 0; k < 24; k++) rect(fg, 120 + k * 70, 1022, 1, k % 4 === 0 ? 14 : 7, GD);
             text(fg, '1 AU', 120 + 4 * 70, 1050, { size: 12, family: F.mono, weight: 700, color: GD });
             const pp = px(f, camA, Pp);
-            const sp = px(f, camA, satA.position);
-            if (u < 0.55) {
-              text(fg, 'SYSTEM', 1150, 470, { size: 26, weight: 800, color: C.blue });
-              text(fg, 'PERIAPT (4)', 1150, 540, { size: 68, weight: 800, color: C.blue, stretch: 'semi-condensed' });
-              text(fg, 'APPROACH ›', 335, 520, { size: 34, weight: 800, color: C.blue });
-              for (const [x, y] of [[620, 95], [1540, 95], [620, 815], [1540, 815]] as const) {
-                sigil(fg, 3, x, y, 5, 3, 7, C.blue);
-                sigil(fg, 4, x + 42, y, 5, 3, 7, C.blue);
-              }
+            const rp = (1 / camA.position.distanceTo(Pp)) * fpx(camA);
+            const big = clamp01((rp - 120) / 80);
+            if (big < 1) {
+              fg.save();
+              fg.globalAlpha = 1 - big;
+              text(fg, 'SYSTEM', 96, 150, { size: 26, weight: 800, color: C.blue });
+              text(fg, 'PERIAPT (4)', 96, 220, { size: 68, weight: 800, color: C.blue, stretch: 'semi-condensed' });
+              text(fg, 'APPROACH ›', 96, 280, { size: 30, weight: 800, color: C.blue });
+              fg.restore();
             }
-            const br = 60 + (1 - u) * 40 + Math.max(0, u - 0.6) * 500;
+            const br = Math.max(46, rp * 1.25);
             fg.strokeStyle = G;
             fg.lineWidth = 2;
             for (const [sx2, sy2] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) {
@@ -213,80 +242,87 @@ export const s7: ShotDef[] = [
               fg.lineTo(pp.x + sx2 * (br - 16), pp.y + sy2 * br);
               fg.stroke();
             }
-            text(fg, 'PERIAPT IV', pp.x + br + 14, pp.y - br + 14, { size: 20, weight: 800, color: G });
-            text(fg, 'COLONY · SIGNAL LOST 9Y 04M', pp.x + br + 14, pp.y - br + 36, { size: 13, family: F.mono, weight: 700, color: G });
-            if (sp.z < 1 && u > 0.25) {
-              line(fg, sp.x, sp.y, sp.x + 70, sp.y - 50, '#cde404', 1);
-              text(fg, 'RELAY 3 · DARK', sp.x + 74, sp.y - 54, { size: 12, family: F.mono, weight: 700, color: '#cde404' });
+            // planet facts: beside the bracket while it fits, then docked to the side panel
+            const lines: [string, number, string, boolean][] = [
+              ['PERIAPT IV', 22, G, false],
+              ['COLONY · SIGNAL LOST 9Y 04M', 13, G, true],
+              ['R 0.94 ⊕ · 1.06 g · ATM THIN', 13, GD, true],
+            ];
+            let lx = pp.x + br + 22;
+            let ly = pp.y - br + 22;
+            if (lx + 300 > 1880 || ly < 70) {
+              lx = 1540;
+              ly = 150;
+              line(fg, lx - 12, ly + 20, Math.min(pp.x + rp * 0.7, lx - 12), Math.max(pp.y - rp * 0.7, ly + 20), GD, 1);
             }
-            const gx = pp.x + br + 14;
-            const gy = pp.y - br + 60;
-            fg.strokeStyle = GD;
-            fg.lineWidth = 1.5;
-            fg.beginPath();
-            for (let x = 0; x <= 200; x += 4) {
-              const y = x < 60 ? Math.sin(x * 0.6 + T * 8) * 9 * hash(x, 2) : 0;
-              if (x === 0) fg.moveTo(gx + x, gy + y);
-              else fg.lineTo(gx + x, gy + y);
-            }
-            fg.stroke();
+            plate(fg, lx, ly, lines, 310);
             for (const [x, y] of [[480, 70], [1440, 70], [500, 160], [1500, 300]] as const) plus(fg, x, y, 10, GD, 2);
             cutGlitch(f, t, 0.12, ['#000', G], 18);
             f.post.tint = [0.45, 1, 0.45];
             return;
           }
           /* ---- scene B ---- */
-          const u = span(T, HANDOFF, T1 - 0.3);
-          const s2 = smooth(u);
-          const e = easeInOutCubic(u);
-          const alt = 200 * Math.pow(altF / 200, e);
-          const n = new THREE.Vector3().copy(dirA).lerp(nF, s2).normalize();
-          camB.position.copy(n).multiplyScalar(R + alt);
-          up.set(0, 1, 0).lerp(nT, s2 ** 2).normalize();
+          const handPos = dirA.clone().multiplyScalar(R + 200);
+          const uA = smooth(span(T, HANDOFF, DROP));
+          const lookA = new THREE.Vector3().lerpVectors(new THREE.Vector3(0, 0, 0), lookOrbit, smooth(clamp01(span(T, HANDOFF, DROP) * 1.3)));
+          if (T < DROP) {
+            // fall from the handoff distance into orbit behind the station (log-ish distance)
+            const alt0 = 200;
+            const alt1 = camOrbit.length() - R;
+            const alt = alt0 * Math.pow(alt1 / alt0, uA);
+            const n = handPos.clone().normalize().lerp(camOrbit.clone().normalize(), uA).normalize();
+            camB.position.copy(n).multiplyScalar(R + alt);
+            camB.lookAt(lookA);
+          } else if (T < DIVE) {
+            const u = span(T, DROP, DIVE);
+            camB.position.copy(camOrbit).addScaledVector(north, u * 3).addScaledVector(east, u * 1.5);
+            camB.lookAt(lookOrbit);
+          } else {
+            // follow one drop down toward its zone
+            const u = smooth(span(T, DIVE, T1));
+            const tgt = targets[DIVE_I];
+            const from = camOrbit.clone().addScaledVector(north, 3).addScaledVector(east, 1.5);
+            camB.position.copy(from).lerp(tgt.clone().add(tgt.clone().normalize().multiplyScalar(2.2)), u * u);
+            camB.lookAt(tmp.copy(lookOrbit).lerp(tgt, smooth(clamp01(u * 2))));
+          }
+          up.set(0, 1, 0).lerp(nT, uA ** 2).normalize();
           camB.up.copy(up);
-          camB.lookAt(new THREE.Vector3().lerpVectors(new THREE.Vector3(0, 0, 0), ahead, smooth(clamp01(u * 1.45))));
-          camB.near = Math.max(0.02, alt * 0.02);
+          camB.near = Math.max(0.02, (camB.position.length() - R) * 0.02);
           camB.updateProjectionMatrix();
           camB.updateMatrixWorld();
-          // haze only near the ground
-          HAZE.near.value = alt < 20 ? 3 : 1e6;
-          HAZE.far.value = alt < 20 ? 16 : 2e6;
-          satB.position.copy(satOrbit(T, new THREE.Vector3(0, 0, 0), 160));
-          satB.lookAt(0, 0, 0);
+          station.rotation.z = 0;
           f.three = { scene: B, camera: camB };
-          const km = Math.floor(alt * 9.2);
-          text(fg, `LAT 37.4  LON 211.0  ALT ${km.toLocaleString('en-US')} KM`, 96, 110, { size: 16, family: F.mono, weight: 700, color: '#8aa0ff' });
+          // drop arcs and pods
+          const k = T - DROP;
+          arcs.forEach((a, i) => {
+            const kk = clamp01((T - a.at) / 0.9);
+            a.line.geometry.setDrawRange(0, Math.floor(kk * 64) + 1);
+            if (kk <= 0) return;
+            const head = a.pts[Math.min(64, Math.floor(kk * 64))];
+            const hp = px(f, camB, head);
+            if (hp.z < 1 && kk < 1) rect(fg, hp.x - 3, hp.y - 3, 6, 6, '#ffffff');
+            if (kk >= 1) {
+              const p = px(f, camB, targets[i]);
+              if (p.z > 1) return;
+              const hot = i === DIVE_I;
+              tri(fg, p.x, p.y - 14, hot ? 30 : 22, hot ? '#e8f0a0' : '#ffffff', true, 2);
+              text(fg, `DZ-${String(i + 1).padStart(2, '0')}`, p.x + 16, p.y - 20, { size: 12, family: F.mono, weight: 700, color: hot ? '#e8f0a0' : '#ffffff' });
+            }
+          });
+          const alt = camB.position.length() - R;
           text(fg, 'PERIAPT IV · SENSOR FEED', 96, 82, { size: 22, weight: 800, color: C.white, stretch: 'semi-expanded' });
-          const sp = px(f, camB, satB.position);
-          if (sp.z < 1 && u < 0.45) {
-            line(fg, sp.x, sp.y, sp.x + 90, sp.y - 70, '#cde404', 1);
-            text(fg, 'RELAY 3 · NO CARRIER', sp.x + 94, sp.y - 74, { size: 13, family: F.mono, weight: 700, color: '#cde404' });
+          text(fg, `LAT 37.4  LON 211.0  ALT ${Math.floor(alt * 9.2).toLocaleString('en-US')} KM`, 96, 110, { size: 16, family: F.mono, weight: 700, color: '#8aa0ff' });
+          const sp = px(f, camB, station.position);
+          if (sp.z < 1 && T > DROP - 1.2) {
+            line(fg, sp.x + 40, sp.y - 30, sp.x + 130, sp.y - 90, '#cde404', 1);
+            plate(fg, sp.x + 140, sp.y - 96, [['STATION KESTREL', 16, '#cde404', false], [k > 0 ? `DROPS ${Math.min(7, Math.max(0, Math.floor((k - 0.25) / 0.42) + 1))}/7` : 'HOLDING ORBIT', 12, '#cde404', true]], 220);
           }
           if (T < HANDOFF + 0.25) {
-            const k = (T - HANDOFF) / 0.25;
-            rect(fg, 0, 1080 * k - 4, 1920, 8, '#e8ecff');
+            const kq = (T - HANDOFF) / 0.25;
+            rect(fg, 0, 1080 * kq - 4, 1920, 8, '#e8ecff');
             cutGlitch(f, T - HANDOFF, 0.16, ['#000', G, C.blue], 19);
           }
-          if (u > 0.6) {
-            const k = span(u, 0.6, 1);
-            const top = { x: 960, y: 120 };
-            sigil(fg, 41, 900, 70, 7, 6, 8, G);
-            sigil(fg, 42, 966, 70, 7, 6, 8, G);
-            text(fg, 'SALVAGE ZONE · COLONY 04 · SILENT 9Y', 960, 180, { size: 18, family: F.mono, weight: 700, color: G, align: 'center' });
-            drops.forEach((d2, i) => {
-              if (k < i / drops.length) return;
-              const p = px(f, camB, d2);
-              if (p.z > 1) return;
-              fg.strokeStyle = i % 2 ? '#b8e040' : '#e8f0a0';
-              fg.lineWidth = 1.4;
-              fg.beginPath();
-              fg.moveTo(top.x - 40 + i * 12, top.y + 70);
-              fg.quadraticCurveTo((top.x + p.x) / 2 + (p.x - top.x) * 0.4, top.y + 40, p.x, p.y);
-              fg.stroke();
-              tri(fg, p.x, p.y - 14, 24, '#e8f0a0', true, 2);
-              text(fg, `R${String(i + 1).padStart(2, '0')}`, p.x + 14, p.y - 20, { size: 12, family: F.mono, weight: 700, color: '#e8f0a0' });
-            });
-          }
+          if (T > T1 - 0.12) rect(fg, 0, 0, 1920, 1080, `rgba(232,240,160,${clamp01((T - (T1 - 0.12)) / 0.12) * 0.9})`);
           f.post.tint = [0.55, 0.6, 1];
         },
       };
@@ -294,9 +330,144 @@ export const s7: ShotDef[] = [
   },
   /* ---------------------------------------------------------------- */
   {
+    id: 'S15',
+    t0: ST.S15[0],
+    t1: ST.S15[1],
+    title: 'Drop zone survey',
+    note: 'A contour map of the drop zone: marching-squares isolines of the terrain, each lifted to its height and coloured by elevation, index contours brighter, a ground grid with coordinates; the colony ruins are map symbols, not models. Pods fall in on their trails and land on their marks; the camera tilts from straight down (the dive) to an oblique survey view.',
+    build: () => {
+      const scene = new THREE.Scene();
+      const cam = persp(32, 0.05, 200);
+      const noise = new SimplexNoise({ random: mulberry(23) });
+      const field = (x: number, z: number) => noise.noise(x * 0.13, z * 0.13) * 0.72 + noise.noise(x * 0.38 + 3, z * 0.38) * 0.2 - 0.15 * Math.exp(-((x - 1) ** 2 + (z + 0.5) ** 2) / 6);
+      const levels = Array.from({ length: 24 }, (_, i) => -0.95 + i * 0.08);
+      const HSCALE = 0.6;
+      const hAt = (x: number, z: number) => (field(x, z) + 1) * HSCALE;
+      const iso = isoSegments(field, { nx: 180, ny: 140, levels, x0: -9, x1: 9, y0: -7, y1: 7 });
+      const pos: number[] = [];
+      const col: number[] = [];
+      const c = new THREE.Color();
+      const lo = new THREE.Color(0x2a4cff);
+      const mid = new THREE.Color(0x38d8ff);
+      const hi = new THREE.Color(0x9dff3a);
+      iso.forEach(({ level, seg }, li) => {
+        const y = (level + 1) * HSCALE;
+        const k = li / (levels.length - 1);
+        c.copy(k < 0.5 ? lo.clone().lerp(mid, k * 2) : mid.clone().lerp(hi, (k - 0.5) * 2));
+        if (li % 5 === 0) c.lerp(new THREE.Color(0xffffff), 0.55);
+        for (let i = 0; i < seg.length; i += 4) {
+          pos.push(seg[i], y, seg[i + 1], seg[i + 2], y, seg[i + 3]);
+          col.push(c.r, c.g, c.b, c.r, c.g, c.b);
+        }
+      });
+      const tg = new THREE.BufferGeometry();
+      tg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      tg.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+      scene.add(new THREE.LineSegments(tg, new THREE.LineBasicMaterial({ vertexColors: true })));
+      const grid = new THREE.GridHelper(18, 18, 0x1a2a8a, 0x0e1650);
+      grid.scale.z = 14 / 18;
+      scene.add(grid);
+      // ruins: hatched map squares draped at terrain height
+      const ruins: number[] = [];
+      for (let i = 0; i < 11; i++) {
+        const x = -1.5 + (hash(i, 1) - 0.5) * 3.6;
+        const z = 1.2 + (hash(i, 2) - 0.5) * 2.4;
+        const s2 = 0.12 + hash(i, 3) * 0.16;
+        const y = hAt(x, z) + 0.02;
+        const q = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => [x + a * s2, z + b * s2]);
+        for (let k = 0; k < 4; k++) ruins.push(q[k][0], y, q[k][1], q[(k + 1) % 4][0], y, q[(k + 1) % 4][1]);
+        const qi = q.map(([a, b]) => [x + (a - x) * 0.55, z + (b - z) * 0.55]);
+        for (let k = 0; k < 4; k++) ruins.push(qi[k][0], y, qi[k][1], qi[(k + 1) % 4][0], y, qi[(k + 1) % 4][1]);
+      }
+      const rg = new THREE.BufferGeometry();
+      rg.setAttribute('position', new THREE.Float32BufferAttribute(ruins, 3));
+      scene.add(new THREE.LineSegments(rg, new THREE.LineBasicMaterial({ color: 0xcde404 })));
+      // drop marks + landing pods
+      const zones = [[-4.5, -2.5], [-2.2, 2.8], [0.6, -0.4], [3.6, 2.2], [5.4, -3.2], [-6.2, 3.6], [2.4, 4.6]].map(([x, z]) => new THREE.Vector3(x, hAt(x, z), z));
+      const MAIN = 2;
+      const rings: THREE.Line[] = [];
+      zones.forEach((zp, i) => {
+        for (const rr of i === MAIN ? [0.35, 0.7, 1.05] : [0.3]) {
+          const ptsR = Array.from({ length: 65 }, (_, k) => {
+            const a = (k / 64) * Math.PI * 2;
+            const x = zp.x + Math.cos(a) * rr;
+            const z = zp.z + Math.sin(a) * rr;
+            return new THREE.Vector3(x, hAt(x, z) + 0.03, z);
+          });
+          const l2 = new THREE.Line(new THREE.BufferGeometry().setFromPoints(ptsR), lineMat(i === MAIN ? 0xe8f0a0 : 0xffffff, 0.9));
+          scene.add(l2);
+          rings.push(l2);
+        }
+      });
+      const v = new THREE.Vector3();
+      return {
+        draw(f) {
+          const { fg, t } = f;
+          // from straight down over the main zone (the dive) to an oblique survey
+          const u = smooth(span(t, 0.0, 1.6));
+          const drift = t * 0.05;
+          const mz = zones[MAIN];
+          cam.position.set(mz.x + (2 + Math.sin(drift) * 3) * u + 0.001, mz.y + 13 - u * 4.5, mz.z + 0.01 + u * 7.5);
+          cam.up.set(0, 1, 0);
+          if (u < 0.02) cam.up.set(0, 0, -1);
+          cam.lookAt(mz.x, mz.y, mz.z - u * 0.8);
+          cam.updateMatrixWorld();
+          f.three = { scene, camera: cam };
+          // pods fall in on their trails
+          zones.forEach((zp, i) => {
+            const at = 0.5 + i * 0.32;
+            const k = clamp01((t - at) / 0.7);
+            if (k <= 0) return;
+            v.copy(zp).setY(zp.y + 7 * (1 - k * k));
+            const p = px(f, cam, v);
+            const g = px(f, cam, zp);
+            if (g.z > 1) return;
+            if (k < 1) {
+              fg.strokeStyle = 'rgba(255,255,255,0.55)';
+              fg.lineWidth = 1.5;
+              fg.beginPath();
+              fg.moveTo(p.x, p.y - 80);
+              fg.lineTo(p.x, p.y);
+              fg.stroke();
+              rect(fg, p.x - 4, p.y - 4, 8, 8, '#ffffff');
+            } else {
+              const hot = i === MAIN;
+              tri(fg, g.x, g.y - 16, hot ? 30 : 20, hot ? '#e8f0a0' : '#ffffff', true, 2);
+              text(fg, `DZ-${String(i + 1).padStart(2, '0')}  ${(zp.y * 410).toFixed(0)} M`, g.x + 18, g.y - 22, { size: 12, family: F.mono, weight: 700, color: hot ? '#e8f0a0' : '#ffffff' });
+            }
+          });
+          // ruins label
+          v.set(-1.5, hAt(-1.5, 1.2) + 0.1, 1.2);
+          const rp = px(f, cam, v);
+          if (rp.z < 1) {
+            line(fg, rp.x, rp.y, rp.x - 90, rp.y + 70, '#cde404', 1);
+            text(fg, 'COLONY 04 · RUINS · SALVAGE OPEN', rp.x - 92, rp.y + 88, { size: 13, family: F.mono, weight: 700, color: '#cde404', align: 'right' });
+          }
+          // map furniture
+          text(fg, 'DROP ZONE 04 · SURVEY', 96, 92, { size: 26, weight: 800, color: C.white, stretch: 'semi-expanded' });
+          text(fg, 'CONTOUR 40 M · INDEX 200 M · GRID 1 KM', 96, 120, { size: 14, family: F.mono, weight: 700, color: '#8aa0ff' });
+          for (let i = 0; i < 12; i++) {
+            const k = i / 11;
+            const cc = k < 0.5 ? lerpHex(0x2a4cff, 0x38d8ff, k * 2) : lerpHex(0x38d8ff, 0x9dff3a, (k - 0.5) * 2);
+            rect(fg, 1700, 760 - i * 18, 28, 16, cc);
+          }
+          text(fg, '+0820 M', 1738, 566, { size: 12, family: F.mono, weight: 700, color: '#9dff3a' });
+          text(fg, '+0020 M', 1738, 772, { size: 12, family: F.mono, weight: 700, color: '#2a4cff' });
+          // survey sweep
+          const sx = ((t * 520) % 2400) - 240;
+          rect(fg, sx, 0, 2, 1080, 'rgba(157,255,58,0.35)');
+          if (t < 0.15) rect(fg, 0, 0, 1920, 1080, `rgba(232,240,160,${0.9 * (1 - t / 0.15)})`);
+          cutGlitch(f, t, 0.08, ['#000', '#9dff3a'], 23);
+          f.post.tint = [0.6, 0.8, 1];
+        },
+      };
+    },
+  },
+  /* ---------------------------------------------------------------- */
+  {
     id: 'S16',
-    t0: T1,
-    t1: ANCHORS.error,
+    t0: ST.S16[0],
+    t1: ST.S16[1],
     title: 'The Authority',
     note: 'An Authority soldier runs the ruins, its body broken into red outline voxels with cyan plates; at the end it turns and locks on the camera — on us.',
     build: async (k) => {
@@ -334,12 +505,12 @@ export const s7: ShotDef[] = [
       for (let i = 0; i < 30; i++) h.box('floor2', 1.9, 0.04, 6.6, -18 + i * 2, 0.01, 0);
       for (let i = 0; i < 26; i++) {
         const x = -16 + i * 2.2;
-        h.box('wall', 2.1, 3.6 + hash(i, 1) * 1.6, 0.4, x, 1.9, -3.3);
-        if (hash(i, 2) > 0.5) h.box('panel', 1.2, 0.8, 0.08, x, 1.2 + hash(i, 3), -3.07);
-        if (hash(i, 4) > 0.6) h.bars('vent', 6, 0.06, 0.6, 0.06, 0.07, x, 2.6, -3.06);
-        if (i % 3 === 0) h.box('pillar', 0.5, 5.2, 0.6, x + 1.05, 2.6, -2.9);
+        h.box('wall', 2.1, 4.0 + hash(i, 1) * 1.6, 0.4, x, 2.1, -3.3);
+        const clear = x > -5.5 && x < 10.5; // the stencil band stays unobstructed
+        if (!clear && hash(i, 2) > 0.5) h.box('panel', 1.2, 0.8, 0.08, x, 1.2 + hash(i, 3), -3.07);
+        if (!clear && hash(i, 4) > 0.6) h.bars('vent', 6, 0.06, 0.6, 0.06, 0.07, x, 2.6, -3.06);
+        if (i % 3 === 0) h.box('pillar', 0.5, 5.2, 0.6, x + 1.05, 2.6, -3.4);
       }
-      for (let i = 0; i < 14; i++) h.box('pillar', 0.5, 4.5, 0.5, -15 + i * 3.6, 2.25, 3.4);
       scene.add(h.build({
         floor: toonLit({ lit: 0x10162e, shade: 0x05070e }).mat,
         floor2: toonLit({ lit: 0x161e3c, shade: 0x070a16 }).mat,
@@ -348,23 +519,26 @@ export const s7: ShotDef[] = [
         vent: toonLit({ lit: 0x05070f, shade: 0x000000 }).mat,
         pillar: toonLit({ lit: 0x1c2550, mid: 0x0c1028, shade: 0x03040a }).mat,
       }, { wall: 0x2a3ab0, pillar: 0x2a3ab0 }));
-      // stencil on the wall (3D)
+      // stencil on the wall (3D): one long band in front of everything on the wall, low enough to stay in frame
       const cv = document.createElement('canvas');
-      cv.width = 2048;
+      cv.width = 4096;
       cv.height = 512;
       const c2 = cv.getContext('2d')!;
       c2.strokeStyle = '#3a52ff';
-      c2.lineWidth = 6;
-      c2.font = `600 150px ${F.sans}`;
+      c2.fillStyle = '#3a52ff';
+      c2.lineWidth = 7;
+      c2.font = `700 230px ${F.sans}`;
       c2.fontStretch = 'expanded';
-      ['ICAR', 'COLONIAL', 'AUTHORITY'].forEach((w, i) => {
-        c2.strokeText(w, 120, 150 + i * 160);
-        c2.strokeRect(20, 30 + i * 160, 80, 130);
-      });
+      c2.strokeText('ICAR COLONIAL AUTHORITY', 150, 270);
+      c2.fillRect(20, 60, 90, 230);
+      c2.font = `700 64px ${F.mono}`;
+      c2.fillText('SECTOR 04 · PATROL ROUTE 3 · LETHAL FORCE AUTHORISED', 150, 410);
+      for (let i = 0; i < 40; i++) c2.fillRect(150 + i * 96, 450, 60, 22);
       const st = new THREE.CanvasTexture(cv);
       st.colorSpace = THREE.SRGBColorSpace;
-      const stencil = new THREE.Mesh(new THREE.PlaneGeometry(8, 2), new THREE.MeshBasicMaterial({ map: st, transparent: true, depthWrite: false }));
-      stencil.position.set(2, 2.1, -3.08);
+      st.anisotropy = 8;
+      const stencil = new THREE.Mesh(new THREE.PlaneGeometry(14, 1.75), new THREE.MeshBasicMaterial({ map: st, transparent: true, depthWrite: false }));
+      stencil.position.set(2.5, 1.75, -3.0);
       scene.add(stencil);
       const lag = new THREE.Vector3();
       return {

@@ -13,14 +13,14 @@ import { toonLit } from '../models/hard';
 import { contourMaterial } from '../../three/materials';
 import { glitchToon, screenDots, screenPixels } from '../mats';
 import { addStickers } from '../models/stickers';
-import { ANCHORS } from './cues';
+import { ST } from './times';
 import { barLabel, cutGlitch, easeInOutCubic, persp, pixelCluster, px, smooth, span, typeOn, vlabel } from './kit';
 
 export const s4: ShotDef[] = [
   {
-    id: 'S08',
-    t0: ANCHORS.runner,
-    t1: 41.1,
+    id: 'S07',
+    t0: ST.S07[0],
+    t1: ST.S07[1],
     title: 'Subject is a runner',
     note: 'Definition card on the strongest beat of the lift: a dithered brain and a pixel-shaded runner walking in place, the term knocked out of a lime bar.',
     build: async (k) => {
@@ -88,9 +88,9 @@ export const s4: ShotDef[] = [
   },
   /* ---------------------------------------------------------------- */
   {
-    id: 'S09',
-    t0: 41.1,
-    t1: 44.8,
+    id: 'S08',
+    t0: ST.S08[0],
+    t1: ST.S08[1],
     title: 'A mind without a body',
     note: 'A contour runner sprints while delayed copies trail behind it — the body as a sequence of time slices, the mind as the only constant.',
     build: async () => {
@@ -137,9 +137,9 @@ export const s4: ShotDef[] = [
   },
   /* ---------------------------------------------------------------- */
   {
-    id: 'S10',
-    t0: 44.8,
-    t1: ANCHORS.hush,
+    id: 'S09',
+    t0: ST.S09[0],
+    t1: ST.S09[1],
     title: 'Leased to a printed shell',
     note: 'Behind: the mind as a standing point-cloud human, twice life size. In front: the solid printed shell. Mapping lines connect each joint of the cloud to the same joint of the shell — the lease, made visible.',
     build: async () => {
@@ -166,7 +166,7 @@ export const s4: ShotDef[] = [
         { at: [sp2[0] - 0.08, sp2[1] + 0.01, sp2[2] + 0.2], w: 0.1, h: 0.03, kind: 'barcode', color: '#e8ecff' },
         { at: [lua[0] + 0.12, lua[1] + 0.06, lua[2]], w: 0.09, h: 0.05, kind: 'stripes', color: '#38f5d4' },
         { at: [lfa[0] + 0.14, lfa[1] - 0.01, lfa[2] + 0.06], w: 0.1, h: 0.035, kind: 'chevron', color: '#e8ecff' },
-        { at: [rul[0] - 0.04, rul[1] - 0.2, rul[2] + 0.1], w: 0.06, h: 0.12, kind: 'label', text: 'S07', color: '#38f5d4', rot: Math.PI / 2 },
+        { at: [rul[0] - 0.04, rul[1] - 0.2, rul[2] + 0.1], w: 0.06, h: 0.12, kind: 'label', text: 'S06', color: '#38f5d4', rot: Math.PI / 2 },
         { at: [rl[0], rl[1] + 0.02, rl[2] + 0.07], w: 0.05, h: 0.05, kind: 'cross', color: '#e8ecff' },
       ]);
       // the mind: point cloud of a second, larger body (sampled once from the bind pose)

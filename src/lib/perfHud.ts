@@ -10,10 +10,12 @@ import { stepLoop } from './util';
 const KEY = 'rk-perf-hud';
 type Saved = { x: number; y: number; open: boolean; on: boolean };
 
-export function mountPerfHud() {
+/** `reserveBottom`: keep the window clear of a bottom bar (px); `key`: separate saved position */
+export function mountPerfHud(o: { reserveBottom?: number; key?: string; dock?: 'top' | 'bottom' } = {}) {
   startPageMeter();
-  const saved: Saved = { x: -1, y: -1, open: false, on: true, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') };
-  const save = () => localStorage.setItem(KEY, JSON.stringify(saved));
+  const skey = o.key ?? KEY;
+  const saved: Saved = { x: -1, y: -1, open: false, on: true, ...JSON.parse(localStorage.getItem(skey) ?? '{}') };
+  const save = () => localStorage.setItem(skey, JSON.stringify(saved));
 
   const el = document.createElement('div');
   el.className = 'perf';
@@ -54,11 +56,11 @@ export function mountPerfHud() {
   const place = () => {
     const r = el.getBoundingClientRect();
     const maxX = window.innerWidth - r.width - 4;
-    const maxY = window.innerHeight - r.height - 4;
+    const maxY = window.innerHeight - r.height - 4 - (o.reserveBottom ?? 0);
     if (saved.x < 0) {
       // default dock: bottom-left, just inside the stage (clear of toasts, bottom-right)
       saved.x = window.innerWidth > 760 ? 92 : 8;
-      saved.y = window.innerHeight - r.height - 44;
+      saved.y = o.dock === 'top' ? 12 : window.innerHeight - r.height - 44;
     }
     saved.x = Math.max(4, Math.min(maxX, saved.x));
     saved.y = Math.max(4, Math.min(maxY, saved.y));

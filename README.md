@@ -17,7 +17,7 @@ pnpm build      # typecheck + production build → dist/
   draw calls / triangles / lines / GPU memory. Double-click or `+` expands it; its position is remembered.
 - **Lab viewer (dev only):** `/lab.html?s=runner` renders one scene full-window. Keys: `runner`,
   `shell`, `psyche`, `orbital`, `dropzone`, `headscan`, `terrain`.
-- **Film — SHELL 07:** `/cinema.html` plays a 2:19 web film built from the kit, with sound (see below).
+- **Film — SHELL 07:** `/cinema.html` plays a 2:27 web film built from the kit, with sound (see below).
   - Keys: Space play/pause · ←/→ 1 s (Shift: 1 frame) · C captions EN/中文/off · M mute · F fullscreen · Q 3D quality.
   - URL: `?t=81` opens paused at that time; `?capture` shows a bare 1920×1080 frame (no audio, no UI);
     `?perf` shows the perf tag.
@@ -88,19 +88,19 @@ src/cine/models/sdf.ts     SDF primitives, Surface Nets mesher, skin weights fro
 src/cine/models/body.ts    SDF humanoid on the motion rig (runner / armor / slim), authored poses
 src/cine/models/anatomy.ts neutral SDF head for the scene library; brain geometry re-export
 src/cine/models/hard.ts    hard-surface kit: decks, plinths, ribs, any merged geometry; world-lit toon; sweep
-src/cine/models/mecharm.ts mechanical prosthetic forearm + hand (articulated hard-surface assemblies)
-src/cine/models/floor.ts   flat floor with painted graphics (numerals, hazard bands, barcode rows, ring), 2 palettes
-src/cine/models/circuits.ts dense short brain circuits with activation times + flow material for pulses
+src/cine/models/connectome.ts brain tractography (callosal, projection, association, U-fibres) + activation/flow material
+src/cine/models/flow.ts    line material with pulses flowing along an arc-length attribute
+src/cine/models/station.ts orbital station (hub, habitat ring, truss, solar wings, drop bays)
 src/cine/models/voxels.ts  uniform voxel bodies from the mesh grid + WireCubes renderer + analytic burst
 src/cine/models/stickers.ts stencil decals laid on the body surface, parented to bones
 src/cine/models/colony.ts  the colony set: domes, habitat tubes, towers, pad, solar rows, wall, rubble
-src/cine/models/head2.ts   sculpted SDF head, wire eyes, internal wiring, the visual pathway as ~70 fibres/eye
+src/cine/models/head2.ts   SDF head at real proportions, wire eyes, internal wiring, the visual pathway (~70 fibres/eye)
 src/cine/models/slices.ts  cross-sections of a posed skinned mesh along any axis (print fronts)
-src/cine/film/*.ts         the film's 26 shots + cues.ts (generated cue sheet: VO timings, music anchors)
+src/cine/film/*.ts         the film's 26 shots, times.ts (shot boundaries) + cues.ts (generated cue sheet: VO timings, music anchors)
 
 scripts/                   offline audio pipeline (Lyria needs GOOGLE_API_KEY in .env; voice needs edge-tts; ffmpeg with rubberband):
   film-script.mjs            voice-over script (EN + 中文 captions) and delivery notes
-  gen-voice.mjs              edge-tts (en-US-AriaNeural) → loudness-calibrated ffmpeg chain (voice-chains/A|B)
+  gen-voice.mjs              edge-tts (en-US-AriaNeural +25 Hz) → ffmpeg chain (voice-chains/D|E), every line at −17 LUFS
   gen-voice-gemini.mjs       previous engine (gemini-3.8-flash-tts), kept for reference
   gen-music.mjs              Lyria 3.5 score from a timed brief
   analyze-audio.py, analyze-sections.py, anchors.py  loudness / onsets / silences → music anchors for the edit
@@ -134,8 +134,9 @@ scripts/                   offline audio pipeline (Lyria needs GOOGLE_API_KEY in
 - **SHELL 07** is an original story in the graphic-realism idiom. Its world names are our own: Periapt IV,
   ICAR Colonial Authority and ORA. It contains no footage, audio, logos or text from any existing trailer.
 - **Audio is AI-generated for this project.**
-  - The score comes from Google Lyria 3.5.
-  - The narrator voice is Microsoft edge-tts (en-US-AriaNeural, rate −10 %, pitch −8 Hz), processed with ffmpeg:
-    frequency-shift sheen, cold EQ, a 4.5 ms metallic comb and even compression; alarm lines add a monotone
-    robot undertone and an octave double.
+  - The score is a Google Lyria 3.5 acid-techno take (128 BPM), re-cut on bar lines to the edit (`MUSIC.edit` in
+    `scripts/cues.mjs`).
+  - The narrator voice is Microsoft edge-tts (en-US-AriaNeural, pitch +25 Hz), processed with ffmpeg chain D:
+    mud cut, presence and air EQ, de-ess, a whisper of bit reduction, even compression and a sparse 60–100 ms
+    reflection — no frequency shift or short combs. Alarm lines (chain E) add a faint monotone robot layer.
   - The SFX are synthesised with ffmpeg.

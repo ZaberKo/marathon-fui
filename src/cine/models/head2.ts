@@ -12,51 +12,61 @@ import * as THREE from 'three/webgpu';
 import { meshSDF, toGeometry, type Prim } from './sdf';
 import { hash } from '../engine';
 
-export const H2 = { eyeX: 0.032, eyeY: 0.035, eyeZ: 0.077, eyeR: 0.0118, top: 0.163, brain: new THREE.Vector3(0, 0.072, -0.012) };
+/**
+ * Proportions (adult): vertex→chin 0.235, breadth 0.154, length 0.2,
+ * interpupillary 0.063, eyeball Ø 0.024, eye line at mid-height. Frame:
+ * y = 0 on the eye line, z = 0 at the ear canal, +z forward.
+ * The cerebrum fills the cranium: brainGeometry scaled by BRAIN_S at H2.brain.
+ */
+export const H2 = { eyeX: 0.0315, eyeY: 0, eyeZ: 0.077, eyeR: 0.012, top: 0.123, brain: new THREE.Vector3(0, 0.029, -0.014) };
+export const BRAIN_S = new THREE.Vector3(0.0875, 0.112, 0.0855);
 
 let geo: THREE.BufferGeometry | null = null;
 export function head2Geometry(cell = 0.0019) {
   if (geo) return geo;
   const e = (c: [number, number, number], r: [number, number, number], k = 0.02, sub = false): Prim => ({ t: 'ell', c, r, k, sub });
   const cap = (a: [number, number, number], b: [number, number, number], ra: number, rb: number, k = 0.015, sub = false): Prim => ({ t: 'cone', a, b, ra, rb, k, sub });
+  const X = H2.eyeX;
   const P: Prim[] = [
-    e([0, 0.07, -0.014], [0.074, 0.093, 0.097], 0.03), // cranium
-    e([0, 0.088, -0.02], [0.07, 0.07, 0.088], 0.03), // parietal dome
-    e([0, 0.05, 0.036], [0.064, 0.072, 0.056], 0.03), // forehead
-    cap([-0.044, 0.053, 0.08], [0.044, 0.053, 0.08], 0.011, 0.011, 0.018), // brow ridge
-    e([0, -0.008, 0.064], [0.038, 0.042, 0.036], 0.03), // maxilla
-    e([-0.05, 0.013, 0.058], [0.022, 0.013, 0.022], 0.02), // cheekbones
-    e([0.05, 0.013, 0.058], [0.022, 0.013, 0.022], 0.02),
-    cap([-0.052, 0.012, 0.055], [-0.07, 0.008, 0.008], 0.008, 0.007, 0.012), // zygomatic arches
-    cap([0.052, 0.012, 0.055], [0.07, 0.008, 0.008], 0.008, 0.007, 0.012),
-    e([-0.046, -0.026, 0.034], [0.03, 0.04, 0.04], 0.03), // cheeks / masseter
-    e([0.046, -0.026, 0.034], [0.03, 0.04, 0.04], 0.03),
-    cap([0, 0.042, 0.087], [0, 0.002, 0.104], 0.0065, 0.0095, 0.01), // nose bridge
-    e([0, -0.006, 0.106], [0.0115, 0.0105, 0.0105], 0.008), // tip
-    e([-0.0125, -0.009, 0.097], [0.0082, 0.0072, 0.0075], 0.006), // alae
-    e([0.0125, -0.009, 0.097], [0.0082, 0.0072, 0.0075], 0.006),
-    e([0, -0.032, 0.093], [0.022, 0.0062, 0.009], 0.006), // upper lip
-    e([0, -0.044, 0.091], [0.019, 0.0066, 0.009], 0.006), // lower lip
-    e([0, -0.071, 0.082], [0.021, 0.017, 0.018], 0.02), // chin
-    cap([-0.018, -0.072, 0.07], [-0.058, -0.046, -0.004], 0.014, 0.016, 0.02), // mandible
-    cap([0.018, -0.072, 0.07], [0.058, -0.046, -0.004], 0.014, 0.016, 0.02),
-    e([-0.032, 0.0445, 0.0855], [0.018, 0.0042, 0.0085], 0.004), // upper lids
-    e([0.032, 0.0445, 0.0855], [0.018, 0.0042, 0.0085], 0.004),
-    e([-0.032, 0.0255, 0.0845], [0.016, 0.0036, 0.0075], 0.004), // lower lids
-    e([0.032, 0.0255, 0.0845], [0.016, 0.0036, 0.0075], 0.004),
-    e([-0.077, 0.02, -0.012], [0.009, 0.03, 0.018], 0.008), // ears
-    e([0.077, 0.02, -0.012], [0.009, 0.03, 0.018], 0.008),
-    e([-0.08, 0.016, -0.008], [0.004, 0.016, 0.009], 0.004, true), // conchae
-    e([0.08, 0.016, -0.008], [0.004, 0.016, 0.009], 0.004, true),
-    cap([0, -0.06, -0.024], [0, -0.21, -0.03], 0.05, 0.058, 0.03), // neck
-    cap([-0.058, -0.03, -0.02], [-0.016, -0.2, 0.034], 0.011, 0.012, 0.012), // SCM
-    cap([0.058, -0.03, -0.02], [0.016, -0.2, 0.034], 0.011, 0.012, 0.012),
-    // carve: sockets, nostrils, mouth line
-    e([-0.032, 0.036, 0.087], [0.019, 0.0125, 0.013], 0.008, true),
-    e([0.032, 0.036, 0.087], [0.019, 0.0125, 0.013], 0.008, true),
-    e([-0.0068, -0.0135, 0.1025], [0.0038, 0.0022, 0.0042], 0.002, true),
-    e([0.0068, -0.0135, 0.1025], [0.0038, 0.0022, 0.0042], 0.002, true),
-    { t: 'box', c: [0, -0.0385, 0.0985], h: [0.017, 0.0011, 0.01], k: 0.003, sub: true },
+    e([0, 0.034, -0.012], [0.077, 0.089, 0.093], 0.03), // cranium
+    e([0, 0.03, -0.055], [0.07, 0.072, 0.05], 0.03), // occiput
+    e([0, 0.032, 0.04], [0.065, 0.07, 0.056], 0.03), // forehead
+    cap([-0.044, 0.017, 0.086], [0.044, 0.017, 0.086], 0.0105, 0.0105, 0.018), // brow ridge
+    e([0, -0.04, 0.066], [0.04, 0.046, 0.036], 0.03), // maxilla / midface
+    e([-0.05, -0.012, 0.057], [0.022, 0.014, 0.021], 0.02), // cheekbones
+    e([0.05, -0.012, 0.057], [0.022, 0.014, 0.021], 0.02),
+    cap([-0.055, -0.013, 0.05], [-0.071, -0.016, 0.004], 0.008, 0.007, 0.012), // zygomatic arches
+    cap([0.055, -0.013, 0.05], [0.071, -0.016, 0.004], 0.008, 0.007, 0.012),
+    e([-0.046, -0.052, 0.036], [0.03, 0.04, 0.04], 0.03), // cheeks / masseter
+    e([0.046, -0.052, 0.036], [0.03, 0.04, 0.04], 0.03),
+    cap([0, 0.008, 0.094], [0, -0.03, 0.113], 0.006, 0.0095, 0.01), // nose bridge
+    e([0, -0.036, 0.115], [0.011, 0.0102, 0.0102], 0.008), // tip
+    e([-0.0122, -0.04, 0.106], [0.008, 0.007, 0.0075], 0.006), // alae
+    e([0.0122, -0.04, 0.106], [0.008, 0.007, 0.0075], 0.006),
+    e([0, -0.06, 0.099], [0.022, 0.0062, 0.009], 0.006), // upper lip
+    e([0, -0.072, 0.096], [0.019, 0.0066, 0.009], 0.006), // lower lip
+    e([0, -0.1, 0.082], [0.021, 0.017, 0.018], 0.02), // chin
+    cap([-0.02, -0.101, 0.07], [-0.056, -0.074, -0.004], 0.014, 0.016, 0.02), // mandible
+    cap([0.02, -0.101, 0.07], [0.056, -0.074, -0.004], 0.014, 0.016, 0.02),
+    cap([-0.056, -0.074, -0.004], [-0.06, -0.03, -0.008], 0.013, 0.012, 0.015), // ramus
+    cap([0.056, -0.074, -0.004], [0.06, -0.03, -0.008], 0.013, 0.012, 0.015),
+    e([-X, 0.0105, 0.0885], [0.018, 0.0042, 0.0085], 0.004), // upper lids
+    e([X, 0.0105, 0.0885], [0.018, 0.0042, 0.0085], 0.004),
+    e([-X, -0.0095, 0.0875], [0.016, 0.0036, 0.0075], 0.004), // lower lids
+    e([X, -0.0095, 0.0875], [0.016, 0.0036, 0.0075], 0.004),
+    e([-0.078, -0.012, -0.004], [0.009, 0.031, 0.018], 0.008), // ears
+    e([0.078, -0.012, -0.004], [0.009, 0.031, 0.018], 0.008),
+    e([-0.081, -0.016, 0.0], [0.004, 0.016, 0.009], 0.004, true), // conchae
+    e([0.081, -0.016, 0.0], [0.004, 0.016, 0.009], 0.004, true),
+    cap([0, -0.085, -0.03], [0, -0.25, -0.036], 0.052, 0.058, 0.03), // neck
+    cap([-0.058, -0.06, -0.022], [-0.016, -0.24, 0.034], 0.011, 0.012, 0.012), // SCM
+    cap([0.058, -0.06, -0.022], [0.016, -0.24, 0.034], 0.011, 0.012, 0.012),
+    // carve: orbits (the eyes sit inside), nostrils, mouth line
+    e([-X, 0.001, 0.09], [0.0195, 0.0135, 0.015], 0.008, true),
+    e([X, 0.001, 0.09], [0.0195, 0.0135, 0.015], 0.008, true),
+    e([-0.0066, -0.0455, 0.111], [0.0036, 0.0021, 0.0042], 0.002, true),
+    e([0.0066, -0.0455, 0.111], [0.0036, 0.0021, 0.0042], 0.002, true),
+    { t: 'box', c: [0, -0.066, 0.104], h: [0.017, 0.0011, 0.01], k: 0.003, sub: true },
   ];
   geo = toGeometry(meshSDF(P, cell, 0.008));
   return geo;
@@ -98,21 +108,6 @@ export function wireEye(color: number, iris: number) {
   return g;
 }
 
-/** a polyline as a tube-ish double line (two offset strands) */
-function strand(pts: THREE.Vector3[], off: number) {
-  const out: THREE.Vector3[][] = [[], []];
-  for (let i = 0; i < pts.length; i++) {
-    const a = pts[Math.max(0, i - 1)];
-    const b = pts[Math.min(pts.length - 1, i + 1)];
-    const d = b.clone().sub(a).normalize();
-    const n = new THREE.Vector3(0, 1, 0).cross(d).normalize();
-    if (n.lengthSq() < 1e-6) n.set(1, 0, 0);
-    out[0].push(pts[i].clone().addScaledVector(n, off));
-    out[1].push(pts[i].clone().addScaledVector(n, -off));
-  }
-  return out;
-}
-
 const bez = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3, d: THREE.Vector3, n = 24) =>
   Array.from({ length: n + 1 }, (_, i) => {
     const t = i / n;
@@ -120,38 +115,24 @@ const bez = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3, d: THREE.Vect
     return new THREE.Vector3().addScaledVector(a, it * it * it).addScaledVector(b, 3 * it * it * t).addScaledVector(c, 3 * it * t * t).addScaledVector(d, t * t * t);
   });
 
-/** Optic nerves (one colour) and the internal wiring (another) as line sets. */
+/** The internal wiring as line sets (the visual pathway is opticPathway). */
 export function headWiring(seed = 7) {
-  const optic: number[] = [];
   const pushLine = (arr: number[], pts: THREE.Vector3[]) => {
     for (let i = 1; i < pts.length; i++) arr.push(pts[i - 1].x, pts[i - 1].y, pts[i - 1].z, pts[i].x, pts[i].y, pts[i].z);
   };
-  const chiasm = new THREE.Vector3(0, 0.03, 0.026);
-  for (const s of [-1, 1]) {
-    const back = new THREE.Vector3(s * H2.eyeX, H2.eyeY, H2.eyeZ - H2.eyeR);
-    const nerve = bez(back, back.clone().add(new THREE.Vector3(-s * 0.004, -0.004, -0.02)), chiasm.clone().add(new THREE.Vector3(s * 0.012, 0, 0.012)), chiasm);
-    const tract = bez(chiasm, chiasm.clone().add(new THREE.Vector3(s * 0.02, 0.004, -0.02)), new THREE.Vector3(s * 0.035, 0.035, -0.05), new THREE.Vector3(s * 0.03, 0.05, -0.085));
-    for (const st of strand(nerve, 0.0016)) pushLine(optic, st);
-    for (const st of strand(tract, 0.0012)) pushLine(optic, st);
-    // radiations fanning to the occipital cortex
-    for (let k = 0; k < 7; k++) {
-      const end = new THREE.Vector3(s * (0.012 + k * 0.007), 0.04 + hash(seed, s, k) * 0.04, -0.09 + hash(seed, s, k, 2) * 0.01);
-      pushLine(optic, bez(new THREE.Vector3(s * 0.03, 0.045, -0.06), new THREE.Vector3(s * 0.035, 0.05, -0.07), end.clone().add(new THREE.Vector3(0, 0, 0.01)), end, 10));
-    }
-  }
   // internal wiring: orthogonal routes between nodes
   const wires: number[] = [];
   const nodes: THREE.Vector3[] = [];
   const brainNode = () => {
     const r = (k: number) => hash(seed, nodes.length, k);
-    return new THREE.Vector3((r(1) - 0.5) * 0.09, 0.05 + r(2) * 0.07, -0.07 + r(3) * 0.1);
+    return new THREE.Vector3((r(1) - 0.5) * 0.09, 0.012 + r(2) * 0.075, -0.075 + r(3) * 0.12);
   };
   for (let i = 0; i < 46; i++) nodes.push(brainNode());
   const anchors = [
     new THREE.Vector3(-H2.eyeX, H2.eyeY + 0.014, H2.eyeZ - 0.014), new THREE.Vector3(H2.eyeX, H2.eyeY + 0.014, H2.eyeZ - 0.014),
-    new THREE.Vector3(-0.07, 0.02, -0.012), new THREE.Vector3(0.07, 0.02, -0.012), // ears
-    new THREE.Vector3(0, -0.04, -0.03), new THREE.Vector3(0, -0.18, -0.03), // brainstem / spine
-    new THREE.Vector3(0, 0.0, 0.07), // nasal
+    new THREE.Vector3(-0.07, -0.01, -0.004), new THREE.Vector3(0.07, -0.01, -0.004), // ears
+    new THREE.Vector3(0, -0.035, -0.032), new THREE.Vector3(0, -0.2, -0.034), // brainstem / spine
+    new THREE.Vector3(0, -0.03, 0.085), // nasal
   ];
   const route = (a: THREE.Vector3, b: THREE.Vector3, k: number) => {
     const order = [0, 1, 2].sort((x, y) => hash(seed, k, x) - hash(seed, k, y));
@@ -176,7 +157,7 @@ export function headWiring(seed = 7) {
   // bus bundles (parallel lines) from the brainstem up the back of the brain
   for (let b = 0; b < 6; b++) {
     const o = (b - 2.5) * 0.003;
-    pushLine(wires, [new THREE.Vector3(o, -0.17, -0.03), new THREE.Vector3(o, -0.03, -0.03), new THREE.Vector3(o, 0.02, -0.06 + b * 0.002), new THREE.Vector3(o, 0.09, -0.07)]);
+    pushLine(wires, [new THREE.Vector3(o, -0.2, -0.034), new THREE.Vector3(o, -0.04, -0.034), new THREE.Vector3(o, 0.0, -0.064 + b * 0.002), new THREE.Vector3(o, 0.075, -0.075)]);
   }
   // junction nodes (small squares)
   const nodeGeo: number[] = [];
@@ -189,7 +170,7 @@ export function headWiring(seed = 7) {
     g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
     return g;
   };
-  return { optic: mk(optic), wires: mk(wires), nodes: mk(nodeGeo), nodeList: nodes };
+  return { wires: mk(wires), nodes: mk(nodeGeo), nodeList: nodes };
 }
 
 /**
@@ -216,7 +197,7 @@ export function opticPathway(seed = 13, perEye = 70) {
       ad.push(d0 + ((i - 1) / (pts.length - 1)) * (d1 - d0), d0 + (i / (pts.length - 1)) * (d1 - d0));
     }
   };
-  const chiasm = new THREE.Vector3(0, 0.03, 0.026);
+  const chiasm = new THREE.Vector3(0, 0.004, 0.026);
   const R = H2.eyeR;
   for (const s of [-1, 1]) {
     const E = new THREE.Vector3(s * H2.eyeX, H2.eyeY, H2.eyeZ);
@@ -247,10 +228,10 @@ export function opticPathway(seed = 13, perEye = 70) {
       // after the chiasm: nasal fibres cross
       const cross = r(6) < 0.53;
       const ts = cross ? -s : s;
-      const lgn = new THREE.Vector3(ts * 0.03, 0.036, -0.03).add(new THREE.Vector3((r(7) - 0.5) * 0.004, (r(8) - 0.5) * 0.004, (r(9) - 0.5) * 0.004));
+      const lgn = new THREE.Vector3(ts * 0.027, 0.004, -0.024).add(new THREE.Vector3((r(7) - 0.5) * 0.004, (r(8) - 0.5) * 0.004, (r(9) - 0.5) * 0.004));
       const tract = bez(bundle[bundle.length - 1], chiasm.clone().add(new THREE.Vector3(ts * 0.012, 0.002, -0.012)), lgn.clone().add(new THREE.Vector3(0, -0.004, 0.014)), lgn, 10);
       // radiation: fan over the occipital cortex
-      const end = new THREE.Vector3(ts * (0.004 + r(10) * 0.044), 0.035 + r(11) * 0.06, -0.088 + r(12) * 0.012);
+      const end = new THREE.Vector3(ts * (0.004 + r(10) * 0.044), -0.002 + r(11) * 0.06, -0.09 + r(12) * 0.012);
       const loop = lgn.clone().add(new THREE.Vector3(ts * 0.016, -0.006 + r(13) * 0.01, -0.012));
       const rad = bez(lgn, loop, end.clone().add(new THREE.Vector3(0, 0, 0.026)), end, 12);
       push(retina, hex, 0, 0.1);

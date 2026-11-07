@@ -11,10 +11,11 @@ import { clamp01, hash } from '../engine';
 import { C, F, checker, line, microRows, rect, ring, text } from '../draw';
 import { backdrop, PAL_BLUE } from '../backdrop';
 import { brainGeometry } from '../models/anatomy';
-import { brainCircuits, circuitMaterial } from '../models/circuits';
+import { connectome, connectomeMaterial } from '../models/connectome';
 import { contourMaterial } from '../../three/materials';
 import { ANCHORS } from './cues';
-import { cutGlitch, easeInOutCubic, easeOutExpo, persp, smooth, span, vlabel } from './kit';
+import { ST } from './times';
+import { cutGlitch, easeInOutCubic, easeOutExpo, persp, scrollRow, smooth, span, vlabel } from './kit';
 
 type P2 = [number, number];
 type Cell = {
@@ -51,6 +52,38 @@ function extrude(g: THREE.Group, poly: P2[], y0: number, h: number, mat = LINE_A
     eg.translate(0, y0, 0);
     g.add(new THREE.Mesh(eg, occ));
   }
+}
+/**
+ * A memory cell is a STACK of thin layers: every layer boundary is drawn, and
+ * alternate layers step in slightly, so the cell reads as many plates laid on
+ * top of each other (one occluder for the whole stack).
+ */
+function stack(g: THREE.Group, poly: P2[], y0: number, h: number, layers: number) {
+  const cx = poly.reduce((a, q) => a + q[0], 0) / poly.length;
+  const cz = poly.reduce((a, q) => a + q[1], 0) / poly.length;
+  const inset = (k: number): P2[] => poly.map(([x, z]) => [cx + (x - cx) * k, cz + (z - cz) * k]);
+  const pos: number[] = [];
+  const lh = h / layers;
+  for (let i = 0; i < layers; i++) {
+    const p = inset(i % 2 ? 0.965 : 1);
+    const ya = y0 + i * lh;
+    const yb = ya + lh * 0.82; // a thin gap between plates
+    const n = p.length;
+    for (let k = 0; k < n; k++) {
+      const [ax, az] = p[k];
+      const [bx, bz] = p[(k + 1) % n];
+      pos.push(ax, yb, az, bx, yb, bz, ax, ya, az, bx, ya, bz);
+      pos.push(ax, ya, az, ax, yb, az);
+    }
+  }
+  const lg = new THREE.BufferGeometry();
+  lg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.add(new THREE.LineSegments(lg, LINE_A));
+  const shape = new THREE.Shape(inset(0.96).map(([x, z]) => new THREE.Vector2(x, -z)));
+  const eg = new THREE.ExtrudeGeometry(shape, { depth: h, bevelEnabled: false });
+  eg.rotateX(-Math.PI / 2);
+  eg.translate(0, y0, 0);
+  g.add(new THREE.Mesh(eg, occ));
 }
 const rectP = (cx: number, cz: number, w: number, d: number): P2[] => [[cx - w / 2, cz - d / 2], [cx + w / 2, cz - d / 2], [cx + w / 2, cz + d / 2], [cx - w / 2, cz + d / 2]];
 /** chip-package outline: notched sides (an I/H profile) */
@@ -108,13 +141,14 @@ function buildModule(g: THREE.Group) {
     const w = span * P - 0.16;
     const d = span * P - 0.16;
     const r = (k: number) => hash(col, row, k);
-    const h = span > 1 ? 0.34 : 0.16 + r(1) * 0.14;
+    const layers = span > 1 ? 12 : 6 + Math.floor(r(1) * 4);
+    const h = layers * 0.085;
     const kind = span > 1 ? 9 : Math.floor(r(2) * 5);
     let outline: P2[];
     if (kind === 0 || kind === 1) outline = notched(cx, cz, w, d, kind === 0);
     else if (kind === 2) outline = chamfer(cx, cz, w, d, 0.18);
     else outline = rectP(cx, cz, w, d);
-    extrude(g, outline, 0, h);
+    stack(g, outline, 0, h, layers);
     const top = h;
     const details: P2[][] = [];
     const pads: P2[][] = [];
@@ -171,9 +205,9 @@ function buildModule(g: THREE.Group) {
 
 export const s3: ShotDef[] = [
   {
-    id: 'S06',
-    t0: 24.6,
-    t1: 34.4,
+    id: 'S05',
+    t0: ST.S05[0],
+    t1: ST.S05[1],
     title: 'Loading memory packages',
     note: 'Seen from almost straight above, the memory module is a chip array of mixed cells — notched packages, chamfered cells, two dies, bosses, contact rows, edge pins — drawn in 3D lines with hidden lines removed. Loaded cells become flat lemon graphics laid over their projected tops (with their details cut out in black), column by column under a write head. One fragment fails cohesion: the passphrase wall flashes, it is marked and skipped.',
     build: () => {
@@ -212,17 +246,15 @@ export const s3: ShotDef[] = [
           const failT = ANCHORS.dip - f.T + t;
           if (t > failT - 0.05 && t < failT + 0.85) {
             const tq = t - failT;
-            const fs = 168;
-            [250, 390, 530, 670, 810].forEach((y, i) => {
+            // five continuous rows, words joined by underscores, alternate rows scroll opposite ways;
+            // the middle row carries the failing word inline (solid yellow), everything else is outline
+            const word = tq < 0.4 ? 'COHESION' : 'FAILURE';
+            [262, 400, 538, 676, 814].forEach((y, i) => {
               const dir = i % 2 ? 1 : -1;
-              const ofs = ((tq * 260 * dir) % 900) - 900;
-              if (i === 2) {
-                for (let k = 0; k < 6; k++) text(fg, 'FAIL_', ofs * 0.5 + k * 440 - 200, y, { size: fs, weight: 700, color: '#2a7a20', stroke: 2, stretch: 'condensed' });
-                const w = tq < 0.4 ? 'COHESION' : 'FAILURE';
-                const x = tq < 0.4 ? 360 : 1010;
-                rect(fg, x - 10, y - 128, w.length * 84 + 20, 148, '#000');
-                text(fg, w, x, y, { size: fs, weight: 800, color: C.yellowHi, stretch: 'condensed' });
-              } else for (let k = 0; k < 4; k++) text(fg, 'PASSPHRASE_', ofs + k * 940, y, { size: fs, weight: 700, color: '#2a7a20', stroke: 2, stretch: 'condensed' });
+              const sc = -180 + tq * 240 * dir + i * 137;
+              if (i === 2)
+                scrollRow(fg, y, -80 + tq * 160, ['FAIL', 'FAIL', word, 'FAIL', 'FAIL', 'FAIL', 'FAIL'], { size: 150, weight: 800, stretch: 'condensed', color: '#2a7a20', outline: true, hi: (w) => w === word, hiColor: C.yellowHi });
+              else scrollRow(fg, y, sc, ['PASSPHRASE'], { size: 150, weight: 800, stretch: 'condensed', color: '#2a7a20', outline: true });
             });
             for (const y of [80, 930]) {
               rect(fg, 590, y - 14, 46, 26, C.yellowHi);
@@ -295,31 +327,25 @@ export const s3: ShotDef[] = [
   },
   /* ---------------------------------------------------------------- */
   {
-    id: 'S07',
-    t0: 34.4,
-    t1: ANCHORS.runner,
+    id: 'S06',
+    t0: ST.S06[0],
+    t1: ST.S06[1],
     title: 'Liminal buffer 26%',
-    note: 'The psyche streams into the buffer: inside a faint brain shell, thousands of short circuits — dendrites, orthogonal traces with vias, loops, dotted chains, synaptic bursts — fire in waves from the brain stem forward; each flashes, then keeps pulsing outward along its branches. On the lift a second wave fires.',
+    note: 'The psyche streams into the buffer. Inside a faint brain shell, a connectome comes online from the deep nuclei outward: nodes through the whole volume joined by bundles of fibres that run through the inside — local links, front-to-back association tracts, bridges across the midline, projections to the deep nuclei — and signals keep flowing along every lit fibre. On the lift the rest of the network fires.',
     build: () => {
       const scene = new THREE.Scene();
       const cam = persp(30);
-      const LIFT = ANCHORS.lift - 34.4;
-      const timeOf = (r: number) => {
-        if (r < 0.5) return 0.1 + 2.25 * (r / 0.5);
-        if (r < 0.74) return LIFT + ((r - 0.5) / 0.24) * 0.9;
-        return Infinity;
-      };
-      const seedP = new THREE.Vector3(0, -0.35, -0.45);
-      const NC = 3800;
-      const cg = brainCircuits({ n: NC, seed: 5, order: (q) => q.distanceTo(seedP) / 2, timeOf });
-      const cm = circuitMaterial({ dim: 0.09 });
-      const circuits = new THREE.LineSegments(cg, cm.mat);
+      const LIFT = ANCHORS.lift - ST.S06[0];
+      const timeOf = (r: number) => (r < 0.72 ? 0.35 + 7.6 * Math.pow(r / 0.72, 1.3) : LIFT + ((r - 0.72) / 0.28) * 0.9);
+      const net = connectome({ seed: 7, timeOf, scale: 1.6 });
+      const cm = connectomeMaterial({ dim: 0.09, base: 0.42 });
+      const fibres = new THREE.LineSegments(net.fibres, cm.mat);
       const shellM = contourMaterial({ line: 0x2a3cff, body: 0x000008, freq: 26, width: 1.0, axis: 'x', space: 'local', rim: 0x6a7aff, rimWidth: 0.5, opacity: 0.5 });
       shellM.mat.depthWrite = false;
       const shell = new THREE.Mesh(brainGeometry(40, 8), shellM.mat);
       shell.scale.setScalar(1.02);
       const gr = new THREE.Group();
-      gr.add(shell, circuits);
+      gr.add(shell, fibres);
       scene.add(gr);
       return {
         draw(f) {
@@ -327,9 +353,9 @@ export const s3: ShotDef[] = [
           backdrop(bg, { seed: 71, dx: t * 18, alpha: 0.5, pal: PAL_BLUE });
           const pct = Math.min(26, Math.floor(easeOutExpo(span(t, 0.2, 2.6)) * 26));
           cm.time.value = t;
-          gr.rotation.set(0.25, -0.6 + t * 0.3, 0);
+          gr.rotation.set(0.22, -0.9 + t * 0.16, 0);
           const punch = easeInOutCubic(span(T, ANCHORS.lift, ANCHORS.lift + 0.5));
-          cam.position.set(0, 0.15, 3.7 - punch * 0.75);
+          cam.position.set(0, 0.12, 3.5 - punch * 0.85);
           cam.lookAt(0, 0.02, 0);
           f.three = { scene, camera: cam };
           const R = 400 + punch * 240;
@@ -341,8 +367,7 @@ export const s3: ShotDef[] = [
           vlabel(fg, String(pct).padStart(2, '0'), 960 + R * 0.66, 380, 150, C.red, { weight: 600, stretch: 'semi-expanded' });
           vlabel(fg, 'LIMINAL BUFFER', 960 + R * 0.66 - 30, 380, 22, C.red, { weight: 800 });
           text(fg, '%', 960 + R * 0.66 + 30, 690, { size: 40, weight: 800, color: C.red });
-          const active = Math.floor(NC * Math.min(0.74, t < LIFT ? 0.5 * clamp01((t - 0.1) / 2.25) : 0.5 + 0.24 * clamp01((t - LIFT) / 0.9)));
-          microRows(fg, 160, 160, ['PSYCHE STREAM', `CIRCUITS ${String(active).padStart(4, '0')}/${NC}`, 'DEN · TRC · LOOP · CHN · SYN'], { size: 16, family: F.mono, weight: 700, color: '#ff6a6a', lh: 20 });
+          microRows(fg, 160, 160, ['PSYCHE STREAM', `FIBRES ${net.count.fibres}`, 'CALLOSAL · PROJECTION · ASSOCIATION · U'], { size: 16, family: F.mono, weight: 700, color: '#ff6a6a', lh: 20 });
           cutGlitch(f, t, 0.1, ['#000', C.red], 11);
           f.post.tint = [1, 0.55, 0.6];
           void smooth;

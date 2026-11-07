@@ -8,8 +8,8 @@ import { clamp01, hash } from '../engine';
 import { C, F, frameRect, line, microRows, rect, ring, stripes, text, tri } from '../draw';
 import { makeBody, type Body } from '../models/body';
 import { contourMaterial } from '../../three/materials';
-import { ANCHORS } from './cues';
-import { cutGlitch, easeInOutCubic, easeOutExpo, persp, pixelCluster, px, smooth, span, vlabel } from './kit';
+import { ST } from './times';
+import { cutGlitch, easeInOutCubic, easeOutExpo, persp, pixelCluster, px, scrollRow, smooth, span, vlabel } from './kit';
 
 const ORANGE = '#fc2c00';
 
@@ -22,10 +22,10 @@ function pixCross(fg: C2, x: number, y: number, u: number) {
 export const s8: ShotDef[] = [
   {
     id: 'S17',
-    t0: ANCHORS.error,
-    t1: 98.6,
+    t0: ST.S17[0],
+    t1: ST.S17[1],
     title: 'Cognition runtime error',
-    note: 'Fault = the whole frame floods orange-red. One word row on a black band swaps WARNING → COGNITION → RUNTIME → ERROR; giant pixel-font letters are cropped behind it; pixel crosses mark the corners.',
+    note: 'Fault = the whole frame floods orange-red. One continuous row on a black band — WARNING_WARNING_… → COGNITION_ → RUNTIME_ → ERROR_, evenly spaced by underscores — giant pixel-font letters are cropped behind it; pixel crosses mark the corners.',
     build: () => ({
       draw(f) {
         const { bg, fg, t } = f;
@@ -50,8 +50,7 @@ export const s8: ShotDef[] = [
         text(fg, cur[1] === 'ERROR_' ? 'ERROR' : 'WARNING', -200 - t * 60, 900, { size: 620, family: F.pixel, weight: 400, color: '#000' });
         fg.restore();
         rect(fg, -400, 470, 2720, 140, '#000');
-        const off = -((t * 300) % 1400);
-        for (let k = 0; k < 6; k++) text(fg, cur[1], off + k * (cur[1].length * 68), 590, { size: 120, weight: 800, color: cur[2], stretch: 'semi-condensed' });
+        scrollRow(fg, 590, -t * 300 - 140, [cur[1].replace('_', '')], { size: 120, weight: 800, stretch: 'semi-condensed', color: cur[2] });
         fg.restore();
         pixCross(fg, 120, 170, 30);
         pixCross(fg, 1610, 170, 30);
@@ -71,8 +70,8 @@ export const s8: ShotDef[] = [
   },
   {
     id: 'S18',
-    t0: 98.6,
-    t1: 102.0,
+    t0: ST.S18[0],
+    t1: ST.S18[1],
     title: 'Shell 06 signal',
     note: 'Back to the planet map: a ping rises from the ruins — the dead shell is still transmitting. The map pushes in on the source.',
     build: () => ({
@@ -127,8 +126,8 @@ export const s8: ShotDef[] = [
   },
   {
     id: 'S19',
-    t0: 102.0,
-    t1: 104.5,
+    t0: ST.S19[0],
+    t1: ST.S19[1],
     title: 'Instance count: two',
     note: 'Split frame: the new shell (white on cobalt) and the old one (red on black), the same body twice. They turn to face each other across the seam.',
     build: async () => {
@@ -171,8 +170,8 @@ export const s8: ShotDef[] = [
   },
   {
     id: 'S20',
-    t0: 104.5,
-    t1: ANCHORS.downbeat,
+    t0: ST.S20[0],
+    t1: ST.S20[1],
     title: 'Suboptimal durability',
     note: 'Restraint after the alarm: a near-empty black frame where durability sliders drop to compromised values and debris drifts. The AI decides to proceed anyway.',
     build: () => ({

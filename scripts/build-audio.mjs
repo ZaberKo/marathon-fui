@@ -25,7 +25,9 @@ const SFX_DEF = {
   shatter: "anoisesrc=d=1.4:c=white:a=0.8,highpass=f=2500,tremolo=f=30:d=0.8,afade=t=out:st=0.1:d=1.3",
   alarm: "sine=f=880:d=0.42,volume=1,afade=t=out:st=0.36:d=0.06",
   flash: "anoisesrc=d=1.2:c=white:a=0.9,lowpass=f=6000,areverse,afade=t=in:d=0.9,afade=t=out:st=1.05:d=0.15",
-  drone: "sine=f=49:d=5,afade=t=in:d=0.6,afade=t=out:st=2:d=3",
+  drone: "sine=f=49:d=3.5,afade=t=in:d=0.4,afade=t=out:st=1.5:d=2",
+  impact: "anoisesrc=d=1.0:c=brown:a=1,lowpass=f=260,acrusher=bits=5:mix=0.5,volume=6dB,afade=t=out:st=0.04:d=0.95",
+  whoosh: "anoisesrc=d=1.0:c=white:a=0.8,highpass=f=300,lowpass=f=9000,afade=t=in:d=0.12,afade=t=out:st=0.25:d=0.75",
 };
 const sfxFiles = {};
 for (const [k, src] of Object.entries(SFX_DEF)) {
@@ -38,8 +40,32 @@ for (const [k, src] of Object.entries(SFX_DEF)) {
 /* ---------------- graph ---------------- */
 const inputs = [];
 const parts = [];
-// music
-inputs.push('-i', MUSIC.file);
+// music: re-cut on bar lines (MUSIC.edit) into one file, then ducks
+const score = `${TMP}/score.wav`;
+{
+  const ein = [];
+  const ep = [];
+  const labs = [];
+  let filmT = 0;
+  MUSIC.edit.forEach((e, i) => {
+    if (e[0] === 'gap') {
+      ein.push('-f', 'lavfi', '-t', String(e[1]), '-i', 'anullsrc=r=48000:cl=stereo');
+      ep.push(`[${i}:a]aformat=sample_rates=48000:channel_layouts=stereo[e${i}]`);
+      filmT += e[1];
+    } else {
+      const [a, b, g] = e;
+      ein.push('-ss', String(a), '-t', String(b - a), '-i', MUSIC.file);
+      ep.push(`[${i}:a]aresample=48000,aformat=sample_rates=48000:channel_layouts=stereo,atrim=0:${b - a},asetpts=PTS-STARTPTS,volume=${g}dB,afade=t=in:d=0.012,afade=t=out:st=${(b - a - 0.012).toFixed(3)}:d=0.012[e${i}]`);
+      filmT += b - a;
+    }
+    labs.push(`[e${i}]`);
+  });
+  const ducks = MUSIC.duck.map(([t0, t1, g]) => `volume=${Math.pow(10, g / 20).toFixed(4)}:enable='between(t,${t0},${t1})'`).join(',');
+  ep.push(`${labs.join('')}concat=n=${labs.length}:v=0:a=1${ducks ? ',' + ducks : ''}[m]`);
+  ff(...ein, '-filter_complex', ep.join(';'), '-map', '[m]', '-c:a', 'pcm_s16le', score);
+  console.log('score re-cut:', filmT.toFixed(3), 's');
+}
+inputs.push('-i', score);
 parts.push(`[0:a]aresample=48000,volume=${MUSIC.gain}dB[mus]`);
 // voice lines
 const voLabels = [];

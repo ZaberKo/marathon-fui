@@ -12,15 +12,14 @@ const NOTES: [string, string, string][] = [
   ['Screen texture', 'Black should read as a dark screen, not as empty space.', 'A uniform block mosaic sits over every frame (6 px and 24 px cells, two blend layers), with grain, scanlines and a vignette. Backgrounds are layered UI panels at three depths with parallax and blur.'],
   ['Motion', 'Stepping is a choice per element, not a global frame rate.', 'Cameras and 3D move smoothly. Type, counters and glyphs step. The cuts land on the score’s anchors.'],
   ['The shell is printed, the mind plugs in', 'The opening shows both acts at once.', 'Green link lines drop from above into the crown of the empty shell while its body prints in four segments in parallel, each hanging from its own comb of print heads.'],
-  ['A tested arm, not a severed hand', 'The arm belongs to a body we do not see.', 'A high-detail mechanical forearm framed so tight it runs out of shot. The floor is flat, but painted: giant stencil numerals, hazard bands, barcode rows, a calibration ring; a scan re-colours it.'],
   ['Anatomy is a graphic plate', 'Quoting a medical plate in smooth line work, kept 2D.', 'Nerve bundles of many strands in several colours fan into fingers and toes; muscles are spline shapes filled with fibre lines; organs are hatched shapes; the brain has gyri, and the optic pathway runs in its own colour.'],
-  ['3D structure, 2D signal', 'Memory is a physical module; “loaded” is a flat state.', 'Seen from almost straight above: a chip array of mixed cells (notched packages, dies, bosses, contact rows, edge pins) in 3D lines with hidden lines removed. Loaded cells become flat lemon graphics with their details cut out.'],
-  ['Circuits, not curves', 'The buffer filling is a brain coming alive.', 'Thousands of short circuits hug the cortex: dendrites, orthogonal traces with vias, loops, dotted chains and synaptic bursts. They fire in waves from the brain stem forward and keep pulsing along their branches.'],
+  ['3D structure, 2D signal', 'Memory is a physical module; “loaded” is a flat state.', 'Seen from almost straight above: a chip array of mixed cells (notched packages, dies, bosses, contact rows, edge pins), each a stack of thin layers, in 3D lines with hidden lines removed. Loaded cells become flat lemon graphics with their details cut out. The failure wall is continuous rows of words joined by underscores, the failing word inline.'],
+  ['Connections inside the brain', 'The buffer filling is a brain coming alive from within.', 'Tractography: projection fans rising from the brain stem, the corpus callosum arching across, long association arcs front to back, U-fibres under the cortex, coloured by direction. They light from the core outward and signals keep flowing along them. The same network sits inside the transfer head.'],
   ['Voxels from the mesh', 'Cubes on a body are evenly spaced, so they read as a material.', 'One voxel per surface grid cell, anchored to its nearest vertex so it follows the skeleton. In the death shot, green wire voxels turn red from the wound and burst on impact.'],
   ['Glitch lives on the body', 'Interference belongs to the shell itself.', 'Glitch bands are part of the body material. Stencil decals (numbers, stripes, barcodes, chevrons) are laid flat on the surface and ride the bones.'],
   ['Parallel printing, wired to the mind', 'A shell is printed in segments, all at once, from the psyche.', 'The body lies on its back along the frame. Eight cross-section frames divide it; each prints its own front with a real contour, and each frame is wired through one bus to the brain on its grid.'],
-  ['One continuous descent', 'System → planet → colony is a single camera move.', 'A drafted chart with a relay satellite, then a matched scale handoff from a dithered schematic to a pixel sensor feed. It ends in a low glide over domes, towers, a pad and solar rows, fading into haze.'],
-  ['Entering the device', 'The transfer is the mind moving in, and the film ends there.', 'A sculpted wire head with about seventy optic fibres per eye. The camera orbits to the back and pushes through the brain to the eyes; 3-2-1 and INIT run in the eyes; the view rushes down the optic nerves, the two eyes fuse into one ring, blue flood, black.'],
+  ['One continuous descent', 'System → planet → orbit → drop zone.', 'A drafted chart with a star that dwarfs its planets, a matched scale handoff from dithered schematic to sensor feed, the station in orbit dropping runners down arcs onto every signal, the camera following one drop down — into a contour map of the drop zone (isolines lifted to their height, ruins as map symbols).'],
+  ['Entering the device', 'The transfer is the mind moving in, and the film ends there.', 'A wire head built to real proportions (eye line at mid-height, 63 mm between the pupils, a brain that fills the cranium) with about seventy optic fibres per eye. The camera orbits to the back and pushes through the brain to the eyes; 3-2-1 and INIT run in the eyes; at once the view rushes down the optic nerves, the eyes fuse into one ring, blue flood, black — “Good luck.”'],
 ];
 
 export default function mount(root: HTMLElement) {
@@ -33,8 +32,8 @@ export default function mount(root: HTMLElement) {
     <ul class="st-facts">
       <li><b>Picture:</b> three.js (WebGPU, falling back to WebGL2) and Canvas2D, composited with CSS blend layers.</li>
       <li><b>Models:</b> every model is generated in code; only the motion data is third-party.</li>
-      <li><b>Score:</b> Lyria 3.5.</li>
-      <li><b>Voice:</b> Microsoft edge-tts (Aria), processed with ffmpeg into a mechanical support-AI voice.</li>
+      <li><b>Score:</b> Lyria 3.5 acid techno (128 BPM), re-cut on bar lines to the edit.</li>
+      <li><b>Voice:</b> Microsoft edge-tts (Aria, +25 Hz), cleanly processed with ffmpeg (EQ, light grit, compression, a sparse reflection); alarms add a faint robot layer.</li>
       <li><b>Mix:</b> everything is mixed offline with ffmpeg, and the audio clock drives the picture.</li>
     </ul>
     <div class="st-open">

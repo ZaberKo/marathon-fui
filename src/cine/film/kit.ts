@@ -5,7 +5,7 @@
 import * as THREE from 'three/webgpu';
 import type { C2, Frame } from '../engine';
 import { clamp01, hash } from '../engine';
-import { C, F, bitmap, rect, text, type TextOpts } from '../draw';
+import { C, F, bitmap, measure, rect, text, type TextOpts } from '../draw';
 
 export const persp = (fov = 30, near = 0.01, far = 400) => new THREE.PerspectiveCamera(fov, 16 / 9, near, far);
 
@@ -90,4 +90,36 @@ export function canvasPlane(w: number, h: number, size: number, o: { transparent
 export function px(f: Frame, cam: THREE.Camera, p: THREE.Vector3) {
   cam.updateMatrixWorld();
   return f.gl.project(p, cam);
+}
+
+/**
+ * One continuous scrolling row of words joined by underscores
+ * ("WORD_WORD_WORD_…"), measured exactly so the spacing is even. `seq` is one
+ * period of the row; `hi` marks words drawn solid in `hiColor` (the rest use
+ * `color`, outlined when `outline`).
+ */
+export function scrollRow(
+  ctx: C2,
+  y: number,
+  scroll: number,
+  seq: string[],
+  o: { size: number; weight?: number; stretch?: string; family?: string; color: string; outline?: boolean; hi?: (word: string, i: number) => boolean; hiColor?: string; lw?: number },
+) {
+  const st = { size: o.size, weight: o.weight ?? 800, stretch: o.stretch as never, family: o.family };
+  const ws = seq.map((w) => measure(ctx, `${w}_`, st));
+  const P = ws.reduce((a, b) => a + b, 0);
+  let x = (((scroll % P) + P) % P) - P;
+  let i = 0;
+  while (x < 1920 + 10) {
+    const k = i % seq.length;
+    const w = seq[k];
+    if (x + ws[k] > -10) {
+      const hot = o.hi?.(w, i) ?? false;
+      const color = hot ? o.hiColor ?? o.color : o.color;
+      const stroke = !hot && o.outline ? o.lw ?? 2 : 0;
+      text(ctx, `${w}_`, x, y, { ...st, color, stroke });
+    }
+    x += ws[k];
+    i++;
+  }
 }

@@ -10,59 +10,116 @@ import { backdrop, PAL_BLUE, PAL_GREEN } from '../backdrop';
 import { streakRing } from '../rings';
 import { makeBody } from '../models/body';
 import { brainGeometry } from '../models/anatomy';
-import { brainCircuits, circuitMaterial, flowMaterial } from '../models/circuits';
-import { H2, head2Geometry, headWiring, opticPathway, wireEye } from '../models/head2';
+import { flowMaterial } from '../models/flow';
+import { connectome, connectomeMaterial } from '../models/connectome';
+import { BRAIN_S, H2, head2Geometry, headWiring, opticPathway, wireEye } from '../models/head2';
 import { HAZE } from '../models/hard';
 import { buildColony } from '../models/colony';
 import { contourMaterial } from '../../three/materials';
 import { pixelSurfaceTexture } from '../../three/procedural';
 import { ANCHORS, LINES } from './cues';
+import { ST } from './times';
 import { cutGlitch, easeInOutCubic, easeOutExpo, persp, px, smooth, span, vlabel } from './kit';
 
 const LIME = '#77f600';
 const at = (id: string) => LINES.find((l) => l.id === id)!.t;
 
-/** geometric lowercase "ora" built from the ring stroke */
-function wordmark(fg: C2, x: number, cy: number, R: number, n: number, color: string) {
+/**
+ * Geometric lowercase "ora" drawn from the ring stroke, letter by letter:
+ * kr / ka are the growth of r and a (0..1). r grows its stem up from the
+ * baseline, then its shoulder sweeps out; a draws its bowl as a sweeping arc,
+ * then its stem drops in. Returns the current width so the word can recentre.
+ */
+function wordmarkWidth(R: number, kr: number, ka: number) {
+  const s = R * 0.49;
+  return R * 2 + (s * 0.45 + s + R * 0.75) * smoothK(kr) + R * 2 * smoothK(ka) - s * 0.0;
+}
+const smoothK = (k: number) => {
+  const x = Math.max(0, Math.min(1, k));
+  return x * x * (3 - 2 * x);
+};
+function wordmark(fg: C2, x: number, cy: number, R: number, kr: number, ka: number, color: string) {
   const s = R * 0.49;
   const ri = R - s;
-  const ring2 = (cx: number) => {
-    fg.fillStyle = color;
-    fg.beginPath();
-    fg.arc(cx, cy, R, 0, Math.PI * 2);
-    fg.arc(cx, cy, ri, 0, Math.PI * 2, true);
-    fg.fill();
-  };
-  ring2(x + R);
+  fg.fillStyle = color;
+  // o
+  fg.beginPath();
+  fg.arc(x + R, cy, R, 0, Math.PI * 2);
+  fg.arc(x + R, cy, ri, 0, Math.PI * 2, true);
+  fg.fill();
   ring(fg, x + R, cy, ri * 0.75, '#0a2a00', 2);
-  if (n >= 2) {
+  // r
+  if (kr > 0) {
     const sx = x + R * 2 + s * 0.45;
-    rect(fg, sx, cy - R, s, R * 2, color);
-    fg.fillStyle = color;
-    fg.beginPath();
-    fg.arc(sx + s + ri * 0.6, cy - R + R * 0.95, R * 0.95, Math.PI, Math.PI * 1.5);
-    fg.arc(sx + s + ri * 0.6, cy - R + R * 0.95, R * 0.95 - s, Math.PI * 1.5, Math.PI, true);
-    fg.fill();
+    const stem = smoothK(kr / 0.5);
+    rect(fg, sx, cy + R - R * 2 * stem, s, R * 2 * stem, color);
+    const sh = smoothK((kr - 0.4) / 0.6);
+    if (sh > 0) {
+      const ccx = sx + s + ri * 0.6;
+      const ccy = cy - R + R * 0.95;
+      fg.beginPath();
+      fg.arc(ccx, ccy, R * 0.95, Math.PI, Math.PI + Math.PI * 0.5 * sh);
+      fg.arc(ccx, ccy, R * 0.95 - s, Math.PI + Math.PI * 0.5 * sh, Math.PI, true);
+      fg.fill();
+      // a round terminal leads the sweep
+      const ea = Math.PI + Math.PI * 0.5 * sh;
+      fg.beginPath();
+      fg.arc(ccx + Math.cos(ea) * (R * 0.95 - s / 2), ccy + Math.sin(ea) * (R * 0.95 - s / 2), s / 2, 0, Math.PI * 2);
+      fg.fill();
+    }
   }
-  if (n >= 3) {
+  // a
+  if (ka > 0) {
     const ax = x + R * 2 + s * 0.45 + s + R * 0.75;
-    ring2(ax + R);
-    rect(fg, ax + R * 2 - s, cy - R * 0.2, s, R * 1.2, color);
+    const bowl = smoothK(ka / 0.6);
+    const a0 = -Math.PI / 2;
+    fg.beginPath();
+    fg.arc(ax + R, cy, R, a0, a0 + Math.PI * 2 * bowl);
+    fg.arc(ax + R, cy, ri, a0 + Math.PI * 2 * bowl, a0, true);
+    fg.fill();
+    if (bowl < 1) {
+      const ea = a0 + Math.PI * 2 * bowl;
+      fg.beginPath();
+      fg.arc(ax + R + Math.cos(ea) * (R - s / 2), cy + Math.sin(ea) * (R - s / 2), s / 2, 0, Math.PI * 2);
+      fg.fill();
+    }
+    const st = smoothK((ka - 0.5) / 0.5);
+    if (st > 0) rect(fg, ax + R * 2 - s, cy - R * 0.2, s, R * 1.2 * st, color);
   }
 }
 
 export const s9: ShotDef[] = [
   {
     id: 'S21',
-    t0: ANCHORS.downbeat,
-    t1: 114.1,
+    t0: ST.S21[0],
+    t1: ST.S21[1],
     title: 'Defragmentation complete',
-    note: 'On the downbeat the completion ring bursts outward as hundreds of radial streaks, the buffer hits 100, then everything collapses into one solid lime ring.',
+    note: 'On the build the liminal buffer fills from 26 to 100; on the downbeat the completion ring bursts outward as hundreds of radial streaks, then everything collapses into one solid lime ring.',
     build: () => ({
       draw(f) {
-        const { bg, fg, t, T } = f;
+        const { bg, fg, T } = f;
+        const DB = ANCHORS.downbeat - ST.S21[0];
+        const v21 = at('v21');
+        if (f.t < DB) {
+          // pre-roll: the buffer fills to 100 on the build, then bursts on the downbeat
+          const pct = Math.floor(26 + 74 * smooth(span(T, v21 - 0.8, v21 + 2.0)));
+          const k = pct / 100;
+          ring(bg, 960, 540, 300, '#2a0408', 26);
+          fg.save();
+          fg.setLineDash([5, 3]);
+          ring(fg, 960, 540, 300, C.red, 26, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k);
+          fg.restore();
+          ring(fg, 960, 540, 250, 'rgba(255,40,60,0.5)', 1.5);
+          vlabel(fg, String(pct).padStart(2, '0'), 1010, 400, 150, C.red, { weight: 600, stretch: 'semi-expanded' });
+          vlabel(fg, 'LIMINAL BUFFER', 980, 400, 22, C.red, { weight: 800 });
+          if (pct >= 100 && Math.floor(f.t * 10) % 2 === 0) text(fg, 'FULL', 960, 900, { size: 26, family: F.mono, weight: 700, color: C.red, align: 'center', tracking: 8 });
+          cutGlitch(f, f.t, 0.1, ['#000', C.red], 26);
+          f.post.tint = [1, 0.5, 0.55];
+          return;
+        }
+        const t = f.t - DB;
         const grow = easeOutExpo(span(t, 0, 0.9));
-        const end = 114.0 - ANCHORS.downbeat;
+        const end = ST.S21[1] - ANCHORS.downbeat;
         const shrink = easeInOutCubic(span(t, end - 2.0, end - 0.25));
         const r0 = 160 + grow * 380 - shrink * 410;
         const r1 = 330 + grow * 1000 - shrink * 1060;
@@ -76,10 +133,8 @@ export const s9: ShotDef[] = [
           bg.fill();
           ring(bg, 960, 540, 105, '#0a2a00', 2);
         }
-        const v21 = at('v21');
-        const pct = T < v21 ? 96 : Math.min(100, 96 + Math.floor((T - v21) * 6));
         if (shrink < 0.05) {
-          vlabel(fg, String(pct), 985, 470, 84, C.red, { weight: 600, stretch: 'semi-expanded' });
+          vlabel(fg, '100', 985, 470, 84, C.red, { weight: 600, stretch: 'semi-expanded' });
           vlabel(fg, 'BUFFER', 945, 470, 18, C.red, { weight: 800 });
         }
         if (T > at('v22') && shrink < 0.05) {
@@ -94,20 +149,22 @@ export const s9: ShotDef[] = [
   },
   {
     id: 'S22',
-    t0: 114.1,
-    t1: 119.9,
+    t0: ST.S22[0],
+    t1: ST.S22[1],
     title: 'ORA',
-    note: 'The completed ring becomes the first letter of the support AI’s wordmark; letters land on the beat; then the mark shrinks onto a green data wall.',
+    note: 'The completed ring becomes the first letter of the support AI’s wordmark. The other letters are not placed, they grow out of it: the r pushes its stem up and sweeps its shoulder, the a draws its bowl and drops its stem, the word recentring as it widens; then the mark shrinks onto a green data wall.',
     build: () => ({
       draw(f) {
         const { bg, fg, t } = f;
         for (let y = 30; y < 1080; y += 60) for (let x = 30; x < 1920; x += 60) rect(bg, x, y, 2, 2, '#10180a');
-        const n = t < 1.1 ? 1 : t < 1.9 ? 2 : 3;
-        const small = t > 3.7;
-        const R = small ? 110 : n === 1 ? 270 : n === 2 ? 240 : 205;
-        const totalW = n === 1 ? R * 2 : n === 2 ? R * 3.2 : R * 5.2;
-        const x = 960 - totalW / 2;
-        if (small) {
+        // letters grow out of the ring on the beat (r, then a), the word recentring as it widens
+        const kr = span(t, 0.95, 1.55);
+        const ka = span(t, 1.6, 2.3);
+        const small = smoothK(span(t, 3.5, 4.0));
+        const R = (270 - 30 * smoothK(kr) - 35 * smoothK(ka)) * (1 - small) + 110 * small;
+        const totalW = wordmarkWidth(R, kr, ka);
+        const x = 960 - totalW / 2 - small * 120;
+        if (small > 0.5) {
           backdrop(bg, { seed: 141, dx: t * 30, pal: PAL_GREEN, alpha: 0.9 });
           dataField(bg, 0, 0, 1920, 1080, 57, { palette: ['#0c2a06', '#16500c', '#2a8a18', '#06200a'], ox: Math.floor(t * 6) * 10, alpha: 0.5 });
           rect(bg, x - 30, 540 - R - 20, totalW + 200, R * 2 + 40, '#000');
@@ -116,16 +173,16 @@ export const s9: ShotDef[] = [
           for (let j = 0; j < 5; j++) for (let i = 0; i < 3; i++) if ((i + j) % 2 === 0 && i <= 2 - Math.abs(j - 2) + 1) rect(fg, cx + i * 18, 540 - 45 + j * 18, 18, 18, C.white);
           text(fg, 'SUPPORT INTELLIGENCE · MANDATORY', x, 540 + R + 50, { size: 16, family: F.mono, weight: 700, color: LIME });
         }
-        wordmark(fg, x, 540, R, n, LIME);
-        if ([1.1, 1.9, 3.7].some((b) => Math.abs(t - b) < 0.05)) glitchBlocks(fg, Math.floor(t * 30), { n: 20, colors: ['#000', LIME], maxW: 300, maxH: 40 });
+        wordmark(fg, x, 540, R, kr, ka, LIME);
+        if ([3.75].some((b) => Math.abs(t - b) < 0.05)) glitchBlocks(fg, Math.floor(t * 30), { n: 20, colors: ['#000', LIME], maxW: 300, maxH: 40 });
         f.post.tint = [0.6, 1, 0.5];
       },
     }),
   },
   {
     id: 'S23',
-    t0: 119.9,
-    t1: 125.6,
+    t0: ST.S23[0],
+    t1: ST.S23[1],
     title: 'Contract — target: shell 06',
     note: 'The contract card over the turning planet; then the payoff: in the ruins, the old shell stands in red lines, and the reticle locks.',
     build: async () => {
@@ -202,8 +259,8 @@ export const s9: ShotDef[] = [
   /* ---------------------------------------------------------------- */
   {
     id: 'S24',
-    t0: 125.6,
-    t1: ANCHORS.final,
+    t0: ST.S24[0],
+    t1: ST.S24[1],
     title: 'Consciousness transfer',
     note: 'A sculpted head drawn as a lat/long wire grid. Inside: the brain outline full of short circuits, blue orthogonal wiring, wire eyes, and the visual pathway in its own colour — about seventy fibres per eye gathering into the optic nerves, crossing at the chiasm and fanning over the visual cortex, signals flowing toward the eyes. The camera orbits from the face to the back of the skull and pushes through the brain until it looks out through the eyes; green blocks fill the brain as the psyche is written; the countdown runs in the eyes.',
     build: async () => {
@@ -213,10 +270,10 @@ export const s9: ShotDef[] = [
   },
   {
     id: 'S25',
-    t0: ANCHORS.final,
-    t1: ANCHORS.end,
+    t0: ST.S25[0],
+    t1: ST.S25[1],
     title: 'Initiate',
-    note: 'Continuous with the countdown: INIT lights in both eyes, the view rushes forward down the optic nerves and through the eyes, the two eyes’ rings slide together into one, the field floods blue — the mind is now behind these eyes — and on the cut the screen goes black for the last line.',
+    note: 'Straight out of the countdown: INIT lights in both eyes and at once the view rushes down the optic nerves and through the eyes, the two eyes’ rings slide together into one, the field floods blue — the mind is now behind these eyes — black, and only: Good luck.',
     build: async () => {
       const rig = await headRig();
       return { draw: (f) => rig.initiate(f) };
@@ -242,16 +299,16 @@ async function buildHeadRig() {
   Object.assign(bm.mat, add, { side: THREE.FrontSide });
   bm.u.lineMix.value = 0.35;
   const brain = new THREE.Mesh(brainGeometry(40, 3), bm.mat);
-  const BS = new THREE.Vector3(0.066, 0.058, 0.085);
+  const BS = BRAIN_S;
   brain.position.copy(H2.brain);
   brain.scale.copy(BS);
   head.add(brain);
-  // dense short circuits inside the brain (all alive, sparking)
-  const cm = circuitMaterial({ dim: 0.25 });
-  const circuits = new THREE.LineSegments(brainCircuits({ n: 2400, seed: 11, timeOf: (r) => (r < 0.85 ? -2 + r : Infinity) }), cm.mat);
-  circuits.position.copy(H2.brain);
-  circuits.scale.copy(BS).multiplyScalar(0.97);
-  head.add(circuits);
+  // tractography inside the brain: bundles running through it, signals flowing
+  const cm = connectomeMaterial({ dim: 0.1, base: 0.36, speed: 1.6 });
+  const tracts = new THREE.LineSegments(connectome({ seed: 11, scale: 1.1, timeOf: (r) => -20 + r }).fibres, cm.mat);
+  tracts.position.copy(H2.brain);
+  tracts.scale.copy(BS).multiplyScalar(0.98);
+  head.add(tracts);
   const wiring = headWiring(9);
   const wires = new THREE.LineSegments(wiring.wires, new THREE.LineBasicMaterial({ color: 0x3a6aff, ...add, opacity: 0.8 }));
   head.add(wires);
@@ -267,7 +324,7 @@ async function buildHeadRig() {
   });
   for (let i = 0; i < 8; i++) {
     const vb = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(0.042 - i * 0.002, 0.014, 0.028)), new THREE.LineBasicMaterial({ color: 0x3ae830, ...add }));
-    vb.position.set(0, -0.06 - i * 0.019, -0.032);
+    vb.position.set(0, -0.09 - i * 0.02, -0.036);
     head.add(vb);
   }
   scene.add(head);
@@ -276,19 +333,19 @@ async function buildHeadRig() {
   // tiles laid over the top surface of the brain (ellipsoid approximation), written front to back
   for (let j = 0; j < 6; j++)
     for (let i = 0; i < 7; i++) {
-      const x = (i - 3) * 0.0128;
-      const z = 0.038 - j * 0.018;
-      const q = 1 - (x / 0.056) ** 2 - (z / 0.082) ** 2;
+      const x = (i - 3) * 0.0135;
+      const z = 0.045 - j * 0.02;
+      const q = 1 - (x / 0.062) ** 2 - (z / 0.084) ** 2;
       if (q <= 0.05) continue;
-      blocks.push(new THREE.Vector3(x, H2.brain.y + 0.0395 * Math.sqrt(q) + 0.004, H2.brain.z + z));
+      blocks.push(new THREE.Vector3(x, H2.brain.y + 0.074 * Math.sqrt(q) + 0.005, H2.brain.z + z));
     }
   const v = new THREE.Vector3();
-  const centre = new THREE.Vector3(0, 0.045, 0);
+  const centre = new THREE.Vector3(0, 0.012, 0);
   const look = new THREE.Vector3();
-  const T0 = 125.6;
+  const T0 = ST.S24[0];
   const eyeStart: { x: number; y: number; R: number }[] = [];
-  const camEnd = new THREE.Vector3(0, 0.045, -0.02);
-  const lookEnd = new THREE.Vector3(0, 0.035, 0.08);
+  const camEnd = new THREE.Vector3(0, 0.008, -0.035);
+  const lookEnd = new THREE.Vector3(0, 0.0, 0.08);
   const eyeLabel = (T: number) => (T >= ANCHORS.final ? 'INIT' : T >= at('v29') ? '1' : T >= at('v28') ? '2' : T >= at('v27') ? '3' : '');
   const drawEyes = (f: Frame, T: number, scale = 1) => {
     const label = eyeLabel(T);
@@ -316,18 +373,18 @@ async function buildHeadRig() {
       backdrop(bg, { seed: 161, dx: t * 8, pal: PAL_BLUE, alpha: 0.6 });
       tick(T);
       eyes.forEach((e) => (e.visible = true));
-      const u = clamp01(t / 5.3);
+      const u = clamp01(t / (ST.S24[1] - ST.S24[0] - 0.3));
       // orbit face → back of the skull, then push in through the brain toward the eyes
       const o = smooth(clamp01(u / 0.58));
       const theta = Math.PI * o;
       const r = 0.62 - 0.4 * o;
       if (u < 0.58) {
-        cam.position.set(Math.sin(theta) * r, 0.045 + Math.sin(theta) * 0.03, Math.cos(theta) * r);
+        cam.position.set(Math.sin(theta) * r, 0.012 + Math.sin(theta) * 0.03, Math.cos(theta) * r);
         look.copy(centre);
       } else {
         const pIn = easeInOutCubic(clamp01((u - 0.58) / 0.42));
-        cam.position.set(0, 0.075 - pIn * 0.03, -0.22 + pIn * 0.2);
-        look.set(0, 0.045 - pIn * 0.01, 0.08);
+        cam.position.set(0, 0.04 - pIn * 0.032, -0.22 + pIn * 0.185);
+        look.set(0, 0.012 - pIn * 0.012, 0.08);
       }
       cam.fov = 34;
       cam.updateProjectionMatrix();
@@ -337,10 +394,11 @@ async function buildHeadRig() {
       const inside = clamp01((u - 0.66) / 0.08);
       brain.visible = inside < 1;
       bm.u.lineMix.value = 0.35 * (1 - inside);
+      cm.gain.value = 1 - 0.72 * clamp01((u - 0.6) / 0.15);
       bm.u.rimWidth.value = 0.35 * (1 - inside) + 0.001;
       f.three = { scene, camera: cam };
       // the psyche being written: green blocks fill the top of the brain
-      const w = clamp01((T - T0) / 5.3);
+      const w = clamp01((T - T0) / (ST.S24[1] - ST.S24[0] - 0.3));
       if (inside < 1) {
         const nOn = Math.floor(w * blocks.length);
         for (let i = 0; i < nOn; i++) {
@@ -363,7 +421,7 @@ async function buildHeadRig() {
     },
     initiate(f: Frame) {
       const { bg, fg, t, T } = f;
-      const CUT = ANCHORS.cut - ANCHORS.final; // 2.33
+      const CUT = 1.35; // fast: rush, fuse, black
       if (t >= CUT) {
         // the device is running; the screen stays dark for the last line
         f.post.lift = 0.1;
@@ -372,7 +430,7 @@ async function buildHeadRig() {
       }
       tick(T);
       // rush forward from inside the skull, down the optic nerves, out through the eyes
-      const go = smooth(span(t, 0.22, 1.25));
+      const go = smooth(span(t, 0.06, 0.72));
       const acc = go * go;
       cam.position.copy(camEnd).add(new THREE.Vector3(0, -0.01 * acc, 0.34 * acc));
       cam.fov = 34 + 46 * acc;
@@ -380,13 +438,13 @@ async function buildHeadRig() {
       cam.lookAt(lookEnd.x, lookEnd.y - 0.01 * acc, lookEnd.z + 0.34 * acc);
       cam.updateMatrixWorld();
       brain.visible = false;
-      const flood = clamp01((t - 0.55) / 0.7);
+      const flood = clamp01((t - 0.3) / 0.4);
       if (flood < 1) {
         backdrop(bg, { seed: 161, dx: 40 + t * 8, pal: PAL_BLUE, alpha: 0.6 * (1 - flood) });
         f.three = { scene, camera: cam };
       }
       // eyes: INIT in the 3D eyes until the rush starts; from then on they are 2D ring sets
-      const rush = t >= 0.22;
+      const rush = t >= 0.06;
       eyes.forEach((e) => (e.visible = !rush));
       if (!rush) drawEyes(f, T);
       else if (!eyeStart.length) {
@@ -413,7 +471,7 @@ async function buildHeadRig() {
         fg.fillRect(0, 0, 1920, 1080);
       }
       // speed lines streaming out from the centre
-      const sp = clamp01((t - 0.2) / 0.3) * (1 - clamp01((t - 1.9) / 0.4));
+      const sp = clamp01((t - 0.05) / 0.15) * (1 - clamp01((t - 1.05) / 0.25));
       if (sp > 0) {
         fg.save();
         fg.lineCap = 'round';
@@ -432,9 +490,9 @@ async function buildHeadRig() {
         fg.restore();
       }
       // the two eyes' ring sets slide together into one (a single point of view)
-      const conv = smooth(span(t, 0.45, 1.5));
+      const conv = smooth(span(t, 0.22, 0.85));
       if (rush && eyeStart.length === 2) {
-        const shrink = smooth(span(t, 1.75, CUT - 0.05));
+        const shrink = smooth(span(t, 0.95, CUT - 0.05));
         const grow = 1 + acc * 1.6;
         eyeStart.forEach((e) => {
           const x = e.x + (960 - e.x) * conv;
@@ -445,7 +503,7 @@ async function buildHeadRig() {
             ring(fg, x, y, rr, k % 3 === 0 ? 'rgba(255,255,255,0.95)' : 'rgba(160,190,255,0.85)', k === 0 ? 3 : 2);
           }
           // INIT stretches with the rush and fades as the rings fuse
-          const ia = 1 - smooth(span(t, 0.7, 1.2));
+          const ia = 1 - smooth(span(t, 0.4, 0.75));
           if (ia > 0) {
             fg.save();
             fg.globalAlpha = ia;

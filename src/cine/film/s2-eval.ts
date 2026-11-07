@@ -1,132 +1,21 @@
 /**
- * 0:11–0:25 — evaluation: shell integrity (hand), vital signs (anatomy plate),
- * recognition response (lime plate).
+ * Evaluation: vital signs (anatomy plate), recognition response (lime plate).
  */
-import * as THREE from 'three/webgpu';
-import type { C2, ShotDef } from '../engine';
-import { clamp01, hash } from '../engine';
+import type { ShotDef } from '../engine';
+import { hash } from '../engine';
 import { C, F, checker, dashStack, line, microRows, rect, ring, scanlines, text } from '../draw';
 import { backdrop, PAL_BLUE, PAL_GREEN } from '../backdrop';
 import { ANAT_BLUE, ANAT_LIME, anatomyFigure, drawFigure, rasterFigure, toPx, type Place } from '../anatomy2d';
-import { makeMechArm } from '../models/mecharm';
-import { graphicFloor } from '../models/floor';
-import { basic } from '../mats';
-import { cutGlitch, easeInOutCubic, persp, px, smooth, span, vlabel } from './kit';
-
-/** our monogram: stencilled R + double slash */
-function monogram(fg: C2, x: number, y: number, s: number, color: string) {
-  fg.fillStyle = color;
-  const u = s / 10;
-  fg.fillRect(x, y, u * 2.2, u * 10);
-  fg.fillRect(x, y, u * 6, u * 2.2);
-  fg.fillRect(x + u * 4.4, y, u * 2.2, u * 5.2);
-  fg.fillRect(x, y + u * 4, u * 6, u * 2);
-  fg.beginPath();
-  fg.moveTo(x + u * 3, y + u * 6);
-  fg.lineTo(x + u * 5.4, y + u * 6);
-  fg.lineTo(x + u * 7.4, y + u * 10);
-  fg.lineTo(x + u * 5, y + u * 10);
-  fg.fill();
-  for (const o of [8.4, 11.6]) {
-    fg.beginPath();
-    fg.moveTo(x + u * (o + 2), y);
-    fg.lineTo(x + u * (o + 4), y);
-    fg.lineTo(x + u * (o + 2), y + u * 10);
-    fg.lineTo(x + u * o, y + u * 10);
-    fg.fill();
-  }
-}
-
-/** finger test schedule → curl amounts [thumb, index, middle, ring, pinky] */
-function fingerTest(t: number) {
-  const k = [0.08, 0.05, 0.05, 0.05, 0.05];
-  const order = [1, 2, 3, 4, 0];
-  order.forEach((fi, n) => {
-    const a = 0.7 + n * 0.32;
-    const v = Math.sin(clamp01((t - a) / 0.42) * Math.PI);
-    k[fi] = Math.max(k[fi], v * (fi === 0 ? 0.8 : 1.15));
-  });
-  const fist = smooth(span(t, 2.45, 2.85)) * (1 - smooth(span(t, 3.35, 3.8)));
-  return k.map((v, i) => Math.max(v, fist * (i === 0 ? 0.9 : 1.3)));
-}
+import { cutGlitch, easeInOutCubic, span } from './kit';
+import { ST } from './times';
 
 export const s2: ShotDef[] = [
   /* ---------------------------------------------------------------- */
-  {
-    id: 'S03',
-    t0: 11.4,
-    t1: 15.8,
-    title: 'Shell integrity',
-    note: 'Close on a mechanical forearm under test — framed so tight the arm runs out of shot, attached to a body we do not see. Fingers are tested one by one, then a fist. The floor is flat and painted (giant stencil numerals, hazard bands, barcode rows, a calibration ring); a scan re-colours it from yellow to cobalt.',
-    build: () => {
-      const scene = new THREE.Scene();
-      const cam = persp(33, 0.01, 40);
-      const floor = graphicFloor({ size: 6 });
-      scene.add(floor.mesh);
-      const scanPlane = new THREE.Mesh(new THREE.PlaneGeometry(0.014, 12), basic(0xe8ecff, { additive: true }));
-      scanPlane.rotation.x = -Math.PI / 2;
-      scanPlane.position.y = 0.002;
-      scene.add(scanPlane);
-      const arm = makeMechArm();
-      arm.root.position.set(0, 0.62, 0);
-      scene.add(arm.root);
-      const padMats = arm.pads.map((p) => p.material as THREE.MeshBasicMaterial);
-      const v = new THREE.Vector3();
-      const target = new THREE.Vector3();
-      return {
-        draw(f) {
-          const { fg, t } = f;
-          const u = t / 4.4;
-          floor.sweep.value = -2.2 + 4.4 * smooth(span(t, 0.4, 4.0));
-          scanPlane.position.x = floor.sweep.value;
-          const k = fingerTest(t);
-          arm.curl(k, 0.05);
-          padMats.forEach((m, i) => m.color.setHex(k[i] > 0.5 ? 0xffffff : 0x38f5d4));
-          arm.root.rotation.set(-0.62 + Math.sin(t * 0.9) * 0.03, 0.32 - u * 0.18, -0.16, 'YXZ');
-          arm.root.updateMatrixWorld(true);
-          target.set(0, 0.088, 0.004).applyMatrix4(arm.wrist.matrixWorld);
-          const yaw = 0.42 - u * 0.24;
-          const dist = 0.6 - 0.07 * smooth(u);
-          cam.position.set(target.x + Math.sin(yaw) * dist * 0.72, target.y + dist * 0.66, target.z + Math.cos(yaw) * dist * 0.72);
-          cam.lookAt(target.x - 0.01, target.y - 0.012, target.z);
-          cam.updateMatrixWorld();
-          f.three = { scene, camera: cam };
-          // finger test tags
-          const names = ['DIG.T', 'DIG.1', 'DIG.2', 'DIG.3', 'DIG.4'];
-          [1, 2, 3, 4, 0].forEach((fi, n) => {
-            const at = 0.7 + n * 0.32;
-            if (t < at) return;
-            arm.tips[fi].getWorldPosition(v);
-            const p = px(f, cam, v);
-            const ok = t > at + 0.4;
-            const lx = p.x + 60 + n * 8;
-            const ly = p.y - 70 - n * 18;
-            line(fg, p.x, p.y, lx, ly, ok ? C.white : '#ffe600', 1);
-            rect(fg, p.x - 3, p.y - 3, 6, 6, C.white);
-            rect(fg, lx, ly - 13, 70, 17, ok ? C.white : '#ffe600');
-            text(fg, `${names[fi]} ${ok ? 'OK' : '..'}`, lx + 4, ly, { size: 12, family: F.mono, weight: 700, color: '#000' });
-          });
-          // badge
-          const dark = floor.sweep.value > 0.0;
-          monogram(fg, 150, 780, 110, C.white);
-          for (let j = 0; j < 4; j++) for (let i = 0; i < 3; i++) rect(fg, 96 + i * 14, 790 + j * 14, 7, 7, C.white);
-          vlabel(fg, 'QR  EXC  FF', 330, 780, 15, C.white, { family: F.mono, weight: 700 });
-          vlabel(fg, 'SHELL 07 · 2445566', 352, 780, 13, C.white, { family: F.mono, weight: 400 });
-          text(fg, 'EVALUATING', 96, 940, { size: 34, weight: 800, color: C.white, stretch: 'semi-expanded', tracking: 2 });
-          const pct = Math.floor(smooth(span(t, 0.4, 4.0)) * 100);
-          text(fg, `SHELL INTEGRITY ${String(pct).padStart(3, '0')}%`, 96, 972, { size: 15, family: F.mono, weight: 700, color: dark ? C.white : '#111' });
-          cutGlitch(f, t, 0.1, ['#000', C.yellow, C.blue], 6);
-          f.post.lift = 0.45;
-          f.post.mottle = 0.6;
-        },
-      };
-    },
-  },
   /* ---------------------------------------------------------------- */
   {
-    id: 'S04',
-    t0: 15.8,
-    t1: 20.0,
+    id: 'S03',
+    t0: ST.S03[0],
+    t1: ST.S03[1],
     title: 'Vital signs',
     note: 'An anatomical plate in smooth 2D line work: nerve bundles of many strands in several colours (fanning into fingers and toes), muscles filled with fibre lines, hatched organs, the brain and the optic pathway. Signals run out along the nerves, muscle groups light in sequence, a scan band travels down, a heart trace runs beside it.',
     build: async () => {
@@ -191,9 +80,9 @@ export const s2: ShotDef[] = [
   },
   /* ---------------------------------------------------------------- */
   {
-    id: 'S05',
-    t0: 20.0,
-    t1: 24.6,
+    id: 'S04',
+    t0: ST.S04[0],
+    t1: ST.S04[1],
     title: 'Recognition response',
     note: 'Same plate, lime skin, close: the eyes track a stimulus with a measured lag; the vertical RESPONSE label resolves into an OK plate. Framed by the boot slab pieces — the kit is one system across shots.',
     build: async () => {

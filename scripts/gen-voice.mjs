@@ -47,10 +47,14 @@ for (const [id, text, delivery] of LINES) {
   const raw = tts(id, text, p);
   const I = measureI(raw);
   const G = (-20 - I).toFixed(2);
-  const graph = chain(p.chain).replaceAll('GAIN_IN', G);
   const out = `${OUT}/${id}.wav`;
   const tmp = `${OUT}/${id}.tmp.wav`;
-  execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', raw, '-filter_complex', graph, '-ar', '48000', '-ac', '1', '-c:a', 'pcm_s24le', tmp]);
+  const run = (makeup) => execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', raw, '-filter_complex', chain(p.chain).replaceAll('GAIN_IN', G).replaceAll('MAKEUP', makeup.toFixed(2)), '-ar', '48000', '-ac', '1', '-c:a', 'pcm_s24le', tmp]);
+  // two passes for chains with a MAKEUP slot: land every line at the same loudness (-17 LUFS)
+  if (chain(p.chain).includes('MAKEUP')) {
+    run(0);
+    run(Math.max(-6, Math.min(18, -17 - measureI(tmp))));
+  } else run(0);
   // second, stricter tail trim: comb/echo tails can sit between -55 and -46 dB for up to a second
   execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', tmp, '-af', 'areverse,silenceremove=start_periods=1:start_threshold=-46dB:start_silence=0.05:detection=peak,afade=t=in:d=0.03,areverse', '-c:a', 'pcm_s24le', out]);
   fs.unlinkSync(tmp);

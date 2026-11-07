@@ -13,14 +13,15 @@ import { brainGeometry } from '../models/anatomy';
 import { segmentsToLines, skinnedPositions, sliceAxis } from '../models/slices';
 import { contourMaterial } from '../../three/materials';
 import { ANCHORS } from './cues';
+import { ST } from './times';
 import { canvasPlane, cutGlitch, easeInOutCubic, persp, pixelCluster, px, smooth, span } from './kit';
 
 
 export const s6: ShotDef[] = [
   {
-    id: 'S13',
-    t0: ANCHORS.print,
-    t1: 73.0,
+    id: 'S12',
+    t0: ST.S12[0],
+    t1: ST.S12[1],
     title: 'A new shell is printed',
     note: 'No machine, just the work. The body lies on its back, long axis up the frame, arms resting at its sides, divided into eight segments by cross-section frames. Every segment prints at once — layer lines behind a moving front with its real cross-section contour — and every frame is wired back to the psyche: the brain on its grid at left, feeding all fronts through one bus.',
     build: async () => {
@@ -208,9 +209,9 @@ export const s6: ShotDef[] = [
   },
   /* ---------------------------------------------------------------- */
   {
-    id: 'S14',
-    t0: 73.0,
-    t1: ANCHORS.swell,
+    id: 'S13',
+    t0: ST.S13[0],
+    t1: ST.S13[1],
     title: 'Please stand by',
     note: 'Hold frame. A full cobalt field — no black at all — the new shell idling in white contour lines; the lockup alternates PLEASE / STAND BY. The score drops out; the picture waits with you.',
     build: async () => {

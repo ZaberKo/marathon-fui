@@ -14,6 +14,7 @@ import { brainGeometry } from '../models/anatomy';
 import { Hard, deck, toonLit } from '../models/hard';
 import { WireCubes, burst, voxelPositions, voxelize, type VoxelSet } from '../models/voxels';
 import { ANCHORS } from './cues';
+import { ST } from './times';
 import { cutGlitch, easeInOutCubic, persp, px, smooth, span, vlabel } from './kit';
 
 const HIT = ANCHORS.impact; // 50.05
@@ -136,9 +137,9 @@ function psycheDraw(f: Frame, set: DeathSet, cam: THREE.Camera, centre: THREE.Ve
 
 export const s5: ShotDef[] = [
   {
-    id: 'S11',
-    t0: ANCHORS.hush,
-    t1: 55.2,
+    id: 'S10',
+    t0: ST.S10[0],
+    t1: ST.S10[1],
     title: 'Terminated in the field',
     note: 'The previous shell is a uniform cloud of green wireframe voxels walking the ruins. A reticle closes; on the impact it is hit — red spreads from the wound, it falls backwards, and the voxels burst and scatter across the deck.',
     build: async () => {
@@ -150,7 +151,7 @@ export const s5: ShotDef[] = [
           const { fg, T, t } = f;
           stage(set, T);
           const shake = T > HIT && T < HIT + 0.35 ? (hash(Math.floor(T * 60)) - 0.5) * 0.08 * (1 - (T - HIT) / 0.35) : 0;
-          const u = easeInOutCubic(span(T, ANCHORS.hush, 55.2));
+          const u = easeInOutCubic(span(T, ANCHORS.hush, ANCHORS.impact + 0.5));
           cam.position.set(2.4 - u * 1.1 + shake, 1.2 - u * 0.2, 3.9 - u * 1.2);
           cam.lookAt(-0.2, 0.6 - u * 0.3, -1.4);
           cam.updateMatrixWorld();
@@ -206,9 +207,9 @@ export const s5: ShotDef[] = [
     },
   },
   {
-    id: 'S12',
-    t0: 55.2,
-    t1: ANCHORS.print,
+    id: 'S11',
+    t0: ST.S11[0],
+    t1: ST.S11[1],
     title: 'Psyche ejected',
     note: 'Above the red voxel debris the psyche hangs as a slow cloud of points, caught in a containment bracket — the only part of the runner that survived.',
     build: async () => {

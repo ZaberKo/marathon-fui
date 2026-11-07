@@ -14,8 +14,8 @@ Land outlines for the orbital scene come from `world-atlas` (Natural Earth, publ
 
 Generated for this project by `scripts/` (see README):
 
-- Score: Google **Lyria 3.5** (`lyria-3.5`), from a timed text brief.
-- Narrator: Microsoft **edge-tts** neural voice en-US-AriaNeural. It is processed into a mechanical support-AI sound
-  with the ffmpeg chains in `scripts/voice-chains/` (frequency shift, comb, compression; alarms add a phase-vocoder
-  robot layer and an octave double).
+- Score: Google **Lyria 3.5** (`lyria-3.5`), an acid-techno take from a timed text brief, re-cut on bar lines.
+- Narrator: Microsoft **edge-tts** neural voice en-US-AriaNeural (+25 Hz). It is processed with the ffmpeg chains in
+  `scripts/voice-chains/` (D: EQ, de-ess, light bit reduction, compression, sparse reflection; E adds a faint
+  phase-vocoder robot layer for alarms).
 - SFX: synthesised with ffmpeg generators (no samples).
