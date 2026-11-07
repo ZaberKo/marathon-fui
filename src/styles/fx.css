@@ -132,8 +132,8 @@
   border-color: var(--c-lime);
 }
 .hud-mem i.half {
-  background: repeating-linear-gradient(0deg, var(--c-cyan) 0 1px, transparent 1px 3px);
-  border-color: var(--c-cyan);
+  background: var(--c-cobalt);
+  border-color: var(--c-cobalt);
 }
 .hud-mem i.hot {
   background: var(--c-bone);
@@ -266,7 +266,7 @@
 }
 .hud-tracker.is-locked .tk-box {
   border: 2px solid var(--accent);
-  background: repeating-linear-gradient(-45deg, transparent 0 4px, var(--accent-lo) 4px 6px);
+  background: var(--accent-lo);
 }
 .hud-tracker.is-locked .tk-st {
   color: var(--accent-ink);
@@ -354,6 +354,12 @@
 .gl-word__tag--b {
   top: auto;
   bottom: 12%;
+}
+.gl-word.is-ink .gl-word__big {
+  color: var(--c-void);
+}
+.gl-word.is-ink .gl-word__tag {
+  color: var(--c-bone);
 }
 
 /* --- floating perf HUD ------------------------------------------------ */
@@ -618,3 +624,69 @@
 .k-textwall .k-marquee__track > * {
   padding-right: 0;
 }
+
+/* SUBJECT IS A / RUNNER lockup over a 3D view */
+.gl-subject {
+  position: absolute;
+  left: 7%;
+  top: 58%;
+  z-index: 2;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  pointer-events: none;
+  font-family: var(--f-display);
+  text-transform: uppercase;
+}
+.gl-subject__pre {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-weight: 700;
+  font-size: clamp(9px, 1.4vh, 13px);
+  line-height: 1;
+  padding: 3px 1px;
+  word-spacing: 0.35em;
+  background: #33d82c;
+  color: #fff;
+}
+.gl-subject__word {
+  font-weight: 800;
+  font-size: clamp(30px, 7vh, 64px);
+  line-height: 0.86;
+  padding: 2px 10px 0 4px;
+  background: #33d82c;
+  color: #fff;
+}
+
+/* --- DOT SCREEN: black registration dots over a flat --------------------
+   The reference's texture on flood colour: a regular cell grid, a black
+   square at every cell corner, hairline cell edges and faint row lines.
+   Regular, never random. Put it on any flat:  <div class="k-dotscreen">.
+   --ds sets the cell size; .k-dotscreen--fine is a plain black halftone. */
+.k-dotscreen {
+  --ds: 32px;
+  position: relative;
+  isolation: isolate;
+}
+.k-dotscreen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h24v1H0zM0 0h1v24H0z' fill-opacity='.16'/%3E%3Cpath d='M0 8h24v1H0zM0 16h24v1H0z' fill-opacity='.07'/%3E%3Cpath d='M0 0h3v3H0z'/%3E%3C/svg%3E");
+  background-size: var(--ds) var(--ds);
+  background-position: calc(var(--ds) / -12) calc(var(--ds) / -12);
+  image-rendering: pixelated;
+}
+.k-dotscreen > * {
+  position: relative;
+  z-index: 1;
+}
+.k-dotscreen--fine::after {
+  --ds: 4px;
+  background-image: radial-gradient(circle, #000 0 0.9px, transparent 1.1px);
+  background-position: 0 0;
+  opacity: 0.55;
+}
+

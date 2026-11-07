@@ -1,6 +1,7 @@
 import gsap from 'gsap';
 import { pageHead, section, spec } from './_ui';
 import { checker } from '../lib/glyphs';
+import { standbyLockup, mountStandby } from '../lib/standby';
 import { hydrate } from '../lib/hydrate';
 import { markOptsFrom, mountMark } from '../lib/marks';
 import { animateTextWall, textWall } from '../lib/compose';
@@ -9,11 +10,7 @@ import { bag, on, stepLoop, $, $$ } from '../lib/util';
 
 // slides carry live marks (data-mark) that are mounted when the slide is shown
 const SLIDES = [
-  `<div class="mo-slide" style="background:var(--c-cobalt)">
-     <span style="color:#fff" data-mark="checker" data-size="64" data-mode="invert"></span>
-     <div style="display:grid;gap:4px"><span class="t-micro" style="color:#fff">LATCH · PULL · KL2 KL4</span><b class="t-display" style="color:var(--c-acid);font-size:clamp(36px,5vw,72px)">Stand by</b><i class="k-hazard k-hazard--anim" style="--h-a:var(--c-acid);--h-b:var(--c-cobalt);height:10px;--h-w:4px"></i></div>
-     <span style="color:#fff" data-mark="checker" data-size="64" data-mode="invert" data-fps="5"></span>
-   </div>`,
+  `<div class="mo-slide k-dotscreen" style="background:var(--c-cobalt)">${standbyLockup({ size: 22 })}</div>`,
   `<div class="mo-slide" style="background:#000;justify-content:flex-start;padding-left:10%">
      <b class="t-display" style="color:var(--c-acid);font-size:clamp(40px,6vw,90px);writing-mode:vertical-rl;transform:rotate(180deg)">Initiating</b>
      <span data-mark="scanblock" data-size="360"></span>
@@ -22,7 +19,7 @@ const SLIDES = [
      <span style="color:var(--c-acid)" data-mark="blocktext" data-text="OK" data-size="200"></span>
      <span class="t-micro c-acid" style="align-self:flex-end">NEURAL SUBROUTINE<br>07/07 MOUNTED</span>
    </div>`,
-  `<div class="mo-slide" style="background:var(--c-crimson);flex-direction:column;gap:0">
+  `<div class="mo-slide k-dotscreen" style="background:var(--c-crimson);flex-direction:column;gap:0">
      <b class="t-display" style="color:var(--c-cobalt);font-size:clamp(44px,7vw,110px);white-space:nowrap">Error_error_</b>
      <span class="t-micro" style="color:#000">RUNTIME EXCEPTION 0x3F · LIMINAL BUFFER CRITICAL</span>
    </div>`,
@@ -87,7 +84,7 @@ export default function mount(root: HTMLElement) {
 
     ${section('Marquee', '.k-marquee')}
     <div class="mo-marquees">
-      <div class="k-band"><div class="k-marquee" style="--dur:14s"><div class="k-marquee__track">${'<span>LINK ESTABLISHED ▚ TRANSFER WINDOW OPEN ▚ </span>'.repeat(6)}</div></div></div>
+      <div class="k-band k-dotscreen" style="--ds:16px"><div class="k-marquee" style="--dur:14s"><div class="k-marquee__track">${'<span>LINK ESTABLISHED ▚ TRANSFER WINDOW OPEN ▚ </span>'.repeat(6)}</div></div></div>
       <div class="k-band" data-state="caution" style="height:28px;font-size:13px"><div class="k-marquee k-marquee--rev" style="--dur:10s"><div class="k-marquee__track">${'<span>⚠ THERMAL DELTA +0.4K — MONITOR ⚠ CAUTION ⚠ </span>'.repeat(8)}</div></div></div>
       <div class="mo-marq-outline"><div class="k-marquee" style="--dur:30s;--marq-steps:120"><div class="k-marquee__track">${'<span class="t-display t-wide t-outline">Neural transfer ▚ </span>'.repeat(4)}</div></div></div>
       <div class="t-micro" style="border-top:1px solid var(--c-line);border-bottom:1px solid var(--c-line);padding:6px 0"><div class="k-marquee" style="--dur:40s"><div class="k-marquee__track">${'<span>0x3F00 SDR37 2445556 · QR EXC FF · RW KL2 KL4 · 35 K 35 UV · TU XEI 0407 · PK 576 928 · ASSERT · LIMINAL · </span>'.repeat(4)}</div></div></div>
@@ -111,7 +108,10 @@ export default function mount(root: HTMLElement) {
     idx = (idx + 1) % SLIDES.length;
     slideStops.forEach((f) => f());
     stageEl.innerHTML = SLIDES[idx];
-    slideStops = $$('[data-mark]', stageEl).map((el) => mountMark(el, el.dataset.mark!, markOptsFrom(el)));
+    slideStops = [
+      ...$$('[data-mark]', stageEl).map((el) => mountMark(el, el.dataset.mark!, markOptsFrom(el))),
+      ...$$('.k-standby', stageEl).map((el) => mountStandby(el)),
+    ];
     idxEl.textContent = `FRAME ${String(idx + 1).padStart(2, '0')}/${String(SLIDES.length).padStart(2, '0')}`;
   };
   const run = async (fx: string) => {

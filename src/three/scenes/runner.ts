@@ -1,111 +1,150 @@
 /**
  * CONTOUR RUNNER — armoured figure described only by 1px world-Y contour
- * lines on a black occluding body, silhouette rim, sweeping scan band.
- * Surface-attached vector marks (triangles / squares / crosses) ride on
- * skinned vertices; leader lines run out to DOM labels.
+ * lines on a black occluding body (every fifth an index contour), a
+ * silhouette rim and a sweeping scan band. Machine vision rides on top:
+ * a tracked pose skeleton (joints + bones from the rig), leader lines to
+ * DOM labels, and a bundle of link threads from above converging on the
+ * crown with stepped pulses — the consciousness link. A floor dial with a
+ * precision scale turns with the stride.
  */
 import * as THREE from 'three/webgpu';
-import { createStage, cornerBox, floorGrid, makeTag, ringLine } from '../core';
+import { createStage, cornerBox, makeTag, ringLine } from '../core';
 import { contourMaterial } from '../materials';
-import { LineBatch } from '../overlay';
-import { extremeVert, fitHeight, loadModel, meshesOf, sampleVerts, vertexWorld } from '../assets';
+import { FillBatch, LineBatch } from '../overlay';
+import { fitHeight } from '../assets';
 import { PAL, type SceneHandle } from './common';
-import { rng } from '../../lib/util';
+import { makeBody } from '../../cine/models/body';
+
+const BONES: [string, string][] = [
+  ['Head', 'Neck'], ['Neck', 'Spine2'], ['Spine2', 'Spine'], ['Spine', 'Hips'],
+  ['Neck', 'LeftArm'], ['LeftArm', 'LeftForeArm'], ['LeftForeArm', 'LeftHand'],
+  ['Neck', 'RightArm'], ['RightArm', 'RightForeArm'], ['RightForeArm', 'RightHand'],
+  ['Hips', 'LeftUpLeg'], ['LeftUpLeg', 'LeftLeg'], ['LeftLeg', 'LeftFoot'],
+  ['Hips', 'RightUpLeg'], ['RightUpLeg', 'RightLeg'], ['RightLeg', 'RightFoot'],
+];
+const JOINTS = [...new Set(BONES.flat())];
 
 export async function mountRunner(host: HTMLElement, { fps = 12, pixel = 1, labels = true } = {}): Promise<SceneHandle> {
   const camera = new THREE.PerspectiveCamera(26, 1, 0.1, 100);
   const stage = await createStage(host, { label: 'RUNNER', fps, pixel, camera });
   const { scene } = stage;
 
-  const { root, clips } = await loadModel('soldier');
-  fitHeight(root, 1.8);
-  scene.add(root);
-  const C = contourMaterial({ line: 0xc9d2ff, body: 0x01020a, freq: 24, width: 0.6, rim: PAL.cobalt, rimWidth: 0.3, scan: PAL.acid, scanWidth: 0.012 });
-  const meshes = meshesOf(root);
-  meshes.forEach((m) => {
-    m.material = C.mat;
-    m.frustumCulled = false;
+  // contours: fine lines + index contours (5×) in cobalt-hi, rim, scan band
+  const C = contourMaterial({
+    line: 0x5a66b8, body: 0x01020a, freq: 30, width: 0.6,
+    line2: 0xececec, axis2: 'y', freq2: 6, width2: 0.9,
+    rim: PAL.cobalt, rimWidth: 0.3, scan: PAL.acid, scanWidth: 0.012,
   });
-  const body = meshes.reduce((a, b) => (b.geometry.getAttribute('position').count > a.geometry.getAttribute('position').count ? b : a));
+  const body = await makeBody('armor', C.mat);
+  fitHeight(body.root, 1.8);
+  scene.add(body.root);
+  const clip = body.clips.find((c) => c.name === 'run') ?? body.clips[0];
+  body.mixer.clipAction(clip).play();
 
-  const mixer = new THREE.AnimationMixer(root);
-  const clip = clips.find((c) => /run/i.test(c.name)) ?? clips[0];
-  mixer.clipAction(clip).play();
-
-  // drafting environment
-  scene.add(floorGrid(10, 40, PAL.cobaltDeep));
-  const rings = new THREE.Group();
-  [0.45, 0.7, 1.05].forEach((r, i) => rings.add(ringLine(r, i === 1 ? PAL.acid : PAL.cobaltLo, 96, 0.002)));
-  scene.add(rings);
+  // drafting environment: sparse grid, floor dial, corner box
+  const grid = new THREE.GridHelper(10, 20, 0x0a0c3a, 0x0a0c3a);
+  scene.add(grid);
+  const dial = new THREE.Group();
+  dial.add(ringLine(1.05, PAL.cobaltLo, 128, 0.002), ringLine(0.7, PAL.acid, 128, 0.002), ringLine(0.45, PAL.cobaltLo, 96, 0.002));
+  {
+    // precision scale: 120 ticks, every 10th long
+    const p: number[] = [];
+    for (let i = 0; i < 120; i++) {
+      const a = (i / 120) * Math.PI * 2;
+      const r0 = 1.05;
+      const r1 = i % 10 === 0 ? 1.16 : 1.1;
+      p.push(Math.cos(a) * r0, 0.002, Math.sin(a) * r0, Math.cos(a) * r1, 0.002, Math.sin(a) * r1);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3));
+    dial.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0x5257ff })));
+  }
+  scene.add(dial);
   const box = cornerBox(new THREE.Vector3(1.1, 1.95, 1.1), PAL.bone, 0.09);
   box.position.y = 0.975;
   scene.add(box);
 
   // overlay
   const marks = new LineBatch(8000, { depthTest: false });
-  scene.add(marks.object);
-  const r = rng(7);
-  mixer.update(0);
-  root.updateMatrixWorld(true);
-  let pts = sampleVerts(body, 46, r);
-  const kinds = pts.map(() => r());
-  const leaders = [
-    { i: extremeVert(body, r, (p) => p.y), label: 'OPTIC.ARRAY', code: 'L/R' },
-    { i: extremeVert(body, r, (p) => -Math.abs(p.y - 1.25) * 4 + p.z), label: 'SHELL.INTEGRITY', code: '097%' },
-    { i: extremeVert(body, r, (p) => -Math.abs(p.y - 0.5) * 4 + p.z), label: 'MOTOR.CORTEX', code: 'SYNC' },
-  ];
-  const tags = labels
-    ? leaders.map((l) => makeTag(host, `<b>${l.label}</b><span>${l.code}</span>`))
-    : [];
+  const fills = new FillBatch(2000, { depthTest: false });
+  scene.add(marks.object, fills.object);
 
+  const leaders = [
+    { j: 'Head', dy: 0.16, label: 'OPTIC.ARRAY', code: 'L/R' },
+    { j: 'Spine2', dy: 0.1, label: 'SHELL.INTEGRITY', code: '097%' },
+    { j: 'LeftLeg', dy: 0.12, label: 'MOTOR.CORTEX', code: 'SYNC' },
+  ];
+  const tags = labels ? leaders.map((l) => makeTag(host, `<b>${l.label}</b><span>${l.code}</span>`)) : [];
+
+  // link threads: fixed anchor points high above, converging on the crown
+  const threads = Array.from({ length: 7 }, (_, i) => ({ x: -0.9 + i * 0.3, z: (i % 2 ? -0.25 : 0.2), ph: i * 5 }));
+
+  const J = new Map<string, THREE.Vector3>(JOINTS.map((n) => [n, new THREE.Vector3()]));
   const v = new THREE.Vector3();
-  const cam = new THREE.Vector3();
-  const out = new THREE.Vector3();
+  const w = new THREE.Vector3();
   const right = new THREE.Vector3();
   let speed = 1;
   let orbit = true;
 
-  stage.start((t, frame, dt) => {
-    mixer.update(dt * speed);
-    root.updateMatrixWorld(true);
+  stage.start((t0, frame, dt) => {
+    const t = Math.max(0, t0);
+    body.mixer.update(dt * speed);
+    body.root.updateMatrixWorld(true);
 
     // camera orbits in visible jumps
     const a = orbit ? Math.floor(t * 1.5) * 0.12 + 1.2 : 1.2;
     camera.position.set(Math.sin(a) * 5.6, 1.45, Math.cos(a) * 5.6);
-    camera.lookAt(0, 0.92, 0);
+    camera.lookAt(0, 0.98, 0);
     camera.updateMatrixWorld();
-    cam.copy(camera.position);
     right.setFromMatrixColumn(camera.matrixWorld, 0);
 
-    // scan sweep + periodic glitch offset
     C.u.scanY.value = ((frame * 0.035) % 1) * 2.1 - 0.1;
     C.u.offset.value = frame % 37 === 0 ? 0.5 : 0;
+    dial.rotation.y = -Math.floor(t * 4) * ((Math.PI * 2) / 120) * 2;
 
-    if (frame % 40 === 0) {
-      pts = sampleVerts(body, 46, r);
-      kinds.forEach((_, i) => (kinds[i] = r()));
-    }
+    JOINTS.forEach((n) => body.joint(n, J.get(n)!));
+    // the Head bone sits at the skull base: move the tracked point to the face centre
+    const hd = J.get('Head')!;
+    hd.addScaledVector(w.subVectors(hd, J.get('Neck')!).normalize(), 0.09);
 
     marks.begin(camera, stage.size.h);
-    pts.forEach((i, k) => {
-      vertexWorld(body, i, v);
-      out.set(v.x, 0, v.z).normalize();
-      const toCam = cam.clone().sub(v).setY(0).normalize();
-      if (out.dot(toCam) < 0.15) return; // only marks on the visible side
-      const kd = kinds[k];
-      if (kd < 0.5) marks.color(PAL.acid).tri(v, 9 + (k % 3) * 3, k % 2 === 0);
-      else if (kd < 0.7) marks.color(PAL.bone).square(v, 5);
-      else if (kd < 0.85) marks.color(PAL.cyan).cross(v, 8);
-      else marks.color(PAL.hazard).diamond(v, 8);
+    fills.begin(camera, stage.size.h);
+    // pose skeleton: bones as hairlines, joints as squares, head as a ring
+    marks.color(PAL.hazard, 0.85);
+    BONES.forEach(([a2, b2]) => marks.line(J.get(a2)!, J.get(b2)!));
+    JOINTS.forEach((n, i) => {
+      const p = J.get(n)!;
+      if (n === 'Head') marks.color(PAL.hazard).circle(p, 11, 18);
+      else if (/Hand|Foot/.test(n)) fills.color(PAL.hazard).square(p, 5);
+      else marks.color(i % 4 === 0 ? PAL.bone : PAL.hazard).square(p, 6);
     });
+
+    // link threads from above into the crown, with a pulse stepping down each
+    const crown = v.copy(hd).setY(hd.y + 0.12);
+    threads.forEach((th, i) => {
+      w.set(th.x, 3.4, th.z);
+      const mid = new THREE.Vector3((w.x + crown.x) / 2, 2.4, (w.z + crown.z) / 2 * 0.5);
+      marks.color(PAL.acid, 0.55).bezier(w, mid, crown, 18);
+      const k = ((frame + th.ph) % 16) / 16;
+      const it = 1 - k;
+      const pp = new THREE.Vector3()
+        .addScaledVector(w, it * it)
+        .addScaledVector(mid, 2 * it * k)
+        .addScaledVector(crown, k * k);
+      fills.color(i === 3 ? PAL.bone : PAL.acid).square(pp, 4);
+    });
+    fills.color(PAL.acid).square(crown, 6);
+
+    // leaders to labels
     leaders.forEach((l, k) => {
-      vertexWorld(body, l.i, v);
-      const elbow = v.clone().addScaledVector(right, 0.35 + k * 0.08).add(new THREE.Vector3(0, 0.12, 0));
-      const end = elbow.clone().addScaledVector(right, 0.45);
-      marks.color(PAL.hazard).circle(v, 7).line(v, elbow).line(elbow, end);
+      const p = J.get(l.j)!;
+      const elbow = p.clone().addScaledVector(right, 0.38 + k * 0.08).add(new THREE.Vector3(0, l.dy, 0));
+      const end = elbow.clone().addScaledVector(right, 0.42);
+      marks.color(PAL.bone).circle(p, 7).line(p, elbow).line(elbow, end);
       tags[k]?.at(stage, end, 4, -14);
     });
     marks.end();
+    fills.end();
   });
 
   return {
@@ -118,7 +157,7 @@ export async function mountRunner(host: HTMLElement, { fps = 12, pixel = 1, labe
     },
     dispose() {
       tags.forEach((t) => t.remove());
-      mixer.stopAllAction();
+      body.mixer.stopAllAction();
       stage.dispose();
     },
   };

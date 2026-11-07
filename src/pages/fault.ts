@@ -98,7 +98,7 @@ export default function mount(root: HTMLElement) {
   </div>`;
 
   b.add(hydrate(root));
-  b.add(mountDefragRing($('#flt-ring', root), { rings: 3, segs: 30 }));
+  b.add(mountDefragRing($('#flt-ring', root), { rings: 3, inner: 0.36, seed: 12 }));
   b.add(mountTerminal($('#flt-log', root), { max: 9 }));
   b.add(animateTextWall($('.flt-wall .k-textwall', root), ['WARNING_', 'RUNTIME_', 'FAULT_'], 1800));
 

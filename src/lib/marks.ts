@@ -7,6 +7,7 @@
  * Every mark: stepped frames only, currentColor + --accent, crispEdges,
  * pauses off-screen, returns a cleanup.
  */
+import { mountDefragRing } from './defrag';
 import { pixelSigil, blockText } from './glyphs';
 import { pad, rng, stepLoop } from './util';
 
@@ -224,38 +225,28 @@ const link: MarkFn = (el, o) => {
 
 /* ------------------------------------------------------------------ */
 const segring: MarkFn = (el, o) => {
-  const rings = Number(o.rings ?? 3);
-  const segs = Number(o.segs ?? 24);
-  const s = svgRoot(el, 100, 100, Number(o.size ?? 120), false);
-  const r = rng(Number(o.seed ?? 5));
-  const groups: { g: SVGElement; paths: SVGElement[]; dir: number }[] = [];
-  for (let k = 0; k < rings; k++) {
-    const g = S('g', {}, s);
-    const r0 = 22 + k * 9;
-    const r1 = r0 + 6;
-    const paths: SVGElement[] = [];
-    for (let i = 0; i < segs; i++) {
-      const a0 = (i / segs) * Math.PI * 2;
-      const a1 = ((i + 0.78) / segs) * Math.PI * 2;
-      const pt = (rad: number, a: number) => `${(50 + Math.cos(a) * rad).toFixed(2)} ${(50 + Math.sin(a) * rad).toFixed(2)}`;
-      paths.push(S('path', { d: `M${pt(r0, a0)}L${pt(r1, a0)}A${r1} ${r1} 0 0 1 ${pt(r1, a1)}L${pt(r0, a1)}A${r0} ${r0} 0 0 0 ${pt(r0, a0)}Z`, fill: 'currentColor' }, g));
-    }
-    groups.push({ g, paths, dir: k % 2 ? -1 : 1 });
-  }
-  const head = S('line', { x1: 50, y1: 50, x2: 50, y2: 2, stroke: ACC, 'stroke-width': 1 }, s);
-  const state = groups.map((gr) => gr.paths.map(() => Math.floor(r() * 4)));
-  return stepLoop(Number(o.fps ?? 10), (f) => {
-    groups.forEach((gr, k) => {
-      if (f % (k + 2) === 0) gr.g.setAttribute('transform', `rotate(${gr.dir * f * (360 / segs) / (k + 2)} 50 50)`);
-      for (let n = 0; n < 2; n++) state[k][Math.floor(r() * segs)] = Math.floor(r() * 4);
-      gr.paths.forEach((p, i) => {
-        const st = state[k][i];
-        p.setAttribute('opacity', st === 0 ? '0' : st === 1 ? '0.25' : '1');
-        p.setAttribute('fill', st === 3 ? ACC : 'currentColor');
-      });
-    });
-    head.setAttribute('transform', `rotate(${(f * 15) % 360} 50 50)`);
-  }, el);
+  // canvas defrag disc (lib/defrag.ts); colours follow currentColor / --accent
+  const size = Number(o.size ?? 120);
+  el.innerHTML = '';
+  const cv = document.createElement('canvas');
+  cv.style.cssText = `width:${size}px;height:${size}px;display:block`;
+  el.appendChild(cv);
+  const cs = getComputedStyle(el);
+  const accent = cs.getPropertyValue('--accent').trim() || '#7dff1a';
+  const small = size < 110;
+  return mountDefragRing(cv, {
+    rings: Number(o.rings ?? (small ? 2 : 3)),
+    inner: small ? 0.42 : 0.38,
+    cell: small ? 7 : 8,
+    seed: Number(o.seed ?? 5),
+    fps: Number(o.fps ?? 10),
+    scale: !small,
+    on: accent,
+    data: cs.color,
+    dim: '#0c0e3a',
+    hi: '#ececec',
+    line: '#3a3f6b',
+  });
 };
 
 /* ------------------------------------------------------------------ */

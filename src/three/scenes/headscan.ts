@@ -1,149 +1,144 @@
 /**
- * HEAD SCAN — scanned head as a two-family contour grid (orange horizontal,
- * cobalt vertical) on a black occluder. Cranium covered with node circles,
- * diamonds at landmarks, Manhattan "circuit" traces inside, concentric
- * optic rings at the eyes, stepped yaw sweeps.
+ * HEAD SCAN — the visual pathway.
+ * A head at real proportions (SDF, eyes on the mid line) drawn as two
+ * contour families — cobalt horizontal slices, orange meridians — in
+ * additive x-ray so the inside reads through: wire eyeballs, the brain as
+ * local contours, and ~70 optic fibres per eye running eye → chiasm →
+ * LGN → occipital cortex with signals flowing back from the retina.
+ * A stepped scan slice climbs the skull; the camera yaws in hard steps.
  */
 import * as THREE from 'three/webgpu';
 import { createStage, makeTag } from '../core';
 import { contourMaterial } from '../materials';
-import { FillBatch, LineBatch } from '../overlay';
-import { loadModel, meshesOf, sampleVerts } from '../assets';
+import { LineBatch } from '../overlay';
+import { brainGeometry } from '../procedural';
 import { PAL, type SceneHandle, type SceneOpts } from './common';
-import { rng } from '../../lib/util';
-import { HEAD } from '../../cine/models/anatomy';
+import { BRAIN_S, H2, head2Geometry, opticPathway, wireEye } from '../../cine/models/head2';
+import { flowMaterial } from '../../cine/models/flow';
 
 export async function mountHeadscan(host: HTMLElement, { fps = 12, pixel = 1, labels = true }: SceneOpts = {}): Promise<SceneHandle> {
-  const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
+  const camera = new THREE.PerspectiveCamera(28, 1, 0.01, 10);
   const stage = await createStage(host, { label: 'HEADSCAN', fps, pixel, camera });
   const { scene } = stage;
+  const add = { blending: THREE.AdditiveBlending, transparent: true, depthWrite: false };
 
-  const { root } = await loadModel('head');
-  const mesh = meshesOf(root)[0];
-  // normalise: centre + unit-ish height, work in the mesh's local space
-  mesh.geometry = mesh.geometry.clone();
-  mesh.geometry.computeBoundingBox();
-  const bb0 = mesh.geometry.boundingBox!;
-  const c0 = bb0.getCenter(new THREE.Vector3());
-  const s0 = 2 / (bb0.max.y - bb0.min.y);
-  mesh.geometry.translate(-c0.x, -c0.y, -c0.z);
-  mesh.geometry.scale(s0, s0, s0);
-  mesh.geometry.computeBoundingBox();
-  mesh.geometry.computeVertexNormals();
-  const bb = mesh.geometry.boundingBox!;
   const head = new THREE.Group();
-  mesh.position.set(0, 0, 0);
-  mesh.rotation.set(0, 0, 0);
-  mesh.scale.set(1, 1, 1);
-  head.add(mesh);
   scene.add(head);
 
-  const C = contourMaterial({
-    space: 'local',
-    line: PAL.orange, freq: 13, width: 0.6, axis: 'y',
-    line2: 0x3344ff, freq2: 11, width2: 0.6, axis2: 'x',
-    body: 0x00000a, rim: 0x5257ff, rimWidth: 0.2,
+  // skin: horizontal slices + meridians, additive so the pathway shows through
+  const skin = contourMaterial({
+    space: 'local', axis: 'y', line: 0x1e2cb0, freq: 150, width: 0.8,
+    line2: 0x9a4410, axis2: 'theta', freq2: 22, width2: 0.7,
+    body: 0x000000, rim: 0x3a3ad0, rimWidth: 0.12, scan: PAL.acid, scanWidth: 0.0016,
   });
-  mesh.material = C.mat;
+  Object.assign(skin.mat, add, { side: THREE.FrontSide });
+  head.add(new THREE.Mesh(head2Geometry(), skin.mat));
 
-  const r = rng(95);
-  const pos = mesh.geometry.getAttribute('position');
-  const nrm = mesh.geometry.getAttribute('normal');
-  const topY = bb.max.y;
-  const nodes = sampleVerts(mesh, 80, r, (p) => p.y > topY - 0.32 && p.z > -0.05);
-  const diamonds = sampleVerts(mesh, 14, r, (p) => p.z > 0.1 && p.y > topY - 0.95);
+  // brain: local contours, dim
+  const bm = contourMaterial({ space: 'local', axis: 'y', line: 0x5257ff, freq: 30, width: 0.9, body: 0x000000, rim: 0x3a40d0, rimWidth: 0.3 });
+  Object.assign(bm.mat, add, { side: THREE.FrontSide });
+  bm.u.lineMix.value = 0.45;
+  const brain = new THREE.Mesh(brainGeometry(40, 3), bm.mat);
+  brain.position.copy(H2.brain);
+  brain.scale.copy(BRAIN_S);
+  head.add(brain);
 
-  // eyes: measured from the mesh at eye height (bbox includes shoulders)
-  const eyeY = (HEAD.eyeY - c0.y) * s0;
-  const eyeX = HEAD.eyeX * s0;
-  const front = (HEAD.eyeZ - c0.z) * s0;
-  const eyes = [new THREE.Vector3(-eyeX, eyeY, front - 0.03), new THREE.Vector3(eyeX, eyeY, front - 0.03)];
-  void pos;
+  // the visual pathway with signals flowing from the retina back to the cortex
+  const flow = flowMaterial({ base: 0.38, speed: 0.9, freq: 5 });
+  head.add(new THREE.LineSegments(opticPathway(13, 70), flow.mat));
+  const eyes = [-1, 1].map((sx) => {
+    const e = wireEye(0xc8d0ff, PAL.acid);
+    e.position.set(sx * H2.eyeX, H2.eyeY, H2.eyeZ - 0.003);
+    head.add(e);
+    return e;
+  });
 
-  // internal Manhattan traces (head-local)
-  const traces: THREE.Vector3[][] = [];
-  for (let k = 0; k < 18; k++) {
-    let x = (r() - 0.5) * 0.5;
-    let y = topY - 0.12;
-    const z = (r() - 0.3) * 0.5;
-    const path = [new THREE.Vector3(x, y, z)];
-    const steps = 2 + Math.floor(r() * 3);
-    for (let s = 0; s < steps; s++) {
-      y -= 0.05 + r() * 0.12;
-      path.push(new THREE.Vector3(x, y, z));
-      x = Math.max(-0.3, Math.min(0.3, x + (r() - 0.5) * 0.2));
-      path.push(new THREE.Vector3(x, y, z));
-    }
-    traces.push(path);
-  }
+  // landmarks along the pathway (head space)
+  const P = {
+    eyeL: new THREE.Vector3(-H2.eyeX, H2.eyeY, H2.eyeZ),
+    eyeR: new THREE.Vector3(H2.eyeX, H2.eyeY, H2.eyeZ),
+    chiasm: new THREE.Vector3(0, 0.004, 0.026),
+    lgnL: new THREE.Vector3(-0.027, 0.004, -0.024),
+    lgnR: new THREE.Vector3(0.027, 0.004, -0.024),
+    v1: new THREE.Vector3(0, 0.025, -0.084),
+  };
+  const callouts = [
+    { p: P.eyeR, label: 'OPTIC.R', code: 'RETINA 1.2M', dx: 0.07, dy: 0.05 },
+    { p: P.chiasm, label: 'CHIASM', code: 'X-OVER 53%', dx: 0.085, dy: -0.06 },
+    { p: P.lgnL, label: 'LGN.L', code: 'RELAY', dx: -0.1, dy: -0.07 },
+    { p: P.v1, label: 'V1', code: 'OCCIPITAL', dx: -0.09, dy: 0.08 },
+  ];
+  const tags = labels ? callouts.map((c) => makeTag(host, `<b>${c.label}</b><span>${c.code}</span>`)) : [];
 
-  const lines = new LineBatch(14000, { depthTest: false });
-  const fills = new FillBatch(2000, { depthTest: false });
-  scene.add(lines.object, fills.object);
+  const hud = new LineBatch(6000, { depthTest: false });
+  scene.add(hud.object);
 
-  const tagL = labels ? makeTag(host, '<b>OPTIC L</b><span>03</span>') : null;
-  const tagR = labels ? makeTag(host, '<b>OPTIC R</b><span>03</span>') : null;
+  // camera stations (yaw, pitch) — the head turns in hard cuts between them
+  const stations = [
+    [0.62, 0.12],
+    [1.25, 0.05],
+    [2.35, 0.22],
+    [-0.55, 0.1],
+    [0.0, 0.32],
+  ];
+  const look = new THREE.Vector3(0, -0.01, 0);
   const v = new THREE.Vector3();
-  const n = new THREE.Vector3();
-  const toCam = new THREE.Vector3();
-  const nm = new THREE.Matrix3();
-  const center = new THREE.Vector3(0, bb.max.y - 0.62, 0);
+  const w = new THREE.Vector3();
+  const right = new THREE.Vector3();
+  const up = new THREE.Vector3();
+  let sweep = true;
 
-  stage.start((t, frame) => {
-    // stepped yaw: hold, jump, hold
-    const seq = [0, 0, -0.5, -0.5, -0.85, 0, 0.45, 0.45];
-    head.rotation.y = seq[Math.floor(t / 1.2) % seq.length];
-    camera.position.set(0, center.y + 0.15, 4.1);
-    camera.lookAt(center);
-    scene.updateMatrixWorld(true);
-    nm.getNormalMatrix(mesh.matrixWorld);
+  stage.start((t0, frame) => {
+    const t = Math.max(0, t0); // the first rAF can precede the stage clock
+    flow.time.value = t;
+    // hold each station ~3.5 s, step 3 frames of yaw into the next one (no glide)
+    const hold = 3.5;
+    const si = Math.floor(t / hold) % stations.length;
+    const nx = stations[(si + 1) % stations.length];
+    const cur = stations[si];
+    const local = (t % hold) / hold;
+    const k = local > 0.9 ? Math.floor(((local - 0.9) / 0.1) * 3) / 3 : 0;
+    const yaw = cur[0] + (nx[0] - cur[0]) * k;
+    const pitch = cur[1] + (nx[1] - cur[1]) * k;
+    const R = 0.66;
+    camera.position.set(Math.sin(yaw) * Math.cos(pitch) * R, look.y + Math.sin(pitch) * R, Math.cos(yaw) * Math.cos(pitch) * R);
+    camera.lookAt(look);
+    camera.updateMatrixWorld();
+    right.setFromMatrixColumn(camera.matrixWorld, 0);
+    up.setFromMatrixColumn(camera.matrixWorld, 1);
+    eyes.forEach((e) => (e.rotation.y = ((Math.floor(t * 2) % 5) - 2) * 0.04));
 
-    lines.begin(camera, stage.size.h);
-    fills.begin(camera, stage.size.h);
-    const vis = (i: number) => {
-      mesh.localToWorld(v.fromBufferAttribute(pos, i));
-      n.fromBufferAttribute(nrm, i).applyMatrix3(nm).normalize();
-      toCam.subVectors(camera.position, v).normalize();
-      return n.dot(toCam) > 0.05;
-    };
-    // circuit traces (inside, faint)
-    traces.forEach((path, k) => {
-      const pts = path.map((p) => mesh.localToWorld(p.clone()));
-      lines.color(k % 5 === 0 ? PAL.crimson : PAL.cobalt, k % 5 === 0 ? 0.55 : 0.7).polyline(pts);
+    // scan slice climbs in steps from chin to vertex
+    skin.u.scanY.value = sweep ? -0.13 + ((frame % 60) / 60) * 0.26 : -999;
+
+    hud.begin(camera, stage.size.h);
+    // optic rings at both eyes (stepped)
+    [P.eyeL, P.eyeR].forEach((e, i) => {
+      const n = 3 + ((frame + i * 2) % 4);
+      for (let j = 0; j < n; j++) hud.color(j === n - 1 ? PAL.acid : 0x8aa0ff, j === n - 1 ? 1 : 0.6).circle(e, 10 + j * 7, 28);
     });
-    // cranium nodes
-    nodes.forEach((i, k) => {
-      if (!vis(i)) return;
-      const blink = (frame + k * 7) % 23 === 0;
-      lines.color(blink ? PAL.bone : 0xffd28a).circle(v, k % 4 === 0 ? 9 : 6, 10);
-      if (k % 3 === 0) fills.color(0xffd28a).square(v, 2);
+    hud.color(PAL.hazard).diamond(P.chiasm, 9);
+    hud.color(PAL.bone).square(P.lgnL, 6).square(P.lgnR, 6);
+    hud.color(PAL.orange).brackets(P.v1, 70, 46, 8);
+    // callout leaders: point → elbow → label
+    callouts.forEach((c, i) => {
+      w.copy(c.p).addScaledVector(right, c.dx).addScaledVector(up, c.dy);
+      v.copy(w).addScaledVector(right, Math.sign(c.dx) * 0.035);
+      hud.color(PAL.hazard, 0.9).line(c.p, w).line(w, v);
+      tags[i]?.at(stage, v, c.dx > 0 ? 4 : -4 - (tags[i].el.offsetWidth || 0), -14);
     });
-    diamonds.forEach((i) => {
-      if (!vis(i)) return;
-      lines.color(PAL.hazard).diamond(v, 9);
-    });
-    // optic rings (rotate in steps)
-    eyes.forEach((e, k) => {
-      const w = mesh.localToWorld(e.clone());
-      lines.color(PAL.cobaltHi).circle(w, 34, 24).circle(w, 24, 20);
-      lines.color(PAL.bone).circle(w, 14, 16).circle(w, 7, 12);
-      const a = Math.floor(t * 6) * 0.6 * (k ? -1 : 1);
-      const p1 = w.clone().add(new THREE.Vector3(Math.cos(a), Math.sin(a), 0).multiplyScalar(lines.px(w, 17)));
-      fills.color(PAL.acid).square(p1, 4);
-      (k ? tagR : tagL)?.at(stage, w, k ? 26 : -86, -30);
-    });
-    // chin triangle
-    const chin = mesh.localToWorld(new THREE.Vector3(0, bb.min.y + 0.12, bb.max.z * 0.4));
-    lines.color(PAL.bone).tri(chin, 20, false);
-    lines.end();
-    fills.end();
+    // vertical datum through the skull
+    hud.color(0x3a3f6b).dashed(v.set(0, -0.2, 0), w.set(0, 0.16, 0), 0.006, 0.006);
+    hud.end();
   });
 
   return {
     stage,
+    set(key, val) {
+      if (key === 'sweep') sweep = Boolean(val);
+    },
     dispose() {
-      tagL?.remove();
-      tagR?.remove();
+      tags.forEach((t) => t.remove());
       stage.dispose();
     },
   };

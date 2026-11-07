@@ -81,7 +81,7 @@ export default function mount(root: HTMLElement) {
       </div>
     </div>
 
-    <div class="k-band boot-band"><div class="k-marquee" style="--dur:24s"><div class="k-marquee__track">${'<span>STAND BY ▚ LINK ESTABLISHED ▚ TRANSFER WINDOW OPEN ▚ </span>'.repeat(6)}</div></div></div>
+    <div class="k-band boot-band k-dotscreen" style="--ds:16px"><div class="k-marquee" style="--dur:24s"><div class="k-marquee__track">${'<span>STAND BY ▚ LINK ESTABLISHED ▚ TRANSFER WINDOW OPEN ▚ </span>'.repeat(6)}</div></div></div>
 
     <h2 class="section-label">Module index <span class="t-micro">09 DEMO SURFACES / ALL COMPONENTS REUSABLE</span></h2>
     <div class="boot-index">
@@ -100,7 +100,7 @@ export default function mount(root: HTMLElement) {
   </section>`;
 
   b.add(hydrate(root));
-  b.add(mountDefragRing(root.querySelector('#boot-ring')!, { rings: 4, segs: 36 }));
+  b.add(mountDefragRing(root.querySelector('#boot-ring')!, { rings: 3, inner: 0.42, cell: 8 }));
 
   // 3D hero
   b.add(

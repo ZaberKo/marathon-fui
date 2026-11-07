@@ -184,23 +184,40 @@ export function connector(o: Opts & { pins?: number } = {}) {
   return svg(w, 32, body, { size: o.size ?? w * 1.5, ...o });
 }
 
-/** Ring of segments — static defrag disc. */
-export function segRing(seed = 3, o: Opts & { rings?: number; segs?: number } = {}) {
+/** Static defrag disc: a packed (sorted) span behind a head line, fragments ahead, a fine outer scale. */
+export function segRing(seed = 3, o: Opts & { rings?: number; segs?: number; progress?: number } = {}) {
   const r = rng(seed);
-  const rings = o.rings ?? 4;
-  const segs = o.segs ?? 36;
+  const rings = o.rings ?? 3;
+  const segs = o.segs ?? 40;
+  const prog = o.progress ?? 0.62;
+  const pt = (rad: number, a: number) => `${(50 + Math.cos(a) * rad).toFixed(2)} ${(50 + Math.sin(a) * rad).toFixed(2)}`;
+  const cell = (r0: number, r1: number, a0: number, a1: number, op: number) =>
+    `<path d="M${pt(r0, a0)}L${pt(r1, a0)}A${r1} ${r1} 0 0 1 ${pt(r1, a1)}L${pt(r0, a1)}A${r0} ${r0} 0 0 0 ${pt(r0, a0)}Z" opacity="${op}"/>`;
+  const A0 = -Math.PI / 2;
   let body = '';
   for (let k = 0; k < rings; k++) {
-    const r0 = 20 + k * 7;
-    const r1 = r0 + 5;
-    for (let i = 0; i < segs; i++) {
-      if (r() < 0.4) continue;
-      const a0 = (i / segs) * Math.PI * 2;
-      const a1 = ((i + 0.8) / segs) * Math.PI * 2;
-      const pt = (rad: number, a: number) => `${(50 + Math.cos(a) * rad).toFixed(2)} ${(50 + Math.sin(a) * rad).toFixed(2)}`;
-      body += `<path d="M${pt(r0, a0)}L${pt(r1, a0)}A${r1} ${r1} 0 0 1 ${pt(r1, a1)}L${pt(r0, a1)}A${r0} ${r0} 0 0 0 ${pt(r0, a0)}Z" opacity="${r() < 0.3 ? 0.35 : 1}"/>`;
+    const r0 = 22 + k * 8;
+    const r1 = r0 + 6.5;
+    const n = segs + k * 8;
+    const head = Math.floor(prog * n);
+    for (let i = 0; i < n; i++) {
+      const a0 = A0 + (i / n) * Math.PI * 2 + 0.012;
+      const a1 = A0 + ((i + 1) / n) * Math.PI * 2 - 0.012;
+      const step = r() < 0.16 ? 2.2 : 0;
+      if (i < head) body += cell(r0, r1 - step, a0, a1, i < head * 0.2 ? 1 : 0.7);
+      else if (r() < 0.42) body += cell(r0 + step, r1, a0, a1, r() < 0.3 ? 1 : 0.45);
+      else body += cell(r0 + 2.6, r1 - 2.6, a0, a1, 0.14);
     }
   }
+  // head line + scale ticks
+  const ha = A0 + prog * Math.PI * 2;
+  body += `<path d="M${pt(18, ha)}L${pt(48, ha)}" stroke="currentColor" stroke-width="0.8" fill="none"/>`;
+  let ticks = '';
+  for (let d = 0; d < 360; d += 6) {
+    const a = A0 + (d / 360) * Math.PI * 2;
+    ticks += `M${pt(46.5, a)}L${pt(d % 30 === 0 ? 49.5 : 48, a)}`;
+  }
+  body += `<path d="${ticks}" stroke="currentColor" stroke-width="0.4" fill="none" opacity="0.6"/>`;
   return svg(100, 100, body, { size: o.size ?? 100, ...o }).replace('shape-rendering="crispEdges"', '');
 }
 

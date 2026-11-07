@@ -54,10 +54,10 @@ export default function mount(root: HTMLElement) {
     <div class="spec-grid">
       ${spec({ code: 'SG-01', title: 'Marks', cls: 'locator checker registration', body: `<span class="c-bone">${locator({ size: 40 })}</span><span class="c-bone">${checker(3, 3, { size: 36 })}</span><span class="c-cobalt">${registration({ size: 36 })}</span><span class="c-hazard">${brackets(80, 40, 8, { size: 80 })}</span>` })}
       ${spec({ code: 'SG-02', title: 'Data', cls: 'barcode dotMatrix', body: `<span class="c-bone">${barcode(5, { size: 140, h: 18 })}</span><span class="c-acid">${dotMatrix(8, 4, (x, y) => (x + y) % 3 !== 0, { size: 64 })}</span>` })}
-      ${spec({ code: 'SG-03', title: 'Fields', cls: 'segRing triTile', body: `<span style="color:var(--c-cobalt-hi)">${segRing(6, { size: 72 })}</span><span style="color:var(--c-cobalt)">${triTile(8, 3, 4, { size: 150 })}</span>` })}
+      ${spec({ code: 'SG-03', title: 'Fields', cls: 'segRing triTile', body: `<span style="color:var(--c-cobalt-hi)">${segRing(6, { size: 104 })}</span><span style="color:var(--c-cobalt)">${triTile(8, 3, 4, { size: 150 })}</span>` })}
     </div>
 
-    ${section('Patterns', 'CSS only · .k-hazard .k-checker .k-dots .k-scan')}
+    ${section('Patterns', 'CSS only · .k-hazard .k-checker .k-dots .k-scan .k-dotscreen')}
     <div class="gly-patterns">
       <div><div class="k-hazard k-hazard--anim" style="height:80px"></div><span class="t-micro">.k-hazard.k-hazard--anim</span></div>
       <div><div class="k-hazard k-hazard--bw k-hazard--anim" style="height:80px;--h-w:6px"></div><span class="t-micro">.k-hazard--bw --h-w:6px</span></div>
@@ -66,6 +66,9 @@ export default function mount(root: HTMLElement) {
       <div><div class="k-checker" style="height:80px;--ck:4px;--ck-a:var(--c-acid)"></div><span class="t-micro">.k-checker --ck:4px</span></div>
       <div><div class="k-dots" style="height:80px"></div><span class="t-micro">.k-dots</span></div>
       <div><div class="k-dots" style="height:80px;--d:10px;--d-c:var(--c-cobalt)"></div><span class="t-micro">.k-dots --d:10px</span></div>
+      <div><div class="k-dotscreen" style="height:80px;background:var(--c-acid)"></div><span class="t-micro">.k-dotscreen (acid)</span></div>
+      <div><div class="k-dotscreen" style="height:80px;background:var(--c-cobalt);--ds:16px"></div><span class="t-micro">.k-dotscreen --ds:16px</span></div>
+      <div><div class="k-dotscreen k-dotscreen--fine" style="height:80px;background:var(--c-hazard)"></div><span class="t-micro">.k-dotscreen--fine</span></div>
       <div><div class="k-scan k-scan--anim" style="height:80px"></div><span class="t-micro">.k-scan.k-scan--anim</span></div>
       <div><div class="k-rule" style="margin-top:36px"></div><span class="t-micro" style="margin-top:35px">.k-rule</span></div>
     </div>

@@ -18,76 +18,8 @@ const COL = {
 };
 export { COL as HUD_COLORS };
 
-/* ------------------------------------------------------------------ */
-/* DEFRAG RING — concentric segmented disc, rotates in hard steps      */
-/* ------------------------------------------------------------------ */
-export function mountDefragRing(
-  canvas: HTMLCanvasElement,
-  { rings = 5, segs = 48, fps = 12, on: onCol = COL.acid, dim = COL.cobaltLo, hi = COL.bone, inner = 0.32, seed = 4 } = {},
-) {
-  const { ctx, size, dispose } = crispCanvas(canvas);
-  const r = rng(seed);
-  const state = Array.from({ length: rings }, () => Array.from({ length: segs }, () => (r() * 4) | 0));
-  const rot = Array.from({ length: rings }, () => 0);
-  const dir = Array.from({ length: rings }, (_, i) => (i % 2 ? -1 : 1));
-  const stop = stepLoop(
-    fps,
-    (f) => {
-      const { w, h } = size;
-      const cx = w / 2;
-      const cy = h / 2;
-      const R = Math.min(w, h) / 2 - 4;
-      const r0 = R * inner;
-      const band = (R - r0) / rings;
-      ctx.clearRect(0, 0, w, h);
-      // flip a few cells per frame
-      for (let k = 0; k < rings * 2; k++) {
-        const ri = (Math.random() * rings) | 0;
-        const si = (Math.random() * segs) | 0;
-        state[ri][si] = (Math.random() * 4) | 0;
-      }
-      const head = (f % segs) / segs;
-      for (let i = 0; i < rings; i++) {
-        if (f % (i + 2) === 0) rot[i] += dir[i] * ((Math.PI * 2) / segs);
-        const ra = r0 + i * band + 1.5;
-        const rb = ra + band - 3;
-        for (let s = 0; s < segs; s++) {
-          const st = state[i][s];
-          if (st === 0) continue;
-          const a0 = rot[i] + (s / segs) * Math.PI * 2;
-          const a1 = a0 + (Math.PI * 2) / segs - 0.025;
-          const nearHead = Math.abs(s / segs - head) < 0.03;
-          ctx.fillStyle = nearHead ? hi : st === 3 ? onCol : st === 2 ? onCol : dim;
-          ctx.globalAlpha = st === 2 ? 0.45 : 1;
-          ctx.beginPath();
-          ctx.arc(cx, cy, rb, a0, a1);
-          ctx.arc(cx, cy, ra, a1, a0, true);
-          ctx.closePath();
-          ctx.fill();
-        }
-      }
-      ctx.globalAlpha = 1;
-      // read head line
-      const ha = head * Math.PI * 2;
-      ctx.strokeStyle = hi;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(cx + Math.cos(ha) * r0 * 0.9, cy + Math.sin(ha) * r0 * 0.9);
-      ctx.lineTo(cx + Math.cos(ha) * (R + 4), cy + Math.sin(ha) * (R + 4));
-      ctx.stroke();
-      // inner hairline
-      ctx.strokeStyle = COL.mute;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r0 - 4, 0, Math.PI * 2);
-      ctx.stroke();
-    },
-    canvas,
-  );
-  return () => {
-    stop();
-    dispose();
-  };
-}
+/* DEFRAG RING — see ./defrag.ts */
+export { mountDefragRing, createDefrag } from './defrag';
 
 /* ------------------------------------------------------------------ */
 /* ORBIT MAP — CAD-style single-pixel star chart                       */

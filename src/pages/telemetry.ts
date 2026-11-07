@@ -45,8 +45,15 @@ export default function mount(root: HTMLElement) {
 
   b.add(hydrate(root));
   b.add(mountOrbitMap($('#t-orbit', root), { target: 'VESTA (7)' }));
-  b.add(mountDefragRing($('#t-defrag', root)));
-  b.add(mountDefragRing($('#t-count-ring', root), { rings: 2, segs: 64, on: '#ff2a17', dim: '#4d0904', hi: '#ececec', inner: 0.62, fps: 15 }));
+  const dn = $('#t-defrag-n', root);
+  b.add(mountDefragRing($('#t-defrag', root), { rings: 4, inner: 0.4, onProgress: (p) => (dn.textContent = pad(Math.round(p * 100), 3)) }));
+  let n = 268;
+  b.add(
+    mountDefragRing($('#t-count-ring', root), {
+      rings: 2, inner: 0.66, cell: 7, fps: 12, seed: 9, progress: () => 1 - n / 268,
+      on: '#ff2a17', data: '#8a1206', dim: '#2a0602', hi: '#ececec', line: '#5a1a12',
+    }),
+  );
   b.add(mountGauge($('#g1', root), { label: 'SHELL INTEGRITY', value: 0.82 }));
   b.add(mountGauge($('#g2', root), { label: 'THERMAL LOAD', value: 0.46 }));
   b.add(mountGauge($('#g3', root), { label: 'LINK QUALITY', value: 0.91 }));
@@ -56,14 +63,8 @@ export default function mount(root: HTMLElement) {
   b.add(mountTerminal($('#t-log', root)));
   b.add(mountTracker($('#t-track', root)));
 
-  // defrag percentage
-  const dn = $('#t-defrag-n', root);
-  let dp = 0;
-  b.add(stepLoop(6, () => (dn.textContent = pad((dp = (dp + 1) % 101), 3)), dn));
-
   // countdown
   const cn = $('#t-count', root);
-  let n = 268;
   b.add(
     stepLoop(
       2,

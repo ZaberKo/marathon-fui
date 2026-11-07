@@ -55,11 +55,7 @@
   cursor: not-allowed;
   color: var(--c-mute-2);
   border-color: var(--c-mute-2);
-  background: repeating-linear-gradient(
-    -45deg,
-    transparent 0 4px,
-    rgba(58, 63, 107, 0.35) 4px 5px
-  );
+  background: var(--c-ink-1);
   transform: none;
 }
 .k-btn__code {
@@ -973,4 +969,168 @@
   to {
     background-position: 130% 0, 0 0;
   }
+}
+
+/* --- STAND BY lockup (lib/standby.ts) ------------------------------------ */
+.k-standby {
+  font-size: var(--sb, 14px);
+  width: max-content;
+  display: grid;
+  grid-template-columns: 5.2em auto 5.2em;
+  align-items: center;
+  gap: 1.6em;
+  color: var(--c-bone);
+  line-height: 1;
+}
+.sb-flag {
+  display: grid;
+  justify-items: start;
+  gap: 0.9em;
+}
+.sb-flag:last-child {
+  justify-items: end;
+}
+.sb-chk {
+  display: block;
+  width: 5.2em;
+  outline: 0.14em solid var(--c-bone);
+  line-height: 0;
+}
+.sb-chk svg {
+  width: 100%;
+  height: auto;
+}
+.sb-ech {
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-size: 0.62em;
+  letter-spacing: 0.04em;
+  writing-mode: vertical-rl;
+  padding: 0.25em 0.2em;
+  border: 0.12em solid currentColor;
+  border-radius: 0.3em;
+}
+.sb-core {
+  display: grid;
+  gap: 0.55em;
+  width: 26.1em; /* fixed: canvases inside must not size the column */
+}
+.sb-ticks {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 0.62em;
+  color: var(--c-acid);
+}
+.sb-row {
+  display: grid;
+  grid-template-columns: 4.4em auto;
+  gap: 0.7em;
+  align-items: stretch;
+}
+.sb-mark {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 0.35em;
+}
+.sb-sigil {
+  line-height: 0;
+  color: var(--c-bone);
+}
+.sb-sigil svg {
+  width: 100%;
+  height: 100%;
+}
+.sb-bar {
+  display: block;
+  height: 1.3em;
+  background: var(--c-bone);
+}
+.sb-main {
+  display: grid;
+  gap: 0.3em;
+  width: 21em;
+}
+.sb-micro {
+  display: grid;
+  grid-template-columns: repeat(3, auto) auto auto;
+  grid-auto-flow: row;
+  justify-content: start;
+  align-items: center;
+  column-gap: 0.9em;
+  row-gap: 0.2em;
+  font-family: var(--f-display);
+  font-weight: 500;
+  font-size: 0.82em;
+  letter-spacing: 0.02em;
+}
+.sb-micro b {
+  font-weight: 800;
+  font-size: 1.12em;
+}
+.sb-sm {
+  font-size: 0.8em;
+}
+.sb-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2em;
+  padding: 0.12em 0.25em 0.12em 0.4em;
+  border: 0.12em solid currentColor;
+  border-radius: 0.5em;
+  font-size: 0.72em;
+  font-weight: 700;
+}
+.sb-link i {
+  width: 1.1em;
+  height: 1em;
+  background: currentColor;
+  box-shadow: inset 0.25em 0 0 0.12em var(--sb-field, var(--c-cobalt));
+}
+.sb-inf {
+  display: inline-flex;
+  gap: 0.15em;
+}
+.sb-inf i {
+  width: 0.7em;
+  height: 0.7em;
+  border: 0.18em solid currentColor;
+  border-radius: 50%;
+}
+.sb-dot {
+  width: 0.85em;
+  height: 0.85em;
+  border-radius: 50%;
+  background: currentColor;
+}
+.sb-dot.is-off {
+  visibility: hidden;
+}
+.sb-word {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 4.2em;
+  line-height: 0.82;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--c-acid);
+}
+.sb-foot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 9em;
+  gap: 0.8em;
+  align-items: start;
+}
+.sb-garble {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 1.3em;
+  color: var(--c-acid);
+}
+.sb-haz {
+  display: block;
+  height: 1.3em;
+  background: repeating-linear-gradient(-45deg, var(--c-acid) 0 0.35em, transparent 0.35em 0.7em);
 }

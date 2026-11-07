@@ -1,5 +1,6 @@
+import { standbyLockup } from '../lib/standby';
 import { pageHead, section, spec } from './_ui';
-import { checker, pixelIcon, triTile, dotMatrix } from '../lib/glyphs';
+import { pixelIcon, triTile, dotMatrix } from '../lib/glyphs';
 import { hydrate } from '../lib/hydrate';
 import { scramble } from '../lib/motion';
 import { bag, on, $$ } from '../lib/util';
@@ -76,19 +77,15 @@ export default function mount(root: HTMLElement) {
     <div class="spec-grid">
       ${spec({
         code: 'CB-01',
-        title: 'Acid on cobalt',
+        title: 'Stand by lockup · acid on cobalt',
         bodyCls: 'spec-body--flush',
-        body: `<div class="sig-poster" style="background:var(--c-cobalt)">
-          <span style="color:#fff">${checker(2, 2, { size: 46 })}</span>
-          <b class="t-display" style="color:var(--c-acid)">Stand by</b>
-          <span style="color:#fff">${checker(2, 2, { size: 46, invert: true })}</span>
-        </div>`,
+        body: `<div class="sig-poster k-dotscreen" style="background:var(--c-cobalt)">${standbyLockup({ size: 7.5, seed: 11 })}</div>`,
       })}
       ${spec({
         code: 'CB-02',
         title: 'Cobalt on crimson',
         bodyCls: 'spec-body--flush',
-        body: `<div class="sig-poster" style="background:var(--c-crimson);flex-direction:column;align-items:flex-start">
+        body: `<div class="sig-poster k-dotscreen" style="background:var(--c-crimson);flex-direction:column;align-items:flex-start">
           <b class="t-display" style="color:var(--c-cobalt)">Error_err</b>
           <span class="t-micro" style="color:#000">B2EE/S · A 5PN - RR · 0 WWW</span>
         </div>`,
@@ -97,7 +94,7 @@ export default function mount(root: HTMLElement) {
         code: 'CB-03',
         title: 'Ink on hazard',
         bodyCls: 'spec-body--flush',
-        body: `<div class="sig-poster" style="background:var(--c-hazard);color:#000">
+        body: `<div class="sig-poster k-dotscreen" style="background:var(--c-hazard);color:#000">
           <span>${pixelIcon('eject', { size: 46 })}</span>
           <b class="t-display t-wide" style="font-size:40px">Eject<br>transf</b>
         </div>`,

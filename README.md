@@ -16,7 +16,7 @@ pnpm build      # typecheck + production build → dist/
   GPU adapter, page FPS with a frame-time graph, JS heap, and per-scene render FPS / CPU ms /
   draw calls / triangles / lines / GPU memory. Double-click or `+` expands it; its position is remembered.
 - **Lab viewer (dev only):** `/lab.html?s=runner` renders one scene full-window. Keys: `runner`,
-  `shell`, `psyche`, `orbital`, `dropzone`, `headscan`, `terrain`.
+  `shell`, `psyche`, `orbital`, `dropzone`, `headscan`, `terrain`, `subject`.
 - **Film — SHELL 07:** `/cinema.html` plays a 2:27 web film built from the kit, with sound (see below).
   - Keys: Space play/pause · ←/→ 1 s (Shift: 1 frame) · C captions EN/中文/off · M mute · F fullscreen · Q 3D quality.
   - URL: `?t=81` opens paused at that time; `?capture` shows a bare 1920×1080 frame (no audio, no UI);
@@ -33,7 +33,7 @@ pnpm build      # typecheck + production build → dist/
 | 04 | `#/glyphs`   | 12 cards of animated marks (17 kinds), 24 pixel icons, morphing sigils, static generators, CSS patterns |
 | 05 | `#/telemetry`| Orbit map, defrag ring, countdown, gauges, spectrum, scope, memory grid, log, tracker, readouts |
 | 06 | `#/motion`   | Easing comparison, transition monitor, loaders (count ring, plug sequence, scan block…), text wall, marquees |
-| 07 | `#/spatial`  | 7 WebGPU scenes (below), lazy-mounted, with fps / pixel / label controls and a wide toggle |
+| 07 | `#/spatial`  | 8 WebGPU scenes (below), lazy-mounted, with fps / pixel / label controls and a wide toggle |
 | 08 | `#/fault`    | Full-screen runtime-error inversion with a text wall, alarm grid, triangle field; alerts, banner, modal |
 | 09 | `#/study`    | Film page for SHELL 07: synopsis, design notes, and a shot list (with its voice-over) that deep-links into the player |
 
@@ -41,13 +41,14 @@ pnpm build      # typecheck + production build → dist/
 
 | Key | Scene | Technique |
 |-----|-------|-----------|
-| `runner`   | Contour runner   | Generated SDF body on the motion rig, black occluder body, 1px world-Y iso-lines + rim + scan band; marks ride skinned vertices; leader lines |
-| `shell`    | Shell / dot cloud | Bayer 4×4 ordered dither on facing ratio; cyan joint plates; outline triangles pop in steps; bezier fan |
+| `runner`   | Contour runner   | Generated SDF body on the motion rig, black occluder body, 1px world-Y iso-lines (index every 5th) + rim + scan band; tracked pose skeleton, link threads into the crown, floor dial; leader lines |
+| `shell`    | Shell / flat cel | Three flat world-lit tones + hard black edge; stencil decals on the bones; cobalt flood beat inverts the shell; connector fan, stepped triangle groups |
 | `psyche`   | Psyche link      | Procedural ridged-noise brain in local-space contours on a grid plate; yellow connectors to a contour figure |
 | `orbital`  | Orbital uplink   | Earth = latitude slices only over land (Natural Earth); wire satellites; nadir line, footprint, uplink arcs |
 | `dropzone` | Drop zone        | Pixel-texture planet horizon; target triangles; green arcs fall from an orbital source in sequence |
-| `headscan` | Head scan        | Two contour families (orange Y / cobalt X) = curved wire grid; cranium nodes, circuit traces, optic rings |
-| `terrain`  | Contour field    | Marching-squares topography lifted per level, rebuilt every 3 steps; pod convoy with axis-ring contours |
+| `headscan` | Head scan        | Real-proportion SDF head in additive x-ray contours; wire eyes, brain contours, the visual pathway (eye → chiasm → LGN → V1) with flowing signals |
+| `terrain`  | Contour survey   | Marching-squares isolines lifted per level, coloured by elevation; a survey level climbs in steps; ruins as map symbols, drop-zone rings, pods landing |
+| `subject`  | Subject / pixel noise | Body rendered to a 1/5-res mask and shown as solid cobalt cells that drop out / flip tone per step; a huge head as dash rows; contour brain, shed triangles, RUNNER lockup (RenderPipeline) |
 
 ## Reusing pieces
 
@@ -61,9 +62,11 @@ src/lib/marks.ts           ANIMATED marks: mountMark(el, kind) or <span data-mar
                            dots · tri · sigil · blocktext · scanblock · countring · chevrons · bars · connector
 src/lib/motion.ts          scramble, typeOut, glitch, flashBlocks, reveal, barWipe, countTo, stamp
 src/lib/compose.ts         textWall() + animateTextWall()
-src/lib/hud.ts             mountDefragRing / OrbitMap / Spectrum / Scope / MemoryGrid / Terminal / Gauge / Tracker
+src/lib/standby.ts         STAND BY lockup: ECH tags, checker flags, sigil, micro code, LINK pill, word ↔ PLEASE, green garble noise, ticks
+src/lib/defrag.ts          defrag ring: sorted span behind a read head, fragments moved one per step, notches, hatch, scale
+src/lib/hud.ts             OrbitMap / Spectrum / Scope / MemoryGrid / Terminal / Gauge / Tracker (+ re-exports the defrag ring)
 src/lib/hydrate.ts         data-attribute behaviours (+ data-mark, stepped block-wipe entrances)
-src/lib/ambient.ts         dim cobalt pixel-block field behind the stage
+src/lib/ambient.ts         flat cobalt slabs and hairline rules behind the stage (solid fills, no dither)
 src/lib/perf.ts, perfHud.ts  perf registry (no three import) + floating tag
 src/lib/toast.ts           notify({ title, msg, state })
 src/lib/util.ts            stepLoop (fixed-fps loop), rng, crispCanvas, cleanup bag
@@ -121,7 +124,9 @@ scripts/                   offline audio pipeline (Lyria needs GOOGLE_API_KEY in
 - **Rule 3 only holds between beats.** Hold frames and fault frames flood the whole field with one flat colour (cobalt,
   yellow, orange-red, crimson).
 - **Scale is part of the style.** Rings, words and figures are cropped by the frame edge.
-- **Flats are never clean.** Add scanlines, stepped pixel edges and a dim data layer behind them.
+- **Flats stay solid; texture is regular.** No random grain or noise blocks behind content. Flood colours take a
+  *regular* black registration-dot screen (`.k-dotscreen`: cell grid, a black square at every corner). Noise is allowed
+  only as pure-colour cells that switch on/off — garbled green glyph rows, pixel-noise model renders.
 - **Pick the render style per shot.** One skeleton can be drawn as contour, x-ray, cel, halftone, voxels or triangle
   shards; the style changes between beats.
 

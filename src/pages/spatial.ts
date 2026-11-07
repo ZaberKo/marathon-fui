@@ -29,7 +29,7 @@ export default async function mount(root: HTMLElement) {
     <div class="sp-grid">
       ${SCENES.map(
         (c, i) => `
-        <article class="spec sp-cell ${i === 0 ? 'is-wide' : ''}" data-key="${c.key}">
+        <article class="spec sp-cell ${i === 0 || (i === SCENES.length - 1 && i % 2 === 1) ? 'is-wide' : ''}" data-key="${c.key}">
           <div class="spec-head"><span class="code">${c.code}</span><span>${c.title}</span><span class="cls" data-fps>—</span>
             <button class="sp-max" type="button" aria-label="Toggle wide" title="Toggle wide">${pixelIcon('scan', { size: 10 })}</button></div>
           <div class="sp-view"><div class="gl-host" data-gl></div>

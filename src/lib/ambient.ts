@@ -1,41 +1,46 @@
 /**
- * Ambient field: dim cobalt pixel-blocks and data streaks that flicker in
- * steps behind the content (the "machine room" texture of the reference).
- * Very low contrast; paused off-screen / when reduced motion is requested.
+ * Ambient field: a few flat cobalt blocks and rules that cut in and out in
+ * steps behind the content. Solid fills only — no dither, dots or grain —
+ * snapped to the 8 px grid so they read as layout, not noise.
+ * Very low contrast; paused when reduced motion is requested.
  */
 import { crispCanvas, rng, stepLoop, reducedMotion } from './util';
 
-export function mountAmbient(canvas: HTMLCanvasElement, { fps = 5, density = 1 } = {}) {
+export function mountAmbient(canvas: HTMLCanvasElement, { fps = 4, density = 1 } = {}) {
   if (reducedMotion()) return () => {};
   const { ctx, size, dispose } = crispCanvas(canvas, 1);
   const r = rng(77);
   type Blk = { x: number; y: number; w: number; h: number; c: string; life: number };
   let blocks: Blk[] = [];
-  const COLS = ['#07083a', '#0a0c4a', '#06072e', '#0d1060'];
+  // two flat cobalt tones for rules/blocks, one brighter tone for the rare tab
+  const RULE = ['#0b0e52', '#080a3c'];
+  const SLAB = ['#070936', '#090b44'];
+  const TAB = '#1a22c8';
+  const G = 8;
+  const snap = (v: number) => Math.floor(v / G) * G;
   const spawn = (): Blk => {
-    const streak = r() < 0.35;
-    return {
-      x: Math.floor((r() * size.w) / 8) * 8,
-      y: Math.floor((r() * size.h) / 4) * 4,
-      w: streak ? 40 + Math.floor(r() * 220) : 8 + Math.floor(r() * 6) * 8,
-      h: streak ? 2 + Math.floor(r() * 2) * 2 : 8 + Math.floor(r() * 5) * 8,
-      c: COLS[Math.floor(r() * COLS.length)],
-      life: 2 + Math.floor(r() * 14),
-    };
+    const k = r();
+    const x = snap(r() * size.w);
+    const y = snap(r() * size.h);
+    if (k < 0.62) {
+      // hairline rule: long, 1–2 px, the most common element
+      return { x, y, w: G * (6 + Math.floor(r() * 30)), h: r() < 0.7 ? 1 : 2, c: RULE[Math.floor(r() * 2)], life: 4 + Math.floor(r() * 16) };
+    }
+    if (k < 0.93) {
+      // flat slab: a solid block of a few grid cells
+      return { x, y, w: G * (2 + Math.floor(r() * 8)), h: G * (1 + Math.floor(r() * 4)), c: SLAB[Math.floor(r() * 2)], life: 3 + Math.floor(r() * 12) };
+    }
+    // tab: a short bright cobalt marker
+    return { x, y, w: G * (1 + Math.floor(r() * 3)), h: 4, c: TAB, life: 2 + Math.floor(r() * 5) };
   };
   const stop = stepLoop(fps, () => {
-    const target = Math.round(((size.w * size.h) / 22000) * density);
+    const target = Math.round(((size.w * size.h) / 34000) * density);
     blocks = blocks.filter((b) => --b.life > 0);
     while (blocks.length < target) blocks.push(spawn());
     ctx.clearRect(0, 0, size.w, size.h);
     for (const b of blocks) {
       ctx.fillStyle = b.c;
       ctx.fillRect(b.x, b.y, b.w, b.h);
-      // dotted texture inside larger blocks
-      if (b.h >= 16 && b.w >= 16) {
-        ctx.fillStyle = '#000';
-        for (let y = b.y + 2; y < b.y + b.h - 1; y += 4) for (let x = b.x + 2; x < b.x + b.w - 1; x += 4) ctx.fillRect(x, y, 1, 1);
-      }
     }
   });
   return () => {

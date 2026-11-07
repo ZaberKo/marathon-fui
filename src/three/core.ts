@@ -72,6 +72,8 @@ export type Stage = {
   setFps(n: number): void;
   setPixel(n: number): void;
   start(update: (t: number, frame: number, dt: number) => void): void;
+  /** replace the default renderer.render(scene, camera), e.g. with a RenderPipeline */
+  setRender(fn: (() => void) | null): void;
   dispose(): void;
 };
 
@@ -159,6 +161,7 @@ export async function createStage(host: HTMLElement, opts: StageOpts = {}): Prom
   let frame = 0;
   let forceRender = true;
   let updateFn: (t: number, frame: number, dt: number) => void = () => {};
+  let renderFn: (() => void) | null = null;
   const t0 = performance.now();
   // fps measurement window
   let winStart = performance.now();
@@ -177,7 +180,8 @@ export async function createStage(host: HTMLElement, opts: StageOpts = {}): Prom
     lastT = t;
     const c0 = performance.now();
     updateFn(t, frame++, dt);
-    renderer.render(scene, camera);
+    if (renderFn) renderFn();
+    else renderer.render(scene, camera);
     const cpu = performance.now() - c0;
     stats.cpuMs = stats.cpuMs * 0.85 + cpu * 0.15;
     const info = renderer.info;
@@ -220,6 +224,10 @@ export async function createStage(host: HTMLElement, opts: StageOpts = {}): Prom
     start(update) {
       updateFn = update;
       raf = requestAnimationFrame(loop);
+    },
+    setRender(fn) {
+      renderFn = fn;
+      forceRender = true;
     },
     dispose() {
       disposed = true;
