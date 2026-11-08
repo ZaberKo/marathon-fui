@@ -1,5 +1,5 @@
 /**
- * DROP ZONE — huge pixel-textured planet horizon (flat cobalt + dark plates),
+ * DROP ZONE — huge planet horizon in flat cobalt with shader-drawn plates,
  * latitude bands, white outline triangles marking targets; green arcs fall
  * from an orbital source cluster to each target, drawing in step by step.
  */
@@ -7,7 +7,7 @@ import * as THREE from 'three/webgpu';
 import { createStage, makeTag } from '../core';
 import { contourMaterial } from '../materials';
 import { FillBatch, LineBatch } from '../overlay';
-import { pixelSurfaceTexture } from '../procedural';
+import { pixelSurfaceMaterial } from '../procedural';
 import { PAL, type SceneHandle, type SceneOpts } from './common';
 import { rng } from '../../lib/util';
 
@@ -20,9 +20,7 @@ export async function mountDropzone(host: HTMLElement, { fps = 12, pixel = 1, la
   const planet = new THREE.Group();
   planet.position.set(0, -R, 0);
   scene.add(planet);
-  const tex = pixelSurfaceTexture();
-  tex.repeat.set(6, 3);
-  const sphere = new THREE.Mesh(new THREE.SphereGeometry(R, 128, 64), new THREE.MeshBasicMaterial({ map: tex }));
+  const sphere = new THREE.Mesh(new THREE.SphereGeometry(R, 128, 64), pixelSurfaceMaterial({ repeat: [6, 3] }));
   planet.add(sphere);
   // latitude bands (cyan) — circles around the planet's y axis
   const band = (lat: number, color: number) => {

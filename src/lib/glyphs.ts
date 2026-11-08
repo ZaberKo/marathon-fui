@@ -250,10 +250,9 @@ const F35: Record<string, string> = {
   '2': '110001010100111', '3': '110001010001110', '4': '101101111001001', '5': '111100110001110',
   '6': '011100111101111', '7': '111001010010010', '8': '111101111101111', '9': '111101111001110',
   '/': '001001010100100', '-': '000000111000000', '.': '000000000000010', ' ': '000000000000000',
-  _: '000000000000111', ':': '000010000010000',
+  _: '000000000000111', ':': '000010000010000', '·': '000000010000000',
 };
-export function blockText(text: string, o: Opts & { gap?: number } = {}) {
-  const gap = o.gap ?? 1;
+export function blockTextRows(text: string, gap = 1) {
   const chars = text.toUpperCase().split('');
   const rows = ['', '', '', '', ''];
   chars.forEach((ch, i) => {
@@ -263,5 +262,9 @@ export function blockText(text: string, o: Opts & { gap?: number } = {}) {
       if (i < chars.length - 1) rows[y] += '.'.repeat(gap);
     }
   });
+  return rows;
+}
+export function blockText(text: string, o: Opts & { gap?: number } = {}) {
+  const rows = blockTextRows(text, o.gap);
   return bitmap(rows, { size: o.size ?? rows[0].length * 6, ...o });
 }

@@ -1,6 +1,6 @@
 /**
- * Shared helpers for the film's shots: typography plates, stepped type-on,
- * cut glitches, 2.5D canvas planes, cameras.
+ * Shared helpers for the film's shots: typography plates, stepped type-on
+ * and cameras.
  */
 import * as THREE from 'three/webgpu';
 import type { C2, Frame } from '../engine';
@@ -52,38 +52,6 @@ const GLYPH = ['##.#.##', '.#####.', '#.###.#', '.##.##.', '###.###'];
 /** compact pixel cluster (a non-letter mark used as a logo stand-in) */
 export function pixelCluster(fg: C2, x: number, y: number, px: number, color: string, seed = 2) {
   bitmap(fg, GLYPH.map((r, j) => (hash(seed, j) > 0.5 ? r : r.split('').reverse().join(''))), x, y, px, color);
-}
-
-/**
- * Cut glitch: for `dur` seconds after a cut, horizontal bands of the frame are
- * replaced by blocks of the given colours (drawn over everything).
- */
-export function cutGlitch(f: Frame, t: number, dur = 0.12, colors: string[] = ['#000', C.blue, '#0a1060'], seed = 1) {
-  if (t < 0 || t > dur) return;
-  const n = Math.floor((1 - t / dur) * 26) + 6;
-  const step = Math.floor(t * 60);
-  for (let i = 0; i < n; i++) {
-    const h = 4 + Math.floor(hash(seed, step, i, 1) * 60);
-    const y = Math.floor(hash(seed, step, i, 2) * 1080 / 4) * 4;
-    const x = Math.floor(hash(seed, step, i, 3) * 1920 * 0.8);
-    const w = 120 + hash(seed, step, i, 4) * 1200;
-    rect(f.fg, x, y, w, h, colors[Math.floor(hash(seed, step, i, 5) * colors.length)]);
-  }
-}
-
-/** A canvas-backed plane for 2.5D graphics (redraw each frame, flag needsUpdate). */
-export function canvasPlane(w: number, h: number, size: number, o: { transparent?: boolean; side?: THREE.Side; additive?: boolean } = {}) {
-  const cv = document.createElement('canvas');
-  cv.width = size;
-  cv.height = Math.round((size * h) / w);
-  const ctx = cv.getContext('2d')!;
-  const tex = new THREE.CanvasTexture(cv);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 8;
-  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: o.transparent ?? true, side: o.side ?? THREE.DoubleSide, depthWrite: !(o.transparent ?? true) });
-  if (o.additive) mat.blending = THREE.AdditiveBlending;
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
-  return { mesh, ctx, cv, tex, mat, px: cv.width / w };
 }
 
 /** project a world point, after making sure the camera matrices are current */

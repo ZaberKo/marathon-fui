@@ -5,8 +5,8 @@ import type { ShotDef } from '../engine';
 import { hash } from '../engine';
 import { C, F, checker, dashStack, line, microRows, rect, ring, scanlines, text } from '../draw';
 import { backdrop, PAL_BLUE, PAL_GREEN } from '../backdrop';
-import { ANAT_BLUE, ANAT_LIME, anatomyFigure, drawFigure, rasterFigure, toPx, type Place } from '../anatomy2d';
-import { cutGlitch, easeInOutCubic, span } from './kit';
+import { ANAT_BLUE, ANAT_LIME, anatomyFigure, drawFigure, prepareFigure, toPx, type Place } from '../anatomy2d';
+import { span } from './kit';
 import { ST } from './times';
 
 export const s2: ShotDef[] = [
@@ -21,21 +21,21 @@ export const s2: ShotDef[] = [
     build: async () => {
       const fig = await anatomyFigure();
       const s = 500;
-      rasterFigure(fig, s, ANAT_BLUE);
       const pl: Place = { x: 960 + fig.x0 * s, y: 60, s };
+      const plate = prepareFigure(fig, pl, ANAT_BLUE);
       const tags: [string, number, string][] = [
         ['PEC.L', 1, 'MUSC'], ['DELT.R', -1, 'MUSC'], ['BICEP.L', 1, 'MUSC'], ['OBL.R', -1, 'CORE'], ['VLAT.L', 1, 'MUSC'], ['TIB.R', -1, 'MUSC'],
       ];
       return {
         draw(f) {
           const { bg, fg, t } = f;
-          backdrop(bg, { seed: 41, dx: t * 20, alpha: 0.8, pal: PAL_BLUE });
+          backdrop(bg, { seed: 41, dx: t * 20, alpha: 0.7, pal: PAL_BLUE, rect: [0, 0, 590, 1080] });
           ring(bg, 960, 640, 470, C.blue, 34);
           ring(bg, 960, 640, 430, '#0a1490', 2);
           const groups = ['chest', 'shoulder', 'arm', 'core', 'leg'];
           const gi = Math.floor((t - 0.5) / 0.55);
           const flash = gi >= 0 && gi < groups.length ? [groups[gi]] : [];
-          drawFigure(fg, fig, pl, ANAT_BLUE, t, { pulse: 0, flash, scanY: 60 + span(t, 0.3, 3.8) * 940 });
+          drawFigure(fg, plate, t, { pulse: 0, flash, scanY: 60 + span(t, 0.3, 3.8) * 940 });
           // heart pulse
           const beat = Math.max(0, 1 - ((t * 1.05) % 1) * 4);
           const hp = toPx(fig, pl, fig.heart);
@@ -72,8 +72,6 @@ export const s2: ShotDef[] = [
           fg.stroke();
           text(fg, 'BPM 058  ·  SPO2 97  ·  NRV 4.4M/S', ex, ey + 92, { size: 13, family: F.mono, weight: 700, color: '#b4c2ff' });
           text(fg, 'VITAL SIGNS', ex, ey - 82, { size: 22, weight: 800, color: C.white, stretch: 'semi-expanded' });
-          cutGlitch(f, t, 0.1, ['#000', C.blue], 7);
-          f.post.lift = 0.85;
         },
       };
     },
@@ -89,14 +87,14 @@ export const s2: ShotDef[] = [
       const fig = await anatomyFigure();
       const crop: [number, number, number, number] = [-0.38, 0.98, 0.38, 1.86];
       const s = 1120;
-      rasterFigure(fig, s, ANAT_LIME, crop);
       const pl: Place = { x: 470, y: 60, s, crop };
+      const plate = prepareFigure(fig, pl, ANAT_LIME);
       return {
         draw(f) {
           const { bg, fg, t } = f;
-          backdrop(bg, { seed: 51, dx: t * 24, alpha: 0.7, pal: PAL_GREEN });
+          backdrop(bg, { seed: 51, dx: t * 24, alpha: 0.65, pal: PAL_GREEN, rect: [1110, 0, 810, 1080] });
           ring(bg, 900, 700, 560, C.blue, 30, Math.PI * 0.55, Math.PI * 1.55);
-          drawFigure(fg, fig, pl, ANAT_LIME, t, { pulse: 0.3, nerveAlpha: 0.8 });
+          drawFigure(fg, plate, t, { pulse: 0.3, nerveAlpha: 0.8 });
           // eye tracking: a stimulus sweeps, the optic rings follow with lag
           const stim = 960 + Math.sin(t * 2.6) * 220 * (t < 3.0 ? 1 : 0.2);
           const stimY = 250 + Math.cos(t * 1.7) * 30;
@@ -132,10 +130,6 @@ export const s2: ShotDef[] = [
           } else text(fg, 'RESPONSE', 0, 0, { size: 60, weight: 800, color: C.mint, stretch: 'semi-expanded', tracking: 4 });
           fg.restore();
           microRows(fg, 1080, 590, ['QR  EXC  FF ■', 'SDR17  2445566'], { size: 12, family: F.mono, weight: 700, color: C.white, lh: 14 });
-          cutGlitch(f, t, 0.1, ['#000', C.lime, C.blue], 8);
-          f.post.tint = [0.5, 1, 0.5];
-          f.post.lift = 0.7;
-          void easeInOutCubic;
         },
       };
     },

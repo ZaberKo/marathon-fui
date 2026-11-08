@@ -5,10 +5,11 @@ export const DURATION = 147;
 export const ANCHORS = {
   "boom": 4,
   "dip": 26.25,
+  "buffer": 31.75,
   "lift": 40.09,
   "runner": 41.966,
   "hush": 53.216,
-  "impact": 54.7,
+  "impact": 56.06,
   "print": 64.07,
   "printEnd": 74.4,
   "silence": 75.32,
@@ -33,14 +34,14 @@ export const LINES: Line[] = [
  {
   "id": "v02",
   "t": 12.3,
-  "d": 4.44,
+  "d": 4.43,
   "en": "Reassembling the psyche. Evaluating vital signs.",
   "zh": "正在重组心智。正在评估生命体征。"
  },
  {
   "id": "v03",
   "t": 17.2,
-  "d": 2.27,
+  "d": 2.28,
   "en": "Evaluating recognition response.",
   "zh": "正在评估识别反应。"
  },
@@ -53,8 +54,8 @@ export const LINES: Line[] = [
  },
  {
   "id": "v05",
-  "t": 23.85,
-  "d": 5.36,
+  "t": 26.25,
+  "d": 5.35,
   "en": "Fragment four-one-one. Cohesion failure. Skipped.",
   "zh": "碎片 411：内聚失败。已跳过。"
  },
@@ -68,34 +69,41 @@ export const LINES: Line[] = [
  {
   "id": "v07",
   "t": 42.1,
-  "d": 2.93,
+  "d": 2.91,
   "en": "Assert. Subject is a runner.",
   "zh": "断言：受试者是一名跑者。"
  },
  {
   "id": "v08",
   "t": 45.4,
-  "d": 3.36,
-  "en": "A consciousness without a body, renting a printed shell.",
-  "zh": "一个没有身体的意识，租用着一具打印出来的躯壳。"
+  "d": 1.82,
+  "en": "A consciousness without a body.",
+  "zh": "一个没有身体的意识。"
+ },
+ {
+  "id": "v08b",
+  "t": 48.78,
+  "d": 1.49,
+  "en": "Renting a printed shell.",
+  "zh": "租用着一具打印出来的躯壳。"
  },
  {
   "id": "v09",
-  "t": 55.4,
-  "d": 3.94,
+  "t": 53.32,
+  "d": 3.93,
   "en": "Assert. The previous shell was killed in the field.",
   "zh": "断言：上一具躯壳已在外勤中被击杀。"
  },
  {
   "id": "v10",
   "t": 59.8,
-  "d": 3.49,
+  "d": 3.48,
   "en": "At the moment of death, the psyche was ejected, and caught.",
   "zh": "死亡的瞬间，心智被弹出，并被接住。"
  },
  {
   "id": "v11",
-  "t": 64.6,
+  "t": 64.32,
   "d": 2.67,
   "en": "It waits in the buffer while a new shell is printed.",
   "zh": "新躯壳打印期间，它在缓冲区中等待。"
@@ -103,21 +111,21 @@ export const LINES: Line[] = [
  {
   "id": "v12",
   "t": 75.8,
-  "d": 1.19,
+  "d": 1.18,
   "en": "Please stand by.",
   "zh": "请稍候。"
  },
  {
   "id": "v13",
   "t": 81.6,
-  "d": 5.42,
+  "d": 5.41,
   "en": "Assert. Nine years ago, the colony on Periapt Four went silent.",
   "zh": "断言：九年前，近拱点四号上的殖民地陷入沉寂。"
  },
  {
   "id": "v14",
   "t": 87.7,
-  "d": 4.19,
+  "d": 4.18,
   "en": "From orbit, the station drops runners on every signal that remains.",
   "zh": "空间站从轨道向每一个尚存的信号投放跑者。"
  },
@@ -152,27 +160,27 @@ export const LINES: Line[] = [
  {
   "id": "v19",
   "t": 109.9,
-  "d": 2.05,
+  "d": 2.04,
   "en": "Subject instance count: two.",
   "zh": "受试者实例数：二。"
  },
  {
   "id": "v20",
   "t": 113.1,
-  "d": 2.69,
+  "d": 2.68,
   "en": "Proceeding with suboptimal durability settings.",
   "zh": "以次优耐久设置继续。"
  },
  {
   "id": "v21",
-  "t": 116.9,
-  "d": 2.31,
+  "t": 118.52,
+  "d": 2.32,
   "en": "Liminal buffer: one hundred percent.",
   "zh": "阈限缓冲：百分之百。"
  },
  {
   "id": "v22",
-  "t": 121,
+  "t": 122.95,
   "d": 1.73,
   "en": "Defragmentation complete.",
   "zh": "碎片整理完成。"
@@ -180,7 +188,7 @@ export const LINES: Line[] = [
  {
   "id": "v23",
   "t": 126.7,
-  "d": 5.08,
+  "d": 5.09,
   "en": "Welcome back, runner. I am ORA, your support intelligence.",
   "zh": "欢迎回来，跑者。我是 ORA，你的支援智能。"
  },
@@ -208,14 +216,14 @@ export const LINES: Line[] = [
  {
   "id": "v27",
   "t": 140.85,
-  "d": 0.61,
+  "d": 0.63,
   "en": "Three.",
   "zh": "三。"
  },
  {
   "id": "v28",
   "t": 141.5,
-  "d": 0.58,
+  "d": 0.59,
   "en": "Two.",
   "zh": "二。"
  },
@@ -229,14 +237,14 @@ export const LINES: Line[] = [
  {
   "id": "v30",
   "t": 142.82,
-  "d": 0.79,
+  "d": 0.78,
   "en": "Initiate.",
   "zh": "启动。"
  },
  {
   "id": "v31",
   "t": 145,
-  "d": 0.77,
+  "d": 0.76,
   "en": "Good luck.",
   "zh": "祝你好运。"
  }

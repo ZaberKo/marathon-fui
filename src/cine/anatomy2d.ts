@@ -13,9 +13,8 @@
  *  - Muscles: spline shapes filled with fibre lines along their pull.
  *  - Head: the brain with gyri, the eyes, and the optic pathway in its own
  *    colour (eye → chiasm → tract → radiation).
- * All curves are splines (no ellipse primitives). The static plate is
- * rasterised once per palette and scale; pulses, flashes and the scan band
- * are drawn live on top.
+ * The anatomical curves use splines. The plate is compiled to reusable
+ * vector paths. Pulses, flashes and the scan band draw over it live.
  */
 import type { C2 } from './engine';
 import { hash } from './engine';
@@ -656,7 +655,7 @@ function buildFigure(joints: Map<string, { x: number; y: number }>): Figure {
   const inset = contour(F, nx, ny, x0, y0, h, -0.0065);
   const cells = insideCells(F, nx, ny, x0, y0, h);
 
-  // colour assignment happens at raster time (per palette): keep the index
+  // Colour assignment happens when preparing the plate for a palette.
   return { x0, y0, x1, y1, outline, inset, cells, strands, twigs, organs, intestine, muscles, bones, vertebrae, roots, cranial, vagus, brain: { shell, gyri, fissure, stem }, optic, eyes, J, heart };
 }
 
@@ -669,9 +668,6 @@ export const toPx = (fig: Figure, pl: Place, p: P2): P2 => {
   return [pl.x + (p[0] - cx0) * pl.s, pl.y + (cy1 - p[1]) * pl.s];
 };
 
-const rasterCache = new Map<string, HTMLCanvasElement>();
-const keyOf = (pal: AnatomyPalette, s: number, crop?: number[]) => `${pal.name}|${s}|${crop?.join(',') ?? ''}`;
-
 type Map2 = (p: P2) => P2;
 const pathOf = (pts: P2[], M: Map2, closed = false) => {
   const p = new Path2D();
@@ -683,25 +679,20 @@ const pathOf = (pts: P2[], M: Map2, closed = false) => {
   if (closed) p.closePath();
   return p;
 };
-function hatchIn(c: CanvasRenderingContext2D, clip: Path2D, bb: [number, number, number, number], angle: number, gap: number, color: string, lw: number) {
-  c.save();
-  c.clip(clip);
-  c.strokeStyle = color;
-  c.lineWidth = lw;
+function hatchPath(bb: [number, number, number, number], angle: number, gap: number) {
   const cx = (bb[0] + bb[2]) / 2;
   const cy = (bb[1] + bb[3]) / 2;
   const R = Math.hypot(bb[2] - bb[0], bb[3] - bb[1]) / 2 + 2;
   const ca = Math.cos(angle);
   const sa = Math.sin(angle);
-  c.beginPath();
+  const path = new Path2D();
   for (let o = -R; o <= R; o += gap) {
     const px = cx - sa * o;
     const py = cy + ca * o;
-    c.moveTo(px - ca * R, py - sa * R);
-    c.lineTo(px + ca * R, py + sa * R);
+    path.moveTo(px - ca * R, py - sa * R);
+    path.lineTo(px + ca * R, py + sa * R);
   }
-  c.stroke();
-  c.restore();
+  return path;
 }
 const bbox = (pts: P2[], M: Map2): [number, number, number, number] => {
   let a = Infinity;
@@ -719,20 +710,50 @@ const bbox = (pts: P2[], M: Map2): [number, number, number, number] => {
 };
 const strandColor = (pal: AnatomyPalette, s: Strand) => pal.nerves[s.ci % pal.nerves.length];
 
-/** Rasterise the static plate at `s` px/m (optionally cropped to a region in metres). */
-export function rasterFigure(fig: Figure, s: number, pal: AnatomyPalette, crop?: [number, number, number, number]) {
-  const key = keyOf(pal, s, crop);
-  const hit = rasterCache.get(key);
-  if (hit) return hit;
+type Paint = { path: Path2D; color: string; width?: number; alpha: number; clip?: Path2D };
+type FigurePlate = {
+  figure: Figure;
+  place: Place;
+  width: number;
+  height: number;
+  pulseColor: string;
+  project: Map2;
+  layers: Paint[];
+  muscleFlashes: { name: string; group: string; layers: Paint[] }[];
+};
+
+function paintLayer(ctx: C2, { path, color, width, alpha, clip }: Paint, strength: number) {
+  if (clip) {
+    ctx.save();
+    ctx.clip(clip);
+  }
+  ctx.globalAlpha = alpha * strength;
+  if (width === undefined) {
+    ctx.fillStyle = color;
+    ctx.fill(path);
+  } else {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.stroke(path);
+  }
+  if (clip) ctx.restore();
+}
+
+/** Compile the plate once at the shot's scale and crop, in local coordinates. */
+export function prepareFigure(fig: Figure, place: Place, pal: AnatomyPalette): FigurePlate {
+  const { s, crop } = place;
   const [cx0, cy0, cx1, cy1] = crop ?? [fig.x0, fig.y0, fig.x1, fig.y1];
-  const cv = document.createElement('canvas');
-  cv.width = Math.ceil((cx1 - cx0) * s);
-  cv.height = Math.ceil((cy1 - cy0) * s);
-  const c = cv.getContext('2d')!;
+  const width = Math.ceil((cx1 - cx0) * s);
+  const height = Math.ceil((cy1 - cy0) * s);
   const M: Map2 = (p) => [(p[0] - cx0) * s, (cy1 - p[1]) * s];
   const lw = (w: number) => w * Math.max(1, Math.sqrt(s / 500));
-  c.lineCap = 'round';
-  c.lineJoin = 'round';
+  const layers: Paint[] = [];
+  const muscleFlashes: FigurePlate['muscleFlashes'] = [];
+  const fill = (path: Path2D, color: string) => layers.push({ path, color, alpha: 1 });
+  const stroke = (path: Path2D, color: string, width: number, alpha = 1, clip?: Path2D) => layers.push({ path, color, width, alpha, clip });
+  const strokePaths = (paths: P2[][], color: string, width: number) => {
+    for (const points of paths) stroke(pathOf(points, M), color, width);
+  };
   // interior mask
   const mask = new Path2D();
   for (const poly of fig.cells) {
@@ -744,126 +765,91 @@ export function rasterFigure(fig: Figure, s: number, pal: AnatomyPalette, crop?:
     }
     mask.closePath();
   }
-  c.fillStyle = pal.fill;
-  c.fill(mask);
-  hatchIn(c, mask, [0, 0, cv.width, cv.height], 0, Math.max(3, s / 160), pal.hatch, 1);
+  fill(mask, pal.fill);
+  stroke(hatchPath([0, 0, width, height], 0, Math.max(3, s / 160)), pal.hatch, 1, 1, mask);
   // bones
-  c.strokeStyle = pal.bone;
-  c.lineWidth = lw(1);
-  for (const b of fig.bones) c.stroke(pathOf(b, M));
+  strokePaths(fig.bones, pal.bone, lw(1));
   // muscles: translucent body + fibre lines + edge
   for (const mu of fig.muscles) {
     const p = pathOf(mu.poly, M, true);
-    c.fillStyle = pal.muscleFill;
-    c.fill(p);
-    hatchIn(c, p, bbox(mu.poly, M), -mu.angle, Math.max(2.4, s / 260), pal.muscle, lw(0.9));
-    c.strokeStyle = pal.muscleEdge;
-    c.lineWidth = lw(1);
-    c.stroke(p);
+    const hatch = hatchPath(bbox(mu.poly, M), -mu.angle, Math.max(2.4, s / 260));
+    fill(p, pal.muscleFill);
+    stroke(hatch, pal.muscle, lw(0.9), 1, p);
+    stroke(p, pal.muscleEdge, lw(1));
+    muscleFlashes.push({
+      name: mu.name,
+      group: mu.group,
+      layers: [
+        { path: p, color: 'rgba(255,255,255,0.18)', alpha: 1 },
+        { path: hatch, color: '#ffffff', width: 1, alpha: 1, clip: p },
+        { path: p, color: '#ffffff', width: 1.5, alpha: 1 },
+      ],
+    });
   }
   // organs
   for (const o of fig.organs) {
     if (o.name === 'COLON') continue;
     const p = pathOf(o.poly, M, true);
-    c.fillStyle = pal.organ;
-    c.fill(p);
-    hatchIn(c, p, bbox(o.poly, M), o.angle, Math.max(2.6, s / 220), pal.organLine, 1);
-    c.strokeStyle = pal.organEdge;
-    c.lineWidth = lw(1.2);
-    c.stroke(p);
+    fill(p, pal.organ);
+    stroke(hatchPath(bbox(o.poly, M), o.angle, Math.max(2.6, s / 220)), pal.organLine, 1, 1, p);
+    stroke(p, pal.organEdge, lw(1.2));
   }
-  const colon = fig.organs.find((o) => o.name === 'COLON')!;
-  c.strokeStyle = pal.organ;
-  c.lineWidth = Math.max(4, s * 0.016);
-  c.stroke(pathOf(colon.poly, M));
-  c.strokeStyle = pal.organEdge;
-  c.lineWidth = lw(1);
-  c.stroke(pathOf(colon.poly, M));
-  c.strokeStyle = pal.organ;
-  c.lineWidth = Math.max(3, s * 0.011);
-  c.stroke(pathOf(spline(fig.intestine, false, 4), M));
-  c.strokeStyle = pal.organLine;
-  c.lineWidth = 1;
-  c.stroke(pathOf(spline(fig.intestine, false, 4), M));
+  const colon = pathOf(fig.organs.find((o) => o.name === 'COLON')!.poly, M);
+  stroke(colon, pal.organ, Math.max(4, s * 0.016));
+  stroke(colon, pal.organEdge, lw(1));
+  const intestine = pathOf(spline(fig.intestine, false, 4), M);
+  stroke(intestine, pal.organ, Math.max(3, s * 0.011));
+  stroke(intestine, pal.organLine, 1);
   // spine: vertebrae + cord + roots
-  c.strokeStyle = pal.spine;
-  c.globalAlpha = 0.7;
-  c.lineWidth = lw(1);
   for (const v of fig.vertebrae) {
     const [x, y] = M(v);
     const w = 0.009 * s;
     const hh = 0.0062 * s;
-    c.beginPath();
-    c.roundRect(x - w, y - hh, w * 2, hh * 2, hh * 0.7);
-    c.stroke();
+    const vertebra = new Path2D();
+    vertebra.roundRect(x - w, y - hh, w * 2, hh * 2, hh * 0.7);
+    stroke(vertebra, pal.spine, lw(1), 0.7);
   }
-  c.globalAlpha = 1;
-  c.lineWidth = lw(1.6);
-  c.stroke(pathOf([[0, 1.66], [0, 1.0]], M));
-  c.lineWidth = lw(0.8);
-  for (const r of fig.roots) c.stroke(pathOf(r, M));
+  stroke(pathOf([[0, 1.66], [0, 1.0]], M), pal.spine, lw(1.6));
+  strokePaths(fig.roots, pal.spine, lw(0.8));
   // nerve strands
-  c.globalAlpha = 0.9;
   for (const st of fig.strands) {
-    c.strokeStyle = strandColor(pal, st);
-    c.lineWidth = lw(1);
-    c.stroke(pathOf(st.pts, M));
+    stroke(pathOf(st.pts, M), strandColor(pal, st), lw(1), 0.9);
   }
   fig.twigs.forEach((tw, i) => {
-    c.strokeStyle = pal.twig[i % pal.twig.length];
-    c.lineWidth = lw(0.7);
-    c.stroke(pathOf(tw, M));
+    stroke(pathOf(tw, M), pal.twig[i % pal.twig.length], lw(0.7), 0.9);
   });
-  c.globalAlpha = 1;
-  c.strokeStyle = pal.vagus;
-  c.lineWidth = lw(1.3);
-  for (const v of fig.vagus) c.stroke(pathOf(v, M));
-  c.strokeStyle = pal.cranial;
-  c.lineWidth = lw(1);
-  for (const v of fig.cranial) c.stroke(pathOf(v, M));
+  strokePaths(fig.vagus, pal.vagus, lw(1.3));
+  strokePaths(fig.cranial, pal.cranial, lw(1));
   // brain
   const shell = pathOf(fig.brain.shell, M, true);
-  c.fillStyle = pal.brain;
-  c.fill(shell);
-  c.strokeStyle = pal.brainLine;
-  c.lineWidth = lw(1);
-  for (const g of fig.brain.gyri) c.stroke(pathOf(g, M));
-  c.lineWidth = lw(1.4);
-  c.stroke(shell);
-  c.stroke(pathOf(fig.brain.fissure, M));
-  for (const st of fig.brain.stem) c.stroke(pathOf(st, M));
+  fill(shell, pal.brain);
+  strokePaths(fig.brain.gyri, pal.brainLine, lw(1));
+  stroke(shell, pal.brainLine, lw(1.4));
+  strokePaths([fig.brain.fissure, ...fig.brain.stem], pal.brainLine, lw(1.4));
   // optic pathway
-  c.strokeStyle = pal.optic;
-  c.lineWidth = lw(1.1);
-  for (const o of fig.optic) c.stroke(pathOf(o.pts, M));
+  strokePaths(fig.optic.map((o) => o.pts), pal.optic, lw(1.1));
   // eyes
-  c.strokeStyle = pal.eye;
   for (const e of fig.eyes) {
     const [x, y] = M(e);
-    c.lineWidth = lw(1.4);
-    c.beginPath();
-    c.arc(x, y, 0.0115 * s, 0, Math.PI * 2);
-    c.stroke();
-    c.lineWidth = lw(1);
-    c.beginPath();
-    c.arc(x, y, 0.005 * s, 0, Math.PI * 2);
-    c.stroke();
+    const socket = new Path2D();
+    socket.arc(x, y, 0.0115 * s, 0, Math.PI * 2);
+    stroke(socket, pal.eye, lw(1.4));
+    const pupil = new Path2D();
+    pupil.arc(x, y, 0.005 * s, 0, Math.PI * 2);
+    stroke(pupil, pal.eye, lw(1));
   }
   // silhouette: outline + inset
   const seg = (arr: Float32Array, color: string, w: number) => {
-    c.strokeStyle = color;
-    c.lineWidth = w;
-    c.beginPath();
+    const path = new Path2D();
     for (let i = 0; i < arr.length; i += 4) {
-      c.moveTo((arr[i] - cx0) * s, (cy1 - arr[i + 1]) * s);
-      c.lineTo((arr[i + 2] - cx0) * s, (cy1 - arr[i + 3]) * s);
+      path.moveTo((arr[i] - cx0) * s, (cy1 - arr[i + 1]) * s);
+      path.lineTo((arr[i + 2] - cx0) * s, (cy1 - arr[i + 3]) * s);
     }
-    c.stroke();
+    stroke(path, color, w);
   };
   seg(fig.inset, pal.inner, lw(0.8));
   seg(fig.outline, pal.outline, lw(1.5));
-  rasterCache.set(key, cv);
-  return cv;
+  return { figure: fig, place, width, height, pulseColor: pal.pulse, project: M, layers, muscleFlashes };
 }
 
 /** sub-path of a strand between arc lengths a..b */
@@ -884,61 +870,64 @@ function subPath(ctx: C2, st: Strand, a: number, b: number, M: Map2) {
 }
 
 /** Draw the plate + animated layers (nerve pulses, muscle-group flashes, scan band). */
-export function drawFigure(ctx: C2, fig: Figure, pl: Place, pal: AnatomyPalette, t: number, o: { pulse?: number; nerveAlpha?: number; flash?: string[]; scanY?: number } = {}) {
-  const cv = rasterFigure(fig, pl.s, pal, pl.crop);
-  ctx.drawImage(cv, pl.x, pl.y);
-  const M: Map2 = (p) => toPx(fig, pl, p);
+export function drawFigure(ctx: C2, plate: FigurePlate, t: number, o: { pulse?: number; nerveAlpha?: number; flash?: string[]; scanY?: number } = {}) {
+  const { figure, place, width, height, pulseColor, project, layers, muscleFlashes } = plate;
   ctx.save();
+  ctx.translate(place.x, place.y);
   ctx.lineCap = 'round';
+  ctx.save();
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.rect(0, 0, width, height);
+  ctx.clip();
+  for (const layer of layers) paintLayer(ctx, layer, 1);
+  ctx.restore();
   if (o.flash?.length) {
-    for (const mu of fig.muscles) {
-      if (!o.flash.includes(mu.group) && !o.flash.includes(mu.name)) continue;
-      const p = pathOf(mu.poly, M, true);
-      ctx.fillStyle = 'rgba(255,255,255,0.18)';
-      ctx.fill(p);
-      hatchIn(ctx as CanvasRenderingContext2D, p, bbox(mu.poly, M), -mu.angle, Math.max(2.4, pl.s / 260), '#ffffff', 1);
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1.5;
-      ctx.stroke(p);
+    for (const muscle of muscleFlashes) {
+      if (!o.flash.includes(muscle.group) && !o.flash.includes(muscle.name)) continue;
+      for (const layer of muscle.layers) paintLayer(ctx, layer, 1);
     }
   }
   if (o.pulse != null) {
     // signals run out from the spine along every bundle; optic signals run eye → cortex
     ctx.globalAlpha = o.nerveAlpha ?? 0.95;
-    ctx.strokeStyle = pal.pulse;
-    ctx.lineWidth = Math.max(1.4, pl.s / 430);
+    ctx.strokeStyle = pulseColor;
+    ctx.lineWidth = Math.max(1.4, place.s / 430);
     ctx.beginPath();
-    fig.strands.forEach((st, i) => {
+    figure.strands.forEach((st, i) => {
       if (!st.pulse) return;
       const L = st.cum[st.cum.length - 1];
       const head = ((t * (0.35 + hash(i, 5) * 0.3) + hash(i, 9) + o.pulse!) % 1) * (L + 0.06);
-      subPath(ctx, st, head - 0.05, head, M);
+      subPath(ctx, st, head - 0.05, head, project);
     });
     ctx.stroke();
     ctx.strokeStyle = '#ffe0a0';
     ctx.beginPath();
-    fig.optic.forEach((st, i) => {
+    figure.optic.forEach((st, i) => {
       const L = st.cum[st.cum.length - 1];
       const head = ((t * 0.6 + hash(i, 13)) % 1) * (L + 0.02);
-      subPath(ctx, st, head - 0.012, head, M);
+      subPath(ctx, st, head - 0.012, head, project);
     });
     ctx.stroke();
     ctx.globalAlpha = 1;
   }
   if (o.scanY != null) {
-    // a brighter band: the plate re-drawn additively inside a thin slab
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(pl.x, o.scanY - 14, cv.width, 28);
-    ctx.clip();
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.8;
-    ctx.drawImage(cv, pl.x, pl.y);
-    ctx.restore();
-    ctx.fillStyle = pal.pulse;
+    const top = Math.max(0, o.scanY - place.y - 14);
+    const bottom = Math.min(height, o.scanY - place.y + 14);
+    if (bottom > top) {
+      // Screen each path inside the slab so dense intersections retain detail.
+      ctx.save();
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.rect(0, top, width, bottom - top);
+      ctx.clip();
+      ctx.globalCompositeOperation = 'screen';
+      for (const layer of layers) paintLayer(ctx, layer, 0.65);
+      ctx.restore();
+    }
+    ctx.fillStyle = pulseColor;
     ctx.globalAlpha = 0.85;
-    ctx.fillRect(pl.x - 30, Math.round(o.scanY), cv.width + 60, 1.5);
-    ctx.globalAlpha = 1;
+    ctx.fillRect(-30, Math.round(o.scanY) - place.y, width + 60, 1.5);
   }
   ctx.restore();
 }

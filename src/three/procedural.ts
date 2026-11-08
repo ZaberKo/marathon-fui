@@ -1,9 +1,10 @@
 /**
  * Procedural assets: brain, satellite, contour (marching-squares) lines,
- * pixel planet surface texture.
+ * and shader-drawn planet surfaces.
  */
 import * as THREE from 'three/webgpu';
 import { SimplexNoise } from 'three/addons/math/SimplexNoise.js';
+import { abs, cos, floor, fract, hash, length, mix, mx_noise_float, sin, step, uv, vec2, vec3 } from 'three/tsl';
 import { rng } from '../lib/util';
 
 const ss = (a: number, b: number, x: number) => {
@@ -152,87 +153,73 @@ export function isoSegments(
 }
 
 /* ------------------------------------------------------------------ */
-/* Pixel planet surface (canvas texture)                                */
+/* Flat planet surfaces                                                  */
 /* ------------------------------------------------------------------ */
-export function pixelSurfaceTexture({ w = 512, h = 256, base = '#1d1dff', dark = '#0a0a8a', ink = '#020230', seed = 9 } = {}) {
-  const r = rng(seed);
-  const cv = document.createElement('canvas');
-  cv.width = w;
-  cv.height = h;
-  const g = cv.getContext('2d')!;
-  g.fillStyle = base;
-  g.fillRect(0, 0, w, h);
-  // plates
-  for (let k = 0; k < 260; k++) {
-    g.fillStyle = r() < 0.6 ? dark : ink;
-    const pw = 2 + Math.floor(r() * 18);
-    const ph = 1 + Math.floor(r() * (r() < 0.2 ? 8 : 3));
-    g.fillRect(Math.floor(r() * w), Math.floor(r() * h), pw, ph);
-  }
-  // dot rows
-  g.fillStyle = ink;
-  for (let k = 0; k < 900; k++) {
-    const x = Math.floor(r() * w);
-    const y = Math.floor(r() * h);
-    const n = 1 + Math.floor(r() * 6);
-    for (let i = 0; i < n; i++) g.fillRect(x + i * 2, y, 1, 1);
-  }
-  const tex = new THREE.CanvasTexture(cv);
-  tex.magFilter = THREE.NearestFilter;
-  tex.minFilter = THREE.NearestFilter;
-  tex.generateMipmaps = false;
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.RepeatWrapping;
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
+const inkColor = (hex: number) => {
+  const color = new THREE.Color(hex);
+  return vec3(color.r, color.g, color.b);
+};
+
+/** Draw plates and broken dot rows directly in spherical UV space. */
+export function pixelSurfaceMaterial({ cells = [512, 256], repeat = [1, 1], base = 0x1d1dff, dark = 0x0a0a8a, ink = 0x020230, seed = 9 } = {}) {
+  const point = fract(uv().mul(vec2(repeat[0], repeat[1]))).mul(vec2(cells[0], cells[1]));
+  // Larger grids shrink each mark while keeping roughly the same count per tile.
+  const density = Math.min(1, (512 * 256) / (cells[0] * cells[1]));
+  const plateGrid = point.div(vec2(24, 10));
+  const plateCell = floor(plateGrid);
+  const plateKey = plateCell.x.add(plateCell.y.mul(113)).add(seed * 997);
+  const platePoint = floor(fract(plateGrid).mul(vec2(24, 10)));
+  const plateX = platePoint.x.sub(floor(hash(plateKey.add(51)).mul(5)));
+  const plateY = platePoint.y.sub(floor(hash(plateKey.add(167)).mul(4)));
+  const plateW = floor(hash(plateKey.add(593)).mul(15)).add(3);
+  const plateH = floor(hash(plateKey.add(307)).mul(4)).add(1);
+  const plate = step(1 - 0.44 * density, hash(plateKey)).mul(step(0, plateX)).mul(step(plateW, plateX).oneMinus())
+    .mul(step(0, plateY)).mul(step(plateH, plateY).oneMinus());
+
+  const dotGrid = point.div(vec2(16, 6));
+  const dotCell = floor(dotGrid);
+  const dotKey = dotCell.x.add(dotCell.y.mul(193)).add(seed * 241);
+  const dotPoint = floor(fract(dotGrid).mul(vec2(16, 6)));
+  const dotX = dotPoint.x.sub(floor(hash(dotKey.add(17)).mul(4)));
+  const dotY = floor(hash(dotKey.add(171)).mul(6));
+  const dotRow = step(1 - 0.35 * density, hash(dotKey)).mul(step(0, dotX)).mul(step(hash(dotKey.add(769)).mul(10).add(3), dotX).oneMinus())
+    .mul(step(0.5, abs(dotPoint.y.sub(dotY))).oneMinus()).mul(step(0.5, fract(dotX.mul(0.5))).oneMinus());
+
+  const plateColor = mix(inkColor(dark), inkColor(ink), step(0.64, hash(plateKey.add(47))));
+  const material = new THREE.MeshBasicNodeMaterial();
+  material.colorNode = mix(mix(inkColor(base), plateColor, plate), inkColor(ink), dotRow);
+  return material;
 }
 
-/** Planet sensor texture with large-scale structure (noise landmasses, craters, specks). */
-export function terrainTexture({ w = 2048, h = 1024, seed = 21 } = {}) {
-  const noise = new SimplexNoise({ random: rng(seed) });
-  const cv = document.createElement('canvas');
-  cv.width = w;
-  cv.height = h;
-  const g = cv.getContext('2d')!;
-  const img = g.createImageData(w, h);
-  const cell = 4;
-  for (let y = 0; y < h; y += cell)
-    for (let x = 0; x < w; x += cell) {
-      const u = (x / w) * Math.PI * 2;
-      const v = (y / h) * Math.PI;
-      const px = Math.cos(u) * Math.sin(v);
-      const py = Math.cos(v);
-      const pz = Math.sin(u) * Math.sin(v);
-      const n = noise.noise3d(px * 1.6, py * 1.6, pz * 1.6) * 0.6 + noise.noise3d(px * 5, py * 5, pz * 5) * 0.3 + noise.noise3d(px * 14, py * 14, pz * 14) * 0.12;
-      let c: [number, number, number];
-      if (n > 0.32) c = [3, 6, 58];
-      else if (n > 0.1) c = [10, 16, 176];
-      else if (n > -0.25) c = [22, 32, 255];
-      else c = [40, 58, 255];
-      for (let j = 0; j < cell; j++)
-        for (let i = 0; i < cell; i++) {
-          const k = ((y + j) * w + (x + i)) * 4;
-          img.data[k] = c[0];
-          img.data[k + 1] = c[1];
-          img.data[k + 2] = c[2];
-          img.data[k + 3] = 255;
-        }
-    }
-  g.putImageData(img, 0, 0);
-  const r = rng(seed + 1);
-  g.strokeStyle = '#03063a';
-  g.lineWidth = 3;
-  for (let i = 0; i < 70; i++) {
-    g.beginPath();
-    g.arc(r() * w, r() * h, 4 + r() * 26, 0, Math.PI * 2);
-    g.stroke();
-  }
-  g.fillStyle = '#03063a';
-  for (let i = 0; i < 1600; i++) g.fillRect(Math.floor(r() * w), Math.floor(r() * h), 2 + Math.floor(r() * 6), 2);
-  const tex = new THREE.CanvasTexture(cv);
-  tex.magFilter = THREE.NearestFilter;
-  tex.minFilter = THREE.NearestFilter;
-  tex.generateMipmaps = false;
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
+/** Draw four discrete terrain inks with spherical noise, crater rings and specks. */
+export function terrainMaterial({ seed = 21 } = {}) {
+  const surfaceUv = uv();
+  const resolution = vec2(512, 256);
+  const cellUv = floor(surfaceUv.mul(resolution)).add(0.5).div(resolution);
+  const longitude = cellUv.x.mul(Math.PI * 2);
+  const latitude = cellUv.y.oneMinus().mul(Math.PI);
+  const surface = vec3(cos(longitude).mul(sin(latitude)), cos(latitude), sin(longitude).mul(sin(latitude)))
+    .add(vec3(seed * 0.17, seed * 0.13, seed * 0.29));
+  const land = mx_noise_float(surface.mul(1.6), 0.66)
+    .add(mx_noise_float(surface.mul(5), 0.28))
+    .add(mx_noise_float(surface.mul(13), 0.12));
+  const ink = inkColor(0x03063a);
+  const shallow = mix(inkColor(0x283aff), inkColor(0x1620ff), step(-0.22, land));
+  const deep = mix(shallow, inkColor(0x0a10b0), step(0.12, land));
+  const terrain = mix(deep, ink, step(0.34, land));
+
+  const craterGrid = surfaceUv.mul(vec2(42, 21));
+  const craterCell = floor(craterGrid);
+  const craterKey = craterCell.x.add(craterCell.y.mul(53)).add(seed * 977);
+  const craterCenter = vec2(hash(craterKey.add(61)), hash(craterKey.add(239))).mul(0.22).add(0.39);
+  const craterRadius = hash(craterKey.add(191)).mul(0.25).add(0.08);
+  const craterEdge = abs(length(fract(craterGrid).sub(craterCenter)).sub(craterRadius));
+  const crater = step(0.91, hash(craterKey)).mul(step(0.032, craterEdge).oneMinus());
+
+  const speckCell = floor(surfaceUv.mul(vec2(512, 384)));
+  const speckKey = speckCell.x.add(speckCell.y.mul(521)).add(seed * 719);
+  const speck = step(0.994, hash(speckKey));
+  const material = new THREE.MeshBasicNodeMaterial();
+  material.colorNode = mix(terrain, ink, crater.max(speck));
+  return material;
 }

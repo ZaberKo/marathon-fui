@@ -8,7 +8,7 @@
 import * as THREE from 'three/webgpu';
 import { hash } from '../engine';
 import { Hard, toonLit } from './hard';
-import { F } from '../draw';
+import { VectorPlate } from './vector-plate';
 
 export type ColonyOpts = { seed?: number; haze?: boolean; ruined?: number };
 
@@ -114,24 +114,16 @@ export function buildColony(o: ColonyOpts = {}) {
   const pad = new THREE.Mesh(new THREE.CylinderGeometry(6, 6, 0.3, 8), toonLit({ lit: 0x1c2450, mid: 0x10163a, shade: 0x05081a, haze }).mat);
   pad.position.set(-2, 0.15, -2);
   group.add(pad);
-  const cv = document.createElement('canvas');
-  cv.width = 512;
-  cv.height = 512;
-  const c2 = cv.getContext('2d')!;
-  c2.strokeStyle = '#cde404';
-  c2.lineWidth = 14;
-  c2.beginPath();
-  c2.arc(256, 256, 200, 0, Math.PI * 2);
-  c2.stroke();
-  c2.fillStyle = '#cde404';
-  c2.font = `800 220px ${F.sans}`;
-  c2.textAlign = 'center';
-  c2.textBaseline = 'middle';
-  c2.fillText('04', 256, 266);
-  for (let k = 0; k < 8; k++) c2.fillRect(40 + k * 56, 470, 30, 20);
-  const pt = new THREE.CanvasTexture(cv);
-  pt.colorSpace = THREE.SRGBColorSpace;
-  const decal = new THREE.Mesh(new THREE.PlaneGeometry(9, 9), new THREE.MeshBasicMaterial({ map: pt, transparent: true, depthWrite: false }));
+  const plate = new VectorPlate(512, 512, 9, 9);
+  const ink = 0xcde404;
+  const point = (r: number, k: number) => [256 + r * Math.cos(k * Math.PI / 32), 256 + r * Math.sin(k * Math.PI / 32)] as const;
+  for (let k = 0; k < 64; k++) {
+    plate.polygon([point(193, k), point(207, k), point(207, k + 1), point(193, k + 1)], ink);
+  }
+  plate.text('04', 256, 182, 168, ink, { align: 'center', aspect: 1.04 });
+  for (let k = 0; k < 8; k++) plate.rect(40 + k * 56, 470, 30, 20, ink);
+  const decal = plate.mesh();
+  decal.name = 'Landing pad 04 stencil';
   decal.rotation.x = -Math.PI / 2;
   decal.position.set(-2, 0.31, -2);
   group.add(decal);

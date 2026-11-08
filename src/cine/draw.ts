@@ -178,6 +178,7 @@ export function checker(ctx: C2, x: number, y: number, cols: number, rows: numbe
 }
 
 /** Bitmap glyph from rows of '#'/'.' */
+/** Draw a pixel glyph as individual rectangular cells. */
 export function bitmap(ctx: C2, rows: string[], x: number, y: number, px: number, color: string) {
   ctx.fillStyle = color;
   for (let j = 0; j < rows.length; j++)
@@ -214,85 +215,26 @@ export function ring(ctx: C2, cx: number, cy: number, r: number, color: string, 
   ctx.stroke();
 }
 
+/** A compact patch of round dots, matching the kit's .k-dots. */
+export function kDots(ctx: C2, x: number, y: number, cols: number, rows: number, pitch: number, radius: number, color: string) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const cx = x + col * pitch;
+      const cy = y + row * pitch;
+      ctx.moveTo(cx + radius, cy);
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    }
+  }
+  ctx.fill();
+}
+
 /** Small "+" crosshair tick (the magenta registration marks). */
 export function plus(ctx: C2, x: number, y: number, s: number, color: string, lw = 2) {
   ctx.fillStyle = color;
   ctx.fillRect(Math.round(x - s), Math.round(y - lw / 2), s * 2, lw);
   ctx.fillRect(Math.round(x - lw / 2), Math.round(y - s / 2), lw, s);
-}
-
-/* ------------------------------------------------------------------ */
-/* Memory-dump field: the dark blue "data" texture behind most shots   */
-/* ------------------------------------------------------------------ */
-const fieldCache = new Map<string, HTMLCanvasElement>();
-
-/**
- * Pre-rendered tile of dim rectangles, hairlines and dot rows. The reference
- * keeps a low-contrast data layer behind nearly every shot; the old kit had
- * only a sparse ambient field, so frames looked empty.
- */
-export function dataTile(seed: number, w: number, h: number, palette: string[] = [C.blueNight, '#06106a', '#0a1586', '#040c4c']) {
-  const key = `${seed}:${w}:${h}:${palette.join()}`;
-  const hit = fieldCache.get(key);
-  if (hit) return hit;
-  const cv = document.createElement('canvas');
-  cv.width = w;
-  cv.height = h;
-  const ctx = cv.getContext('2d')!;
-  let s = seed * 7919;
-  const r = () => hash(s++, seed);
-  // vertical column bands
-  const cols = Math.floor(w / 24);
-  for (let i = 0; i < cols; i++) {
-    if (r() < 0.45) continue;
-    const x = i * 24 + Math.floor(r() * 6);
-    const y = Math.floor(r() * h);
-    const hh = 20 + Math.floor(r() * h * 0.6);
-    ctx.fillStyle = palette[Math.floor(r() * palette.length)];
-    ctx.globalAlpha = 0.35 + r() * 0.5;
-    ctx.fillRect(x, y, 2 + Math.floor(r() * 14), hh);
-  }
-  // blocks
-  for (let i = 0; i < (w * h) / 9000; i++) {
-    const bw = 8 + Math.floor(r() * 90);
-    const bh = 4 + Math.floor(r() * 30);
-    ctx.fillStyle = palette[Math.floor(r() * palette.length)];
-    ctx.globalAlpha = 0.3 + r() * 0.6;
-    ctx.fillRect(Math.floor(r() * w), Math.floor(r() * h), bw, bh);
-  }
-  // hairline rows
-  ctx.globalAlpha = 0.5;
-  for (let i = 0; i < h / 10; i++) {
-    const y = Math.floor(r() * h);
-    const x = Math.floor(r() * w);
-    ctx.fillStyle = palette[2];
-    ctx.fillRect(x, y, 30 + r() * 200, 1);
-  }
-  // dot rows (fake micro type)
-  for (let i = 0; i < (w * h) / 40000; i++) {
-    const x = Math.floor(r() * w);
-    const y = Math.floor(r() * h);
-    ctx.fillStyle = palette[1 + Math.floor(r() * (palette.length - 1))];
-    ctx.globalAlpha = 0.8;
-    for (let k = 0; k < 6 + r() * 20; k++) if (r() > 0.3) ctx.fillRect(x + k * 4, y, 2, 2);
-  }
-  ctx.globalAlpha = 1;
-  fieldCache.set(key, cv);
-  return cv;
-}
-
-/** Fill a rect with the data field, offset by (ox, oy) (wraps). */
-export function dataField(ctx: C2, x: number, y: number, w: number, h: number, seed: number, o: { ox?: number; oy?: number; alpha?: number; palette?: string[] } = {}) {
-  const tile = dataTile(seed, 960, 540, o.palette);
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(x, y, w, h);
-  ctx.clip();
-  ctx.globalAlpha = o.alpha ?? 1;
-  const ox = (((o.ox ?? 0) % 960) + 960) % 960;
-  const oy = (((o.oy ?? 0) % 540) + 540) % 540;
-  for (let yy = y - oy; yy < y + h; yy += 540) for (let xx = x - ox; xx < x + w; xx += 960) ctx.drawImage(tile, xx, yy);
-  ctx.restore();
 }
 
 /* ------------------------------------------------------------------ */
@@ -309,20 +251,6 @@ export function glitchBlocks(ctx: C2, seed: number, o: { n?: number; colors?: st
     const y = ay + Math.floor((hash(seed, i, 4) * ah) / g) * g;
     ctx.fillStyle = colors[Math.floor(hash(seed, i, 5) * colors.length)];
     ctx.fillRect(x, y, w, h);
-  }
-}
-
-/**
- * Copy horizontal strips of the canvas sideways — a cheap slice-shift glitch
- * that operates on whatever is already drawn.
- */
-export function sliceShift(ctx: C2, seed: number, n = 8, maxShift = 120) {
-  const cv = ctx.canvas;
-  for (let i = 0; i < n; i++) {
-    const y = Math.floor(hash(seed, i, 7) * cv.height);
-    const h = 4 + Math.floor(hash(seed, i, 8) * 60);
-    const dx = Math.round((hash(seed, i, 9) - 0.5) * 2 * maxShift);
-    ctx.drawImage(cv, 0, y, cv.width, h, dx, y, cv.width, h);
   }
 }
 

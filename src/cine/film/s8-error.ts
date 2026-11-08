@@ -9,7 +9,7 @@ import { C, F, frameRect, line, microRows, rect, ring, stripes, text, tri } from
 import { makeBody, type Body } from '../models/body';
 import { contourMaterial } from '../../three/materials';
 import { ST } from './times';
-import { cutGlitch, easeInOutCubic, easeOutExpo, persp, pixelCluster, px, scrollRow, smooth, span, vlabel } from './kit';
+import { easeInOutCubic, easeOutExpo, persp, pixelCluster, px, scrollRow, smooth, span, vlabel } from './kit';
 
 const ORANGE = '#fc2c00';
 
@@ -60,11 +60,6 @@ export const s8: ShotDef[] = [
         text(fg, '8E S8', 1370, 730, { size: 52, weight: 500, color: '#000' });
         text(fg, 'COG.RT 0x0411', 1320, 790, { size: 30, family: F.mono, weight: 700, color: '#000' });
         stripes(fg, 1680, 0, 240, 120, { period: 30, color: '#000', angle: -45 });
-        for (const w of words) if (Math.abs(t - w[0]) < 0.06) cutGlitch(f, t - w[0], 0.06, ['#000', C.yellowHi, '#1428ff'], 21);
-        cutGlitch(f, t, 0.12, ['#000', C.yellowHi], 22);
-        f.post.lift = 0.3;
-        f.post.mottle = 1;
-        f.post.tint = [1, 0.4, 0.3];
       },
     }),
   },
@@ -119,8 +114,6 @@ export const s8: ShotDef[] = [
           }
           fg.stroke();
         }
-        cutGlitch(f, t, 0.12, ['#000', C.red, C.blue], 23);
-        f.post.tint = [0.6, 0.6, 1];
       },
     }),
   },
@@ -159,11 +152,10 @@ export const s8: ShotDef[] = [
           text(fg, 'SHELL 06', 1780, 140, { size: 44, weight: 800, color: C.red, stretch: 'semi-expanded', align: 'right' });
           text(fg, 'PSYCHE ???? · ACTIVE', 1780, 172, { size: 15, family: F.mono, weight: 700, color: C.red, align: 'right' });
           const n = t < 0.9 ? '01' : '02';
-          rect(fg, 760, 860, 400, 120, '#000');
-          text(fg, 'INSTANCE COUNT', 780, 900, { size: 20, family: F.mono, weight: 700, color: C.white });
-          text(fg, n, 1140, 968, { size: 96, weight: 800, color: n === '02' ? C.red : C.white, align: 'right' });
-          if (Math.abs(t - 0.9) < 0.08) cutGlitch(f, t - 0.9 + 0.08, 0.16, [C.red, '#000', C.white], 24);
-          cutGlitch(f, t, 0.1, ['#000', C.red, C.blue], 25);
+          const invert = t >= 0.9 && t < 0.98;
+          rect(fg, 760, 860, 400, 120, invert ? C.red : '#000');
+          text(fg, 'INSTANCE COUNT', 780, 900, { size: 20, family: F.mono, weight: 700, color: invert ? '#000' : C.white });
+          text(fg, n, 1140, 968, { size: 96, weight: 800, color: invert ? '#000' : n === '02' ? C.red : C.white, align: 'right' });
         },
       };
     },
@@ -208,8 +200,6 @@ export const s8: ShotDef[] = [
         pixelCluster(fg, 1640, 160, 14, B, 31);
         if (t > 2.6) for (let i = 0; i < 14; i++) tri(fg, 150 + i * 120 + (i % 2) * 40, 980 - (i % 3) * 30, 22, '#2a8a10');
         vlabel(fg, 'PROCEED', 1840, 640, 40, '#2ee866', { weight: 800 });
-        cutGlitch(f, t, 0.1, ['#000', B], 26);
-        f.post.lift = 0.6;
         void clamp01;
         void px;
       },

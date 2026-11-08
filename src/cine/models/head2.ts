@@ -1,11 +1,9 @@
 /**
- * Refined head (SDF) + its internals for the transfer shot:
+ * Refined head (SDF), wire eyes and visual pathways:
  *  - sculpted head: cranium, brow ridge, sockets, lids, cheekbones + arches,
  *    nose (bridge, tip, alae, nostrils), lips, chin, mandible, ears, neck, SCM
  *  - eyes: wire eyeballs with iris rings, pupil and lens
  *  - optic nerves (eye → chiasm → tracts → occipital) in their own colour
- *  - internal wiring: orthogonal 3D routes between brain nodes, eyes, ears and
- *    the spine, plus bus bundles and junction nodes
  * Units: metres; eyes face +Z; eye line at y = 0.035.
  */
 import * as THREE from 'three/webgpu';
@@ -20,6 +18,11 @@ import { hash } from '../engine';
  */
 export const H2 = { eyeX: 0.0315, eyeY: 0, eyeZ: 0.077, eyeR: 0.012, top: 0.123, brain: new THREE.Vector3(0, 0.029, -0.014) };
 export const BRAIN_S = new THREE.Vector3(0.0875, 0.112, 0.0855);
+export type HeadAnatomy = Pick<typeof H2, 'eyeX' | 'eyeY' | 'eyeZ' | 'eyeR' | 'brain'> & { brainScale: THREE.Vector3 };
+const defaultAnatomy: HeadAnatomy = { ...H2, brainScale: BRAIN_S };
+
+const fitBrainPoint = (p: THREE.Vector3, fit: HeadAnatomy) =>
+  p.sub(H2.brain).divide(BRAIN_S).multiply(fit.brainScale).add(fit.brain);
 
 let geo: THREE.BufferGeometry | null = null;
 export function head2Geometry(cell = 0.0019) {
@@ -73,9 +76,8 @@ export function head2Geometry(cell = 0.0019) {
 }
 
 /** wire eyeball: latitude rings + iris rings + pupil + lens, facing +Z */
-export function wireEye(color: number, iris: number) {
+export function wireEye(color: number, iris: number, R = H2.eyeR) {
   const g = new THREE.Group();
-  const R = H2.eyeR;
   const mk = (pts: THREE.Vector3[], c: number) => new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: c, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
   for (let i = 1; i < 8; i++) {
     const a = (i / 8) * Math.PI;
@@ -115,64 +117,6 @@ const bez = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3, d: THREE.Vect
     return new THREE.Vector3().addScaledVector(a, it * it * it).addScaledVector(b, 3 * it * it * t).addScaledVector(c, 3 * it * t * t).addScaledVector(d, t * t * t);
   });
 
-/** The internal wiring as line sets (the visual pathway is opticPathway). */
-export function headWiring(seed = 7) {
-  const pushLine = (arr: number[], pts: THREE.Vector3[]) => {
-    for (let i = 1; i < pts.length; i++) arr.push(pts[i - 1].x, pts[i - 1].y, pts[i - 1].z, pts[i].x, pts[i].y, pts[i].z);
-  };
-  // internal wiring: orthogonal routes between nodes
-  const wires: number[] = [];
-  const nodes: THREE.Vector3[] = [];
-  const brainNode = () => {
-    const r = (k: number) => hash(seed, nodes.length, k);
-    return new THREE.Vector3((r(1) - 0.5) * 0.09, 0.012 + r(2) * 0.075, -0.075 + r(3) * 0.12);
-  };
-  for (let i = 0; i < 46; i++) nodes.push(brainNode());
-  const anchors = [
-    new THREE.Vector3(-H2.eyeX, H2.eyeY + 0.014, H2.eyeZ - 0.014), new THREE.Vector3(H2.eyeX, H2.eyeY + 0.014, H2.eyeZ - 0.014),
-    new THREE.Vector3(-0.07, -0.01, -0.004), new THREE.Vector3(0.07, -0.01, -0.004), // ears
-    new THREE.Vector3(0, -0.035, -0.032), new THREE.Vector3(0, -0.2, -0.034), // brainstem / spine
-    new THREE.Vector3(0, -0.03, 0.085), // nasal
-  ];
-  const route = (a: THREE.Vector3, b: THREE.Vector3, k: number) => {
-    const order = [0, 1, 2].sort((x, y) => hash(seed, k, x) - hash(seed, k, y));
-    const pts = [a.clone()];
-    const cur = a.clone();
-    for (const ax of order) {
-      const n = cur.clone();
-      if (ax === 0) n.x = b.x;
-      else if (ax === 1) n.y = b.y;
-      else n.z = b.z;
-      pts.push(n);
-      cur.copy(n);
-    }
-    return pts;
-  };
-  let k = 0;
-  for (let i = 0; i < nodes.length; i++) {
-    const j = (i * 7 + 3) % nodes.length;
-    pushLine(wires, route(nodes[i], nodes[j], k++));
-    if (i % 5 === 0) pushLine(wires, route(nodes[i], anchors[i % anchors.length], k++));
-  }
-  // bus bundles (parallel lines) from the brainstem up the back of the brain
-  for (let b = 0; b < 6; b++) {
-    const o = (b - 2.5) * 0.003;
-    pushLine(wires, [new THREE.Vector3(o, -0.2, -0.034), new THREE.Vector3(o, -0.04, -0.034), new THREE.Vector3(o, 0.0, -0.064 + b * 0.002), new THREE.Vector3(o, 0.075, -0.075)]);
-  }
-  // junction nodes (small squares)
-  const nodeGeo: number[] = [];
-  for (const n of nodes) {
-    const s = 0.0016;
-    pushLine(nodeGeo, [n.clone().add(new THREE.Vector3(-s, -s, 0)), n.clone().add(new THREE.Vector3(s, -s, 0)), n.clone().add(new THREE.Vector3(s, s, 0)), n.clone().add(new THREE.Vector3(-s, s, 0)), n.clone().add(new THREE.Vector3(-s, -s, 0))]);
-  }
-  const mk = (arr: number[]) => {
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
-    return g;
-  };
-  return { wires: mk(wires), nodes: mk(nodeGeo), nodeList: nodes };
-}
-
 /**
  * The visual pathway as many fibres (not a pair of strands): ~70 fibres per
  * eye leave the retina over the back of the globe, gather into the optic
@@ -181,7 +125,7 @@ export function headWiring(seed = 7) {
  * Plus ciliary nerves wrapping each globe and the six extra-ocular muscles as
  * thin bands. Attributes: color, aD (0 at the retina → 1 at the cortex).
  */
-export function opticPathway(seed = 13, perEye = 70) {
+export function opticPathway(seed = 13, perEye = 70, fit = defaultAnatomy) {
   const pos: number[] = [];
   const col: number[] = [];
   const ad: number[] = [];
@@ -197,10 +141,10 @@ export function opticPathway(seed = 13, perEye = 70) {
       ad.push(d0 + ((i - 1) / (pts.length - 1)) * (d1 - d0), d0 + (i / (pts.length - 1)) * (d1 - d0));
     }
   };
-  const chiasm = new THREE.Vector3(0, 0.004, 0.026);
-  const R = H2.eyeR;
+  const chiasm = fitBrainPoint(new THREE.Vector3(0, 0.004, 0.026), fit);
+  const R = fit.eyeR;
   for (const s of [-1, 1]) {
-    const E = new THREE.Vector3(s * H2.eyeX, H2.eyeY, H2.eyeZ);
+    const E = new THREE.Vector3(s * fit.eyeX, fit.eyeY, fit.eyeZ);
     const exit = E.clone().add(new THREE.Vector3(-s * 0.0022, -0.0005, -R * 1.02));
     // optic nerve centreline: exit → chiasm (bezier), sampled
     const nerve = bez(exit, exit.clone().add(new THREE.Vector3(-s * 0.003, -0.003, -0.018)), chiasm.clone().add(new THREE.Vector3(s * 0.012, 0.0, 0.013)), chiasm.clone().add(new THREE.Vector3(s * 0.0025, 0, 0)), 16);
@@ -228,10 +172,11 @@ export function opticPathway(seed = 13, perEye = 70) {
       // after the chiasm: nasal fibres cross
       const cross = r(6) < 0.53;
       const ts = cross ? -s : s;
-      const lgn = new THREE.Vector3(ts * 0.027, 0.004, -0.024).add(new THREE.Vector3((r(7) - 0.5) * 0.004, (r(8) - 0.5) * 0.004, (r(9) - 0.5) * 0.004));
+      const lgn = fitBrainPoint(new THREE.Vector3(ts * 0.027, 0.004, -0.024), fit)
+        .add(new THREE.Vector3((r(7) - 0.5) * 0.004, (r(8) - 0.5) * 0.004, (r(9) - 0.5) * 0.004));
       const tract = bez(bundle[bundle.length - 1], chiasm.clone().add(new THREE.Vector3(ts * 0.012, 0.002, -0.012)), lgn.clone().add(new THREE.Vector3(0, -0.004, 0.014)), lgn, 10);
       // radiation: fan over the occipital cortex
-      const end = new THREE.Vector3(ts * (0.004 + r(10) * 0.044), -0.002 + r(11) * 0.06, -0.09 + r(12) * 0.012);
+      const end = fitBrainPoint(new THREE.Vector3(ts * (0.004 + r(10) * 0.044), -0.002 + r(11) * 0.06, -0.09 + r(12) * 0.012), fit);
       const loop = lgn.clone().add(new THREE.Vector3(ts * 0.016, -0.006 + r(13) * 0.01, -0.012));
       const rad = bez(lgn, loop, end.clone().add(new THREE.Vector3(0, 0, 0.026)), end, 12);
       push(retina, hex, 0, 0.1);

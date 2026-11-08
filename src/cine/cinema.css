@@ -12,18 +12,6 @@ body.cine-body { font-family: 'IBM Plex Mono', monospace; font-size: 11px; lette
 }
 .cine-glhost canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; display: block; }
 
-/* ---- global screen layers (see post.ts) ---- */
-.cine-post { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-canvas.cine-post { image-rendering: pixelated; }
-.cine-post--lift { mix-blend-mode: screen; }
-.cine-post--mottle { mix-blend-mode: multiply; }
-.cine-post--grain { mix-blend-mode: overlay; background-size: 256px 256px; image-rendering: pixelated; }
-.cine-post--scan {
-  mix-blend-mode: multiply;
-  background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.55) 0, rgba(0, 0, 0, 0.55) calc(1px * var(--s, 1)), transparent calc(1px * var(--s, 1)), transparent calc(3px * var(--s, 1)));
-}
-.cine-post--vignette { mix-blend-mode: multiply; background: radial-gradient(ellipse 75% 70% at 50% 50%, #fff 55%, #6a6a78 100%); }
-
 /* ---- captions ---- */
 .cine-cap {
   position: absolute; left: 4.2%; bottom: 6.5%; max-width: 62%; z-index: 5;

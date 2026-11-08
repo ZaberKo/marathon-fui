@@ -38,6 +38,14 @@ export function loadRig() {
 
 export type BodyVariant = 'runner' | 'armor' | 'slim';
 
+// Internal anatomy in the armor head's eye-line frame.
+export const ARMOR_BRAIN = {
+  center: new THREE.Vector3(0, 0.052, -0.025),
+  scale: new THREE.Vector3(0.071, 0.091, 0.071),
+};
+
+const headCenter = (rig: RigData) => rig.joints.get('Head')!.clone().lerp(rig.joints.get('HeadTop_End')!, 0.48);
+
 /* ------------------------------------------------------------------ */
 /* Body definition                                                     */
 /* ------------------------------------------------------------------ */
@@ -93,7 +101,7 @@ function bodyPrims(rig: RigData, variant: BodyVariant): Prim[] {
   }
   // neck + head
   cone('Neck', 'Head', 0.05, 0.048, 'Neck', 0.04);
-  const head = mid(J('Head'), J('HeadTop_End'), 0.48);
+  const head: V3 = headCenter(rig).toArray();
   ell(add(head, [0, 0, 0.012]), [0.076, 0.1, 0.093], 'Head', 0.03);
   ell(add(J('Head'), [0, 0.01, 0.045]), [0.058, 0.05, 0.05], 'Head', 0.04); // jaw
   P.push({ t: 'cone', a: add(J('Head'), [0, 0.07, 0.09]), b: add(J('Head'), [0, 0.045, 0.105]), ra: 0.012, rb: 0.016, bone: B('Head'), k: 0.02 }); // nose
@@ -135,6 +143,30 @@ export function bodyGeometry(variant: BodyVariant, cell = 0.008) {
   }
   return p;
 }
+
+type HeadVariant = Extract<BodyVariant, 'runner' | 'armor'>;
+const headCache = new Map<HeadVariant, Promise<{ geometry: THREE.BufferGeometry; boneFromHead: THREE.Matrix4 }>>();
+
+/** Remesh a body's own head primitives in the local frame used by the internal anatomy. */
+export function bodyHeadGeometry(variant: HeadVariant) {
+  let head = headCache.get(variant);
+  if (!head) {
+    head = loadRig().then((rig) => {
+      const index = rig.names.findIndex((name) => name.replace(/^mixamorig:?/, '') === 'Head');
+      const bone = rig.scene.getObjectByName(rig.names[index])!;
+      const origin = headCenter(rig).add(new THREE.Vector3(0, -0.025, 0.018));
+      const prims = bodyPrims(rig, variant).filter((primitive) => primitive.bone === index);
+      const geometry = toGeometry(meshSDF(prims, 0.003, 0.008));
+      geometry.translate(-origin.x, -origin.y, -origin.z);
+      const boneFromHead = bone.matrixWorld.clone().invert().multiply(new THREE.Matrix4().makeTranslation(origin.x, origin.y, origin.z));
+      return { geometry, boneFromHead };
+    });
+    headCache.set(variant, head);
+  }
+  return head;
+}
+
+export const armorHeadGeometry = () => bodyHeadGeometry('armor');
 
 /* ------------------------------------------------------------------ */
 /* Instances                                                           */

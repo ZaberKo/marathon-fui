@@ -3,19 +3,18 @@
  * by black occluders); the loaded state is FLAT 2D lemon fills laid over the
  * projected cell tops — the reference's mix of 3D structure + 2D signal.
  * Fragment 411 fails cohesion (passphrase wall) and is skipped. Then the psyche
- * loads into the buffer as a dense tangle of many kinds of lines in a brain.
+ * loads into the buffer as ascending nerve bundles.
  */
 import * as THREE from 'three/webgpu';
 import type { Frame, ShotDef } from '../engine';
-import { clamp01, hash } from '../engine';
-import { C, F, checker, line, microRows, rect, ring, text } from '../draw';
+import { clamp01, hash, q } from '../engine';
+import { C, F, checker, line, microRows, rect, text } from '../draw';
 import { backdrop, PAL_BLUE } from '../backdrop';
-import { brainGeometry } from '../models/anatomy';
-import { connectome, connectomeMaterial } from '../models/connectome';
-import { contourMaterial } from '../../three/materials';
-import { ANCHORS } from './cues';
+import { ascendingBundles, connectomeMaterial } from '../models/connectome';
+import { BUFFER_LOAD_DURATION, BUFFER_LOCK_DURATION, createBufferDial } from './buffer-dial';
+import { ANCHORS, cue } from './cues';
 import { ST } from './times';
-import { cutGlitch, easeInOutCubic, easeOutExpo, persp, scrollRow, smooth, span, vlabel } from './kit';
+import { easeInOutCubic, persp, scrollRow, span, vlabel } from './kit';
 
 type P2 = [number, number];
 type Cell = {
@@ -218,8 +217,9 @@ export const s3: ShotDef[] = [
       const { cells, bd } = buildModule(g);
       // fragment 411 = a single cell in the middle of the field
       const FAIL = cells.findIndex((c) => !c.big && Math.abs(c.col - 5) < 0.1 && c.c.z > -0.5 && c.c.z < 0.7);
-      const order = cells.map((_, i) => i).sort((a, b) => cells[a].col - cells[b].col || cells[a].c.z - cells[b].c.z);
       const landAt = (i: number) => 1.0 + cells[i].col * 0.92 + (cells[i].c.z + bd / 2) * 0.05 + hash(i, 4) * 0.12;
+      const failT = cue('v05') - ST.S05[0];
+      const skippedAt = failT + 4.65;
       const head = new THREE.Mesh(new THREE.PlaneGeometry(0.035, bd + 0.6), new THREE.MeshBasicMaterial({ color: 0xe8ff40, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
       head.rotation.x = -Math.PI / 2;
       head.position.y = 0.62;
@@ -239,16 +239,13 @@ export const s3: ShotDef[] = [
           ctx.stroke();
         }
       };
-      void order;
       return {
         draw(f) {
           const { bg, fg, t } = f;
-          const failT = ANCHORS.dip - f.T + t;
-          if (t > failT - 0.05 && t < failT + 0.85) {
+          if (t >= failT && t < failT + 4.12) {
             const tq = t - failT;
-            // five continuous rows, words joined by underscores, alternate rows scroll opposite ways;
-            // the middle row carries the failing word inline (solid yellow), everything else is outline
-            const word = tq < 0.4 ? 'COHESION' : 'FAILURE';
+            // Alternate the passphrase rows and carry the diagnostic inline in the middle row.
+            const word = tq < 2.46 ? 'FRAGMENT 411' : tq < 3.08 ? 'COHESION' : 'FAILURE';
             [262, 400, 538, 676, 814].forEach((y, i) => {
               const dir = i % 2 ? 1 : -1;
               const sc = -180 + tq * 240 * dir + i * 137;
@@ -261,11 +258,9 @@ export const s3: ShotDef[] = [
               text(fg, 'F411', 594, y + 4, { size: 13, weight: 800, color: '#000' });
               microRows(fg, 650, y - 2, ['LNKTL  ■■  LATCH', 'PULL ●  KL2 KL4'], { size: 15, family: F.mono, weight: 700, color: C.yellowHi, lh: 17 });
             }
-            cutGlitch(f, tq, 0.12, ['#000', C.yellowHi, '#2a7a20'], 9);
-            f.post.tint = [0.6, 1, 0.4];
             return;
           }
-          backdrop(bg, { seed: 61, dx: t * 26, alpha: 0.85, pal: PAL_BLUE });
+          backdrop(bg, { seed: 61, dx: t * 26, alpha: 0.75, pal: PAL_BLUE, rect: [1430, 0, 490, 1080] });
           // near top-down: a slow drift and a slight turn, never lower than ~70°
           const u = easeInOutCubic(clamp01(t / 9.8));
           const yaw = -0.1 + u * 0.16;
@@ -299,7 +294,7 @@ export const s3: ShotDef[] = [
               line(fg, c.x + 22, c.y - 14, c.x - 22, c.y + 14, '#000', 4);
               line(fg, c.x + 30, c.y - 20, c.x + 120, c.y - 110, C.red, 1.5);
               rect(fg, c.x + 120, c.y - 128, 190, 24, C.red);
-              text(fg, 'F411 · SKIPPED', c.x + 128, c.y - 110, { size: 15, family: F.mono, weight: 700, color: '#000' });
+              text(fg, t >= skippedAt ? 'F411 · SKIPPED' : 'F411 · FAILED', c.x + 128, c.y - 110, { size: 15, family: F.mono, weight: 700, color: '#000' });
               continue;
             }
             done++;
@@ -320,7 +315,6 @@ export const s3: ShotDef[] = [
           text(fg, '←', 1560, 560, { size: 56, weight: 400, color: '#2a3cff' });
           microRows(fg, 1580, 640, ['SDR37  2445', 'Mq EXC  FF'], { size: 18, family: F.mono, weight: 700, color: C.lemon, lh: 21 });
           microRows(fg, 96, 120, ['0e00ET C2092EE/005.S', 'BANK 03 · 46 CELLS'], { size: 15, family: F.mono, weight: 700, color: '#1fc8e8', lh: 19 });
-          cutGlitch(f, t, 0.1, ['#000', C.lemon, C.blue], 10);
         },
       };
     },
@@ -331,46 +325,51 @@ export const s3: ShotDef[] = [
     t0: ST.S06[0],
     t1: ST.S06[1],
     title: 'Liminal buffer 26%',
-    note: 'The psyche streams into the buffer. Inside a faint brain shell, a connectome comes online from the deep nuclei outward: nodes through the whole volume joined by bundles of fibres that run through the inside — local links, front-to-back association tracts, bridges across the midline, projections to the deep nuclei — and signals keep flowing along every lit fibre. On the lift the rest of the network fires.',
-    build: () => {
+    note: 'The buffer holds at the spoken 26 percent while the scan completes. The hemispheres activate, then the red lock wheel and yellow insert confirm readiness.',
+    build: async () => {
+      const buffer = await createBufferDial();
       const scene = new THREE.Scene();
       const cam = persp(30);
-      const LIFT = ANCHORS.lift - ST.S06[0];
-      const timeOf = (r: number) => (r < 0.72 ? 0.35 + 7.6 * Math.pow(r / 0.72, 1.3) : LIFT + ((r - 0.72) / 0.28) * 0.9);
-      const net = connectome({ seed: 7, timeOf, scale: 1.6 });
-      const cm = connectomeMaterial({ dim: 0.09, base: 0.42 });
-      const fibres = new THREE.LineSegments(net.fibres, cm.mat);
-      const shellM = contourMaterial({ line: 0x2a3cff, body: 0x000008, freq: 26, width: 1.0, axis: 'x', space: 'local', rim: 0x6a7aff, rimWidth: 0.5, opacity: 0.5 });
-      shellM.mat.depthWrite = false;
-      const shell = new THREE.Mesh(brainGeometry(40, 8), shellM.mat);
-      shell.scale.setScalar(1.02);
-      const gr = new THREE.Group();
-      gr.add(shell, fibres);
-      scene.add(gr);
+      const lift = Math.min(ANCHORS.lift, ST.S06[1] - BUFFER_LOCK_DURATION - 0.45);
+      const LIFT = lift - ST.S06[0];
+      const timeOf = (rank: number, readiness: boolean) => {
+        if (readiness) return 1.9 + rank * 1.7;
+        if (rank < 0.78) return 0.16 + rank * 7.5;
+        return LIFT + (rank - 0.78) * 2.6;
+      };
+      const net = ascendingBundles(timeOf);
+      const cm = connectomeMaterial({ dim: 0.004, base: 0.46, flash: 0.25, pulse: 0.25 });
+      const fibres = new THREE.LineSegments(net.geometry, cm.mat);
+      scene.add(fibres);
       return {
         draw(f) {
-          const { bg, fg, t, T } = f;
-          backdrop(bg, { seed: 71, dx: t * 18, alpha: 0.5, pal: PAL_BLUE });
-          const pct = Math.min(26, Math.floor(easeOutExpo(span(t, 0.2, 2.6)) * 26));
-          cm.time.value = t;
-          gr.rotation.set(0.22, -0.9 + t * 0.16, 0);
-          const punch = easeInOutCubic(span(T, ANCHORS.lift, ANCHORS.lift + 0.5));
-          cam.position.set(0, 0.12, 3.5 - punch * 0.85);
-          cam.lookAt(0, 0.02, 0);
+          const { fg, t, T } = f;
+          if (t < BUFFER_LOAD_DURATION) {
+            buffer.load(f);
+            return;
+          }
+          const lockStart = f.dur - BUFFER_LOCK_DURATION;
+          if (t >= lockStart) {
+            buffer.lock(f, t - lockStart);
+            return;
+          }
+          cm.time.value = q(t, 24);
+          fibres.rotation.set(0.06, -0.24 + q(t, 12) * 0.044, 0);
+          const punch = easeInOutCubic(span(T, lift, lift + 0.45));
+          cam.position.set(0, 0.16, 2.3 - punch * 0.25);
+          cam.lookAt(0.04, 0.10, 0);
           f.three = { scene, camera: cam };
-          const R = 400 + punch * 240;
-          ring(fg, 960, 540, R, C.red, 2);
-          fg.save();
-          fg.setLineDash([4, 3]);
-          ring(fg, 960, 540, R + 34, C.red, 20, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * pct) / 100);
-          fg.restore();
-          vlabel(fg, String(pct).padStart(2, '0'), 960 + R * 0.66, 380, 150, C.red, { weight: 600, stretch: 'semi-expanded' });
-          vlabel(fg, 'LIMINAL BUFFER', 960 + R * 0.66 - 30, 380, 22, C.red, { weight: 800 });
-          text(fg, '%', 960 + R * 0.66 + 30, 690, { size: 40, weight: 800, color: C.red });
-          microRows(fg, 160, 160, ['PSYCHE STREAM', `FIBRES ${net.count.fibres}`, 'CALLOSAL · PROJECTION · ASSOCIATION · U'], { size: 16, family: F.mono, weight: 700, color: '#ff6a6a', lh: 20 });
-          cutGlitch(f, t, 0.1, ['#000', C.red], 11);
-          f.post.tint = [1, 0.55, 0.6];
-          void smooth;
+          vlabel(fg, 'NEURAL', 118, 710, 66, C.red, { rot: -Math.PI / 2 });
+          vlabel(fg, 'CIRCUIT ACTIVATION', 148, 708, 22, C.red, { rot: -Math.PI / 2 });
+          checker(fg, 174, 730, 2, 2, 16, C.red);
+          text(fg, '26%', 1800, 525, { size: 84, weight: 800, color: C.red, align: 'right' });
+          text(fg, 'LIMINAL BUFFER', 1800, 556, { size: 19, weight: 700, family: F.mono, color: C.red, align: 'right' });
+          microRows(fg, 140, 940, ['PSYCHE STREAM', `FIBRES ${net.routes}`, 'ASCENDING NERVE BUNDLES'], { size: 16, family: F.mono, weight: 700, color: '#ff6a6a', lh: 20 });
+        },
+        dispose() {
+          buffer.dispose();
+          net.geometry.dispose();
+          cm.mat.dispose();
         },
       };
     },

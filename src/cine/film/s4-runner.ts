@@ -4,17 +4,18 @@
  */
 import * as THREE from 'three/webgpu';
 import type { ShotDef } from '../engine';
-import { hash } from '../engine';
+import { hash, q } from '../engine';
 import { C, F, checker, microRows, rect, ring, text } from '../draw';
 import { backdrop, PAL_BLUE } from '../backdrop';
 import { makeBody, POSES, type Body } from '../models/body';
-import { brainGeometry } from '../models/anatomy';
 import { toonLit } from '../models/hard';
 import { contourMaterial } from '../../three/materials';
-import { glitchToon, screenDots, screenPixels } from '../mats';
+import { glitchToon } from '../mats';
+import { createSubject } from '../../three/scenes/subject';
+import { ASSERT_DURATION, assertionDial } from '../rings';
 import { addStickers } from '../models/stickers';
 import { ST } from './times';
-import { barLabel, cutGlitch, easeInOutCubic, persp, pixelCluster, px, smooth, span, typeOn, vlabel } from './kit';
+import { barLabel, easeInOutCubic, persp, pixelCluster, px, smooth, span, typeOn, vlabel } from './kit';
 
 export const s4: ShotDef[] = [
   {
@@ -22,67 +23,30 @@ export const s4: ShotDef[] = [
     t0: ST.S07[0],
     t1: ST.S07[1],
     title: 'Subject is a runner',
-    note: 'Definition card on the strongest beat of the lift: a dithered brain and a pixel-shaded runner walking in place, the term knocked out of a lime bar.',
+    note: 'The red and cobalt assertion dial cuts to a large pixel profile and a second silhouette. Green contours and lime fragments identify the subject as the definition types in.',
     build: async (k) => {
-      const scene = new THREE.Scene();
       const cam = persp(26);
-      const body = await makeBody('armor', screenPixels({ color: 0x1a24e0, cell: 6, thresh: 0.2, bg: 0x02031a }).mat);
-      {
-        const J = (n: string) => {
-          const q = body.joint(n);
-          return [q.x, q.y, q.z] as [number, number, number];
-        };
-        const sp2 = J('Spine2');
-        const la = J('LeftArm');
-        const lfa = J('LeftForeArm');
-        const rul = J('RightUpLeg');
-        const ll = J('LeftLeg');
-        const hd = J('Head');
-        addStickers(body, [
-          { at: [sp2[0] + 0.06, sp2[1] + 0.02, sp2[2] + 0.2], w: 0.08, h: 0.05, kind: 'num', text: '07', color: '#cde404' },
-          { at: [la[0] + 0.12, la[1] + 0.06, la[2]], w: 0.07, h: 0.04, kind: 'stripes', color: '#cde404' },
-          { at: [lfa[0] + 0.12, lfa[1], lfa[2] + 0.05], w: 0.08, h: 0.03, kind: 'barcode', color: '#cde404' },
-          { at: [rul[0] - 0.03, rul[1] - 0.2, rul[2] + 0.1], w: 0.05, h: 0.09, kind: 'label', text: 'RN', color: '#cde404', rot: Math.PI / 2 },
-          { at: [ll[0], ll[1] + 0.02, ll[2] + 0.07], w: 0.045, h: 0.045, kind: 'cross', color: '#cde404' },
-          { at: [hd[0], hd[1] + 0.1, hd[2] + 0.13], w: 0.08, h: 0.03, kind: 'chevron', color: '#2ee866' },
-        ]);
-      }
-      body.root.position.set(1.35, 0, 0);
-      scene.add(body.root);
-      const brain = new THREE.Mesh(brainGeometry(40, 4), screenDots({ color: 0x3ae830, cell: 5, gain: 1.4, bg: 0x02031a }).mat);
-      brain.scale.setScalar(0.42);
-      brain.position.set(-1.25, 1.55, 0);
-      scene.add(brain);
+      const subject = await createSubject(k.gl.renderer, cam, { film: true });
       return {
         draw(f) {
-          const { bg, fg, t } = f;
-          for (let i = 0; i < 40; i++) {
-            const y = 40 + i * 26;
-            if (hash(i, 2) < 0.45) continue;
-            const x = (hash(i, 3) * 400 - t * (60 + hash(i, 9) * 120)) % 1920;
-            rect(bg, x, y, 900 + hash(i, 4) * 900, 7 + (i % 3) * 3, i % 4 === 0 ? '#1a24e0' : '#0c14a0');
+          const { fg, t } = f;
+          const cut = ASSERT_DURATION.subject;
+          if (t < cut) {
+            assertionDial(fg, 'subject', t);
+            return;
           }
-          body.clip('walk', t * 0.9 + 0.3);
-          body.root.rotation.y = -0.35 - t * 0.12;
-          brain.rotation.y = t * 0.5;
-          cam.position.set(0, 1.25, 5.3 - t * 0.12);
-          cam.lookAt(0.15, 1.1, 0);
-          cam.updateMatrixWorld();
-          f.three = { scene, camera: cam };
-          const w = Math.min(1, t / 0.18);
-          fg.save();
-          fg.beginPath();
-          fg.rect(365, 520, 900 * w, 200);
-          fg.clip();
-          barLabel(fg, 'RUNNER', 365, 690, 150, '#2fd62a', C.white, 14);
-          fg.restore();
-          vlabel(fg, 'SUBJECT IS A', 330, 560, 26, '#2fd62a', { rot: -Math.PI / 2 });
+          const frame = Math.floor((t - cut) * 12);
+          subject.update(frame / 12, frame, 1080);
+          f.three = { scene: subject.scene, camera: cam, render: subject.render };
+
+          const label = 'RUNNER'.slice(0, Math.max(0, frame - 2));
+          if (label) barLabel(fg, label, 285, 730, 128, C.grass, C.white, 12);
+          vlabel(fg, 'SUBJECT IS A', 254, 744, 26, C.grass, { rot: -Math.PI / 2 });
           text(fg, 'V', 1640, 560, { size: 48, weight: 800, color: C.white });
           text(fg, 'V', 1855, 560, { size: 48, weight: 800, color: C.white });
           vlabel(fg, 'PASS', 1870, 760, 26, C.white, { weight: 500 });
-          cutGlitch(f, t, 0.12, ['#000', '#2fd62a', C.blue], 12);
-          void k;
         },
+        dispose: subject.dispose,
       };
     },
   },
@@ -107,7 +71,7 @@ export const s4: ShotDef[] = [
       return {
         draw(f) {
           const { bg, fg, t } = f;
-          backdrop(bg, { seed: 81, dx: t * 260, alpha: 0.6, pal: PAL_BLUE });
+          backdrop(bg, { seed: 81, dx: q(t, 12) * 260, alpha: 0.5, pal: PAL_BLUE, rect: [0, 0, 610, 350] });
           const speed = 3.6;
           bodies.forEach((b, i) => {
             const tt = t - i * 0.12;
@@ -130,7 +94,6 @@ export const s4: ShotDef[] = [
           ring(fg, 1520, 960, 18, '#2ee866', 5);
           [[0, 0], [24, 24], [48, 48], [72, 72], [48, 96], [24, 120], [0, 144]].forEach(([dx, dy]) => rect(fg, 1600 + dx, 790 + dy, 26, 26, '#2ee866'));
           vlabel(fg, 'QR  EXC  FF  ✦', 1780, 790, 28, '#2ee866', { weight: 500, family: F.mono });
-          cutGlitch(f, t, 0.08, ['#000', '#2ee866'], 13);
         },
       };
     },
@@ -225,7 +188,6 @@ export const s4: ShotDef[] = [
           vlabel(fg, 'MIND · PSYCHE 0447', 420, 120, 14, '#38f5d4', { weight: 700, family: F.mono });
           vlabel(fg, 'SHELL 07 · PRINTED', 1820, 120, 14, C.white, { weight: 700, family: F.mono });
           pixelCluster(fg, 1700, 900, 12, '#38f5d4', 4);
-          cutGlitch(f, t, 0.1, ['#000', '#38f5d4'], 14);
           void smooth;
         },
       };

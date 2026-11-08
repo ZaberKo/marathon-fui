@@ -57,14 +57,12 @@ export const LINES = [
  * monotone robot undertone, an octave double and grain.
  */
 export const EDGE_VOICE = 'en-US-AriaNeural';
-// Aria raised +25 Hz. Chain D = clean synthetic: EQ (mud cut, presence, air),
-// de-ess, a whisper of bit reduction, even compression and a sparse 60–100 ms
-// reflection for space — no frequency shift, no short combs (those read as
-// boxy/hollow). Chain E adds a faint monotone robot layer for the alarms.
-// The earlier chains (A/B/C) are kept on disk for reference.
+// Aria is synthesized at native pitch. D is the clean pre-processing chain
+// and E adds a faint robot layer for alerts. The final pitch and formant
+// treatment runs on both chains after trimming.
 export const EDGE_PROSODY = {
-  log: { rate: '-6%', pitch: '+25Hz', chain: 'D' },
-  alert: { rate: '-2%', pitch: '+25Hz', chain: 'E' },
-  count: { rate: '-4%', pitch: '+25Hz', chain: 'D' },
-  soft: { rate: '-12%', pitch: '+18Hz', chain: 'D' },
+  log: { rate: '-6%', pitch: '+0Hz', chain: 'D' },
+  alert: { rate: '-2%', pitch: '+0Hz', chain: 'E' },
+  count: { rate: '-4%', pitch: '+0Hz', chain: 'D' },
+  soft: { rate: '-12%', pitch: '+0Hz', chain: 'D' },
 };

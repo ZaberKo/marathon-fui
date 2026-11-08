@@ -17,7 +17,6 @@ import '../styles/tokens.css';
 import './cinema.css';
 import { H, Timeline, W, createGL, type Frame } from './engine';
 import { loadFonts } from './draw';
-import { createPost, POST_DEFAULT } from './post';
 import { SHOTS } from './film';
 import { AUDIO_SRC, DURATION, LINES } from './film/cues';
 import { mountPerfHud } from '../lib/perfHud';
@@ -134,7 +133,6 @@ const clock = () => {
 (async () => {
   await loadFonts();
   const gl = await createGL(glHost, Number(params.get('q') ?? 1));
-  const post = createPost(frameEl);
   // dev aid: ?only=S13,S24 builds just those shots (faster captures)
   const only = params.get('only')?.split(',');
   const tl = new Timeline(only ? SHOTS.filter((s) => only.includes(s.id)) : SHOTS, DURATION, { gl });
@@ -151,7 +149,7 @@ const clock = () => {
     ui.gateBar.style.width = `${((i + 1) / n) * 80}%`;
   });
 
-  const frame: Frame = { T: 0, t: 0, dur: 1, u: 0, n: 0, bg, fg, three: null, gl, post: { ...POST_DEFAULT } };
+  const frame: Frame = { T: 0, t: 0, dur: 1, u: 0, n: 0, bg, fg, three: null, gl };
   let lastShot = '';
   let capMode = 1; // 0 off, 1 EN, 2 ZH
   let lastCap = '';
@@ -172,8 +170,6 @@ const clock = () => {
     frame.three = null;
     frame.T = time;
     frame.n = Math.floor(time * 30);
-    Object.assign(frame.post, POST_DEFAULT);
-    frame.post.tint = [...POST_DEFAULT.tint];
     if (d) {
       frame.t = time - d.t0;
       frame.dur = d.t1 - d.t0;
@@ -189,9 +185,8 @@ const clock = () => {
       }
     }
     gl.render(frame.three);
-    post.update(time, frame.post);
     // captions
-    const line = LINES.find((l) => time >= l.t && time < l.t + l.d + 0.25);
+    const line = LINES.find((l, i) => time >= l.t && time < Math.min(l.t + l.d + 0.25, LINES[i + 1]?.t ?? DURATION));
     const cap = capMode && line ? (capMode === 1 ? line.en : line.zh) : '';
     if (cap !== lastCap) {
       lastCap = cap;

@@ -15,13 +15,14 @@ import { makeBody } from '../models/body';
 import { Hard, toonLit } from '../models/hard';
 import { stationModel } from '../models/station';
 import { SimplexNoise } from 'three/addons/math/SimplexNoise.js';
-import { isoSegments, terrainTexture } from '../../three/procedural';
+import { isoSegments, terrainMaterial } from '../../three/procedural';
 import { glitchToon, lineMat, screenDots, xray } from '../mats';
 import { addStickers } from '../models/stickers';
+import { VectorPlate } from '../models/vector-plate';
 import { WireCubes, voxelPositions, voxelize } from '../models/voxels';
-import { ANCHORS } from './cues';
+import { ANCHORS, cue } from './cues';
 import { ST } from './times';
-import { cutGlitch, easeInOutCubic, persp, px, smooth, span, vlabel } from './kit';
+import { easeInOutCubic, persp, px, smooth, span, vlabel } from './kit';
 
 const G = '#2fd62a';
 const lerpHex = (a: number, b: number, k: number) => `#${new THREE.Color(a).lerp(new THREE.Color(b), k).getHexString()}`;
@@ -63,7 +64,7 @@ export const s7: ShotDef[] = [
     t0: ST.S14[0],
     t1: ST.S14[1],
     title: 'Periapt IV — from the system to the drop',
-    note: 'One camera move: a drafted system chart (a corona star that dwarfs its planets, orbits with ticks and lanes, a ringed giant) → the planet, at an exactly matched scale handoff from dithered schematic to sensor imagery → high orbit behind the station, which drops runners down arcs onto every remaining signal; the camera follows one drop down toward its zone. Labels sit on dark plates beside the planet and move to a side panel once the planet fills the view.',
+    note: 'One camera move: a drafted system chart (a corona star that dwarfs its planets, orbits with ticks and lanes, a ringed giant) → the planet, at an exactly matched scale handoff from dithered schematic to sensor imagery → high orbit behind the station, shown as an angular ring and two wing outlines. It drops runners down arcs onto every remaining signal; the camera follows one drop down toward its zone. Labels sit on dark plates beside the planet and move to a side panel once the planet fills the view.',
     build: () => {
       /* ---------------- scene A: system chart ---------------- */
       const A = new THREE.Scene();
@@ -136,7 +137,11 @@ export const s7: ShotDef[] = [
             A.add(rr);
           }
       });
-      const moon = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12), new THREE.MeshBasicMaterial({ color: 0x8aff5a }));
+      const moon = new THREE.Group();
+      moon.add(circle(0.22, 0x8aff5a, 0, 32));
+      const moonMeridian = circle(0.22, 0x8aff5a, 0, 32);
+      moonMeridian.rotation.x = Math.PI / 2;
+      moon.add(moonMeridian);
       A.add(moon);
       const ringP = circle(2.1, 0x2fd62a, 0, 128);
       ringP.position.copy(Pp);
@@ -145,8 +150,7 @@ export const s7: ShotDef[] = [
       const B = new THREE.Scene();
       const camB = persp(36, 0.02, 3000);
       const R = 100;
-      const tex = terrainTexture({ w: 2048, h: 1024, seed: 21 });
-      const planetB = new THREE.Mesh(new THREE.SphereGeometry(R, 192, 128), new THREE.MeshBasicMaterial({ map: tex }));
+      const planetB = new THREE.Mesh(new THREE.SphereGeometry(R, 192, 128), terrainMaterial());
       B.add(planetB);
       for (let i = -5; i <= 5; i++) {
         const lat = (i / 12) * Math.PI;
@@ -173,9 +177,9 @@ export const s7: ShotDef[] = [
       station.position.copy(SP);
       station.lookAt(onSphere(0, 30, 15));
       B.add(station);
-      // camera framing in orbit: behind and above the station, looking down-range
-      const camOrbit = onSphere(0, -36, 19);
-      const lookOrbit = onSphere(1, 14, 2);
+      // Keep the station silhouette inside the frame above the drop sites.
+      const camOrbit = onSphere(0, -42, 21);
+      const lookOrbit = onSphere(1, 14, 2).lerp(SP, 0.47);
       // targets and drop arcs (3D lines revealed in steps)
       const targets = [[-9, 6], [-3, 12], [4, 9], [10, 16], [1, 22], [-7, 20], [13, 7]].map(([x, z]) => onSphere(x, z, 0.05));
       const DIVE_I = 2;
@@ -199,7 +203,7 @@ export const s7: ShotDef[] = [
       const fpx = (cam: THREE.PerspectiveCamera) => 540 / Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
       return {
         draw(f: Frame) {
-          const { fg, T, t } = f;
+          const { fg, T } = f;
           if (T < HANDOFF) {
             const u = span(T, T0, HANDOFF);
             const e = easeInOutCubic(u);
@@ -232,6 +236,9 @@ export const s7: ShotDef[] = [
               text(fg, 'APPROACH ›', 96, 280, { size: 30, weight: 800, color: C.blue });
               fg.restore();
             }
+            if (T >= cue('v13') && T < cue('v13') + 0.76) {
+              text(fg, 'ASSERT', 96, 116, { size: 24, weight: 800, color: C.red, tracking: 3 });
+            }
             const br = Math.max(46, rp * 1.25);
             fg.strokeStyle = G;
             fg.lineWidth = 2;
@@ -257,8 +264,6 @@ export const s7: ShotDef[] = [
             }
             plate(fg, lx, ly, lines, 310);
             for (const [x, y] of [[480, 70], [1440, 70], [500, 160], [1500, 300]] as const) plus(fg, x, y, 10, GD, 2);
-            cutGlitch(f, t, 0.12, ['#000', G], 18);
-            f.post.tint = [0.45, 1, 0.45];
             return;
           }
           /* ---- scene B ---- */
@@ -312,18 +317,19 @@ export const s7: ShotDef[] = [
           const alt = camB.position.length() - R;
           text(fg, 'PERIAPT IV · SENSOR FEED', 96, 82, { size: 22, weight: 800, color: C.white, stretch: 'semi-expanded' });
           text(fg, `LAT 37.4  LON 211.0  ALT ${Math.floor(alt * 9.2).toLocaleString('en-US')} KM`, 96, 110, { size: 16, family: F.mono, weight: 700, color: '#8aa0ff' });
+          if (T < cue('v14')) text(fg, 'COLONY · SIGNAL LOST 9Y 04M', 96, 137, { size: 15, family: F.mono, weight: 700, color: G });
           const sp = px(f, camB, station.position);
-          if (sp.z < 1 && T > DROP - 1.2) {
-            line(fg, sp.x + 40, sp.y - 30, sp.x + 130, sp.y - 90, '#cde404', 1);
-            plate(fg, sp.x + 140, sp.y - 96, [['STATION KESTREL', 16, '#cde404', false], [k > 0 ? `DROPS ${Math.min(7, Math.max(0, Math.floor((k - 0.25) / 0.42) + 1))}/7` : 'HOLDING ORBIT', 12, '#cde404', true]], 220);
+          if (sp.z < 1 && sp.y > 0 && sp.y < 1080 && T > DROP - 1.2) {
+            const x = Math.min(1610, sp.x + 385);
+            const y = Math.max(112, sp.y - 51);
+            line(fg, sp.x + 56, sp.y - 22, x - 12, y + 13, '#cde404', 1);
+            plate(fg, x, y, [['STATION KESTREL', 16, '#cde404', false], [k > 0 ? `DROPS ${Math.min(7, Math.max(0, Math.floor((k - 0.25) / 0.42) + 1))}/7` : 'HOLDING ORBIT', 12, '#cde404', true]], 220);
           }
           if (T < HANDOFF + 0.25) {
             const kq = (T - HANDOFF) / 0.25;
             rect(fg, 0, 1080 * kq - 4, 1920, 8, '#e8ecff');
-            cutGlitch(f, T - HANDOFF, 0.16, ['#000', G, C.blue], 19);
           }
           if (T > T1 - 0.12) rect(fg, 0, 0, 1920, 1080, `rgba(232,240,160,${clamp01((T - (T1 - 0.12)) / 0.12) * 0.9})`);
-          f.post.tint = [0.55, 0.6, 1];
         },
       };
     },
@@ -457,8 +463,6 @@ export const s7: ShotDef[] = [
           const sx = ((t * 520) % 2400) - 240;
           rect(fg, sx, 0, 2, 1080, 'rgba(157,255,58,0.35)');
           if (t < 0.15) rect(fg, 0, 0, 1920, 1080, `rgba(232,240,160,${0.9 * (1 - t / 0.15)})`);
-          cutGlitch(f, t, 0.08, ['#000', '#9dff3a'], 23);
-          f.post.tint = [0.6, 0.8, 1];
         },
       };
     },
@@ -519,25 +523,43 @@ export const s7: ShotDef[] = [
         vent: toonLit({ lit: 0x05070f, shade: 0x000000 }).mat,
         pillar: toonLit({ lit: 0x1c2550, mid: 0x0c1028, shade: 0x03040a }).mat,
       }, { wall: 0x2a3ab0, pillar: 0x2a3ab0 }));
-      // stencil on the wall (3D): one long band in front of everything on the wall, low enough to stay in frame
-      const cv = document.createElement('canvas');
-      cv.width = 4096;
-      cv.height = 512;
-      const c2 = cv.getContext('2d')!;
-      c2.strokeStyle = '#3a52ff';
-      c2.fillStyle = '#3a52ff';
-      c2.lineWidth = 7;
-      c2.font = `700 230px ${F.sans}`;
-      c2.fontStretch = 'expanded';
-      c2.strokeText('ICAR COLONIAL AUTHORITY', 150, 270);
-      c2.fillRect(20, 60, 90, 230);
-      c2.font = `700 64px ${F.mono}`;
-      c2.fillText('SECTOR 04 · PATROL ROUTE 3 · LETHAL FORCE AUTHORISED', 150, 410);
-      for (let i = 0; i < 40; i++) c2.fillRect(150 + i * 96, 450, 60, 22);
-      const st = new THREE.CanvasTexture(cv);
-      st.colorSpace = THREE.SRGBColorSpace;
-      st.anisotropy = 8;
-      const stencil = new THREE.Mesh(new THREE.PlaneGeometry(14, 1.75), new THREE.MeshBasicMaterial({ map: st, transparent: true, depthWrite: false }));
+      // One geometric stencil band on the wall, low enough to stay in frame.
+      const sign = new VectorPlate(4096, 512, 14, 1.75);
+      const ink = 0x3a52ff;
+      // Chamfered contours keep the large lettering connected at a close range.
+      const contours: Record<string, [number, number][][]> = {
+        A: [[[0, 6], [0, 1.4], [1.2, 0], [2.8, 0], [4, 1.4], [4, 6], [2.8, 6], [2.8, 4.2], [1.2, 4.2], [1.2, 6]],
+          [[1.2, 3.1], [2.8, 3.1], [2.8, 1.7], [2.4, 1.1], [1.6, 1.1], [1.2, 1.7]]],
+        C: [[[1, 0], [4, 0], [4, 1.1], [1.55, 1.1], [1.2, 1.45], [1.2, 4.55], [1.55, 4.9], [4, 4.9], [4, 6], [1, 6], [0, 5], [0, 1]]],
+        H: [[[0, 0], [1.2, 0], [1.2, 2.45], [2.8, 2.45], [2.8, 0], [4, 0], [4, 6], [2.8, 6], [2.8, 3.55], [1.2, 3.55], [1.2, 6], [0, 6]]],
+        I: [[[0, 0], [4, 0], [4, 1.1], [2.6, 1.1], [2.6, 4.9], [4, 4.9], [4, 6], [0, 6], [0, 4.9], [1.4, 4.9], [1.4, 1.1], [0, 1.1]]],
+        L: [[[0, 0], [1.2, 0], [1.2, 4.9], [4, 4.9], [4, 6], [0, 6]]],
+        N: [[[0, 0], [1.15, 0], [2.85, 3.45], [2.85, 0], [4, 0], [4, 6], [2.85, 6], [1.15, 2.55], [1.15, 6], [0, 6]]],
+        O: [[[1, 0], [3, 0], [4, 1], [4, 5], [3, 6], [1, 6], [0, 5], [0, 1]],
+          [[1.55, 1.1], [2.45, 1.1], [2.8, 1.45], [2.8, 4.55], [2.45, 4.9], [1.55, 4.9], [1.2, 4.55], [1.2, 1.45]]],
+        R: [[[0, 0], [3, 0], [4, 1], [4, 2.65], [3.15, 3.5], [4, 6], [2.75, 6], [1.8, 3.65], [1.2, 3.65], [1.2, 6], [0, 6]],
+          [[1.2, 1.1], [2.45, 1.1], [2.8, 1.45], [2.8, 2.2], [2.45, 2.55], [1.2, 2.55]]],
+        T: [[[0, 0], [4, 0], [4, 1.1], [2.6, 1.1], [2.6, 6], [1.4, 6], [1.4, 1.1], [0, 1.1]]],
+        U: [[[0, 0], [1.2, 0], [1.2, 4.55], [1.55, 4.9], [2.45, 4.9], [2.8, 4.55], [2.8, 0], [4, 0], [4, 5], [3, 6], [1, 6], [0, 5]]],
+        Y: [[[0, 0], [1.25, 0], [2, 2.25], [2.75, 0], [4, 0], [2.6, 3.55], [2.6, 6], [1.4, 6], [1.4, 3.55]]],
+      };
+      for (const [i, letter] of [...'ICAR COLONIAL AUTHORITY'].entries()) {
+        for (const contour of contours[letter] ?? []) {
+          for (const [k, [x, y]] of contour.entries()) {
+            const [nx, ny] = contour[(k + 1) % contour.length];
+            const left = 150 + i * 160;
+            const X = left + 32 * x;
+            const Y = 100 + 170 * y / 6;
+            sign.segment(X, Y, left + 32 * nx, 100 + 170 * ny / 6, 7, ink);
+            sign.rect(X - 3.5, Y - 3.5, 7, 7, ink);
+          }
+        }
+      }
+      sign.rect(20, 60, 90, 230, ink);
+      sign.text('SECTOR 04 · PATROL ROUTE 3 · LETHAL FORCE AUTHORISED', 150, 363, 47, ink, { maxWidth: 3780 });
+      for (let i = 0; i < 40; i++) sign.rect(150 + i * 96, 450, 60, 22, ink);
+      const stencil = sign.mesh();
+      stencil.name = 'Authority wall stencil';
       stencil.position.set(2.5, 1.75, -3.0);
       scene.add(stencil);
       const lag = new THREE.Vector3();
@@ -594,8 +616,6 @@ export const s7: ShotDef[] = [
             if (kk > 0.9) text(fg, 'CONTACT', c.x + r + 14, c.y - r + 20, { size: 22, weight: 800, color: C.red });
           }
           vlabel(fg, 'AUTH · PATROL 3', 1860, 90, 16, '#3a52ff', { family: F.mono, weight: 700 });
-          cutGlitch(f, t, 0.1, ['#000', C.red, '#3a52ff'], 20);
-          f.post.tint = [0.7, 0.45, 0.6];
           void k;
         },
       };

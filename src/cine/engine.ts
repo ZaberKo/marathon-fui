@@ -12,7 +12,6 @@
 import * as THREE from 'three/webgpu';
 import { describeAdapter, gpuFallback, wantsWebGL } from '../three/core';
 import { adapter, registerStage } from '../lib/perf';
-import type { PostParams } from './post';
 
 export const W = 1920;
 export const H = 1080;
@@ -24,7 +23,8 @@ export type C2 = CanvasRenderingContext2D;
 export type Three = {
   scene: THREE.Scene;
   camera: THREE.Camera;
-  /** optional post step: draw 2D after the 3D render using projected points */
+  /** Optional shot-local pipeline that renders to the shared canvas. */
+  render?: () => void;
 };
 
 export type Frame = {
@@ -42,8 +42,6 @@ export type Frame = {
   /** set by a shot to request a 3D render this frame */
   three: Three | null;
   gl: GL;
-  /** global screen layers (block mask, grain, scanlines, vignette) — shots may tweak */
-  post: PostParams;
 };
 
 export type ShotInst = { draw(f: Frame): void; dispose?(): void };
@@ -75,7 +73,7 @@ export type GL = {
   dispose(): void;
 };
 
-export async function createGL(host: HTMLElement, quality = 1): Promise<GL> {
+export async function createGL(host: HTMLElement, quality = 1, label = 'CINEMA'): Promise<GL> {
   const canvas = document.createElement('canvas');
   canvas.className = 'cine-gl';
   host.appendChild(canvas);
@@ -87,13 +85,13 @@ export async function createGL(host: HTMLElement, quality = 1): Promise<GL> {
     canvas.remove();
     if (triedWebGL) throw err;
     gpuFallback(`init: ${(err as Error)?.message ?? err}`);
-    return createGL(host, quality);
+    return createGL(host, quality, label);
   }
   renderer.setClearColor(0x000000, 0);
   renderer.autoClear = true;
   const backend = (renderer.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend ? 'WebGPU' : 'WebGL2';
   describeAdapter(renderer, backend);
-  const { stats, unregister } = registerStage('CINEMA');
+  const { stats, unregister } = registerStage(label);
   stats.backend = backend;
   stats.targetFps = Math.round(FPS);
 
@@ -124,7 +122,8 @@ export async function createGL(host: HTMLElement, quality = 1): Promise<GL> {
         c.updateProjectionMatrix();
       }
       const c0 = performance.now();
-      renderer.render(three.scene, three.camera);
+      if (three.render) three.render();
+      else renderer.render(three.scene, three.camera);
       stats.cpuMs = stats.cpuMs * 0.85 + (performance.now() - c0) * 0.15;
       const info = renderer.info;
       stats.drawCalls = info.render.drawCalls;

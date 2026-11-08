@@ -6,67 +6,65 @@
  */
 import * as THREE from 'three/webgpu';
 import type { Body } from './body';
-import { F } from '../draw';
+import { VectorPlate } from './vector-plate';
 
 export type StickerKind = 'num' | 'stripes' | 'barcode' | 'chevron' | 'label' | 'cross';
 export type Sticker = { at: [number, number, number]; w: number; h: number; kind: StickerKind; text?: string; color: string; bg?: string; rot?: number };
 
-function paint(s: Sticker) {
-  const cv = document.createElement('canvas');
-  cv.width = 256;
-  cv.height = Math.max(32, Math.round((256 * s.h) / s.w));
-  const c = cv.getContext('2d')!;
-  const W = cv.width;
-  const H = cv.height;
-  if (s.bg) {
-    c.fillStyle = s.bg;
-    c.fillRect(0, 0, W, H);
+function clipStripe(points: [number, number][], edge: number, sign: number) {
+  const clipped: [number, number][] = [];
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i];
+    const b = points[(i + 1) % points.length];
+    const inside = (a[0] - edge) * sign >= 0;
+    if (inside) clipped.push(a);
+    if (inside !== ((b[0] - edge) * sign >= 0)) {
+      const t = (edge - a[0]) / (b[0] - a[0]);
+      clipped.push([edge, a[1] + t * (b[1] - a[1])]);
+    }
   }
-  c.fillStyle = s.color;
-  c.strokeStyle = s.color;
+  return clipped;
+}
+
+function stickerMesh(s: Sticker) {
+  const W = 256;
+  const H = Math.max(32, Math.round((W * s.h) / s.w));
+  const plate = new VectorPlate(W, H, s.w, s.h);
+  const ink = s.color;
+  if (s.bg) plate.rect(0, 0, W, H, s.bg, -0.25);
   switch (s.kind) {
     case 'num':
-      c.font = `800 ${H * 0.95}px ${F.sans}`;
-      c.textBaseline = 'middle';
-      c.fillText(s.text ?? '07', W * 0.04, H * 0.54);
+      plate.text(s.text ?? '07', W * 0.04, H * 0.18, H * 0.71, ink, { maxWidth: W * 0.92 });
       break;
     case 'label':
-      c.font = `800 ${H * 0.62}px ${F.sans}`;
-      c.textBaseline = 'middle';
-      c.fillText(s.text ?? 'ICAR', W * 0.05, H * 0.55);
-      c.fillRect(0, H * 0.88, W, H * 0.12);
+      plate.text(s.text ?? 'ICAR', W * 0.05, H * 0.32, H * 0.45, ink, { maxWidth: W * 0.90, aspect: 0.88 });
+      plate.rect(0, H * 0.88, W, H * 0.12, ink);
       break;
     case 'stripes':
-      for (let x = -H; x < W + H; x += H * 0.6) {
-        c.beginPath();
-        c.moveTo(x, H);
-        c.lineTo(x + H * 0.3, H);
-        c.lineTo(x + H * 0.3 + H, 0);
-        c.lineTo(x + H, 0);
-        c.fill();
+      for (let x = -H; x < W; x += H * 0.6) {
+        const stripe = clipStripe([[x, H], [x + 0.3 * H, H], [x + 1.3 * H, 0], [x + H, 0]], 0, 1);
+        plate.polygon(clipStripe(stripe, W, -1), ink);
       }
       break;
     case 'barcode':
-      for (let x = 0; x < W; x += 6) if (Math.sin(x * 12.9898) * 43758.5453 % 1 > -0.2) c.fillRect(x, 0, 2 + (x % 3), H);
+      for (let x = 0; x < W; x += 6) if (Math.sin(x * 12.9898) * 43758.5453 % 1 > -0.2) plate.rect(x, 0, 2, H, ink);
       break;
     case 'chevron':
-      c.lineWidth = H * 0.18;
       for (let i = 0; i < 3; i++) {
-        c.beginPath();
-        c.moveTo(W * (0.1 + i * 0.28), H * 0.15);
-        c.lineTo(W * (0.25 + i * 0.28), H * 0.5);
-        c.lineTo(W * (0.1 + i * 0.28), H * 0.85);
-        c.stroke();
+        const x = W * (0.1 + i * 0.28);
+        const tip = x + W * 0.15;
+        plate.segment(x, H * 0.15, tip, H * 0.5, H * 0.18, ink);
+        plate.segment(tip, H * 0.5, x, H * 0.85, H * 0.18, ink);
       }
       break;
     case 'cross':
-      c.fillRect(W * 0.42, 0, W * 0.16, H);
-      c.fillRect(0, H * 0.42, W, H * 0.16);
+      plate.rect(W * 0.42, 0, W * 0.16, H, ink);
+      plate.rect(0, H * 0.42, W, H * 0.16, ink);
       break;
   }
-  const tex = new THREE.CanvasTexture(cv);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
+  const mesh = plate.mesh({ transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  mesh.name = `Stencil ${s.kind}`;
+  return mesh;
 }
 
 /** `at` is a bind-pose world point near the surface; the nearest vertex anchors the decal. */
@@ -100,8 +98,7 @@ export function addStickers(body: Body, list: Sticker[]) {
     }
     const p = new THREE.Vector3(pos.getX(best), pos.getY(best), pos.getZ(best));
     const n = new THREE.Vector3(nrm.getX(best), nrm.getY(best), nrm.getZ(best)).normalize();
-    const mat = new THREE.MeshBasicMaterial({ map: paint(s), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(s.w, s.h), mat);
+    const m = stickerMesh(s);
     // world (bind) transform: plane +Z → surface normal, keep "up" close to world Y
     const world = new THREE.Matrix4();
     const zAxis = n.clone();

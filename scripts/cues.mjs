@@ -1,48 +1,45 @@
-// Edit decision list for the film. The score is Lyria take "acidB" (128 BPM,
-// beat grid anchored at 46.016 s, bar = 1.875 s), re-cut on bar lines into the
-// film's structure (MUSIC.edit), with a few ducks. Times below are film seconds.
-export const MUSIC = {
-  file: 'scripts/.cache/music/acidB.mp3',
-  gain: 0,
-  // [srcStart, srcEnd, gainDb] or ['gap', seconds]
-  edit: [
-    [4.05, 57.266, 0], // intro → groove → memory → break → drop (runner) → … until the hush
-    ['gap', 1.48], // the shot: silence
-    [36.641, 46.016, -5], // broken, kick-less bed under death / psyche
-    [62.891, 74.141, 0], // printing: mechanical bars ending on hits
-    [74.141, 81.641, 0], // stand by (ducked) → sub boom → the world
-    [81.641, 96.641, 0], // system, station drop, contour map
-    [96.641, 102.266, 0], // the Authority (tension)
-    [102.266, 111.641, 0], // error → signal → instance (sparse)
-    [111.641, 119.141, 0], // suboptimal (break, build)
-    [119.141, 134.141, 0], // defragmentation complete, ORA
-    [126.641, 134.141, 0], // contract, transfer (repeat 4 bars) — hard cut on "Initiate"
-  ],
-  duck: [
-    [26.25, 27.15, -30], // cohesion failure dropout
-    [76.9, 81.1, -24], // please stand by: the score falls away
-  ],
-};
-
 export const ANCHORS = {
-  boom: 4.0, // first downbeat
-  dip: 26.25, // dropout → passphrase / cohesion failure wall
-  lift: 40.09, // last bar of the build
-  runner: 41.966, // the drop → RUNNER card
-  hush: 53.216, // music stops
-  impact: 54.7, // the shot lands
-  print: 64.07, // printing bars
-  printEnd: 74.4, // last printing hit
-  silence: 75.32, // stand by
-  swell: 81.2, // sub boom → the system
-  drop: 87.3, // the station drops runners
-  survey: 92.6, // contour map of the drop zone
-  hostile: 97.82, // the Authority
-  error: 103.445, // alarm
-  downbeat: 120.32, // defragmentation complete
-  final: 142.82, // "Initiate" — the score cuts
+  boom: 4.0,
+  dip: 26.25, // fragment 411 fails
+  buffer: 31.75,
+  lift: 40.09,
+  runner: 41.966,
+  hush: 53.216, // field assertion
+  impact: 56.06,
+  print: 64.07,
+  printEnd: 74.4,
+  silence: 75.32,
+  swell: 81.2,
+  drop: 87.3,
+  survey: 92.6,
+  hostile: 97.82,
+  error: 103.445,
+  downbeat: 120.32,
+  final: 142.82,
   cut: 142.82,
   end: 147.0,
+};
+
+// Score envelopes are in film seconds. The impact dip is a short accent.
+export const MUSIC = {
+  file: 'scripts/.cache/music/shell-07.mp3',
+  gain: -2,
+  // Align the take's first strong downbeat and natural ending to the picture.
+  offset: 2.192,
+  tempo: 0.9833,
+  // [start, end, gainDb, rampSeconds]
+  duck: [
+    [ANCHORS.dip, ANCHORS.dip + 0.9, -12, 0.08], // cohesion failure
+    [ANCHORS.buffer, ANCHORS.lift, -5, 0.5], // reserve headroom for circuit activation
+    [48.6, ANCHORS.hush - 0.12, 4, 0.32], // carry the shell lease into the assertion
+    [ANCHORS.hush, ANCHORS.impact, -5, 0.16], // keep the score audible beneath ASSERT
+    [ANCHORS.impact - 0.10, ANCHORS.impact + 0.08, -9, 0.06],
+    [ANCHORS.impact + 0.08, 63.55, -4, 0.28], // death and psyche ejection
+    [75.32, 80.95, -26, 0.26], // stand by
+    [103.445, 106.8, -4, 0.12], // separate warning and alarm
+    [109.75, 119.8, -5, 0.5], // two instances and recovery
+    [137.2, 142.82, -13, 0.5], // countdown
+  ],
 };
 
 export const CUES = {
@@ -50,13 +47,14 @@ export const CUES = {
   v02: 12.3,
   v03: 17.2,
   v04: 21.3,
-  v05: 23.85,
+  v05: ANCHORS.dip,
   v06: 31.8,
   v07: 42.1,
   v08: 45.4,
-  v09: 55.4,
+  v08b: 48.78,
+  v09: 53.32,
   v10: 59.8,
-  v11: 64.6,
+  v11: 64.32,
   v12: 75.8,
   v13: 81.6,
   v14: 87.7,
@@ -66,8 +64,8 @@ export const CUES = {
   v18: 106.9,
   v19: 109.9,
   v20: 113.1,
-  v21: 116.9,
-  v22: 121.0,
+  v21: 118.52,
+  v22: 122.95,
   v23: 126.7,
   v24: 132.3,
   v25: 135.2,
@@ -79,6 +77,14 @@ export const CUES = {
   v31: 145.0,
 };
 
+// The comma pause in the existing take is the split between S08 and S09.
+export const VOICE_SPLITS = {
+  v08: [
+    { id: 'v08', end: 1.82, en: 'A consciousness without a body.', zh: '一个没有身体的意识。' },
+    { id: 'v08b', start: 1.87, en: 'Renting a printed shell.', zh: '租用着一具打印出来的躯壳。' },
+  ],
+};
+
 /**
  * Designed SFX, synthesised with ffmpeg (no samples). [time, kind, gain dB]
  */
@@ -87,10 +93,10 @@ export const SFX = [
   [7.8, 'glitch', -22],
   [11.9, 'servo', -22],
   [16.6, 'blip', -22], [20.8, 'blip', -22],
-  [26.2, 'crush', -14],
+  [ANCHORS.dip - 0.05, 'crush', -17],
   [53.2, 'glitch', -18],
-  [54.7, 'impact', -8], [54.72, 'shatter', -15],
-  [64.2, 'servo', -22],
+  [ANCHORS.impact, 'impact', -8], [ANCHORS.impact + 0.02, 'shatter', -15],
+  [64.2, 'blip', -22], [66.3, 'servo', -22],
   [75.6, 'blip', -20],
   [103.45, 'alarm', -18], [104.55, 'alarm', -20], [105.65, 'alarm', -22],
   [108.6, 'crush', -18],

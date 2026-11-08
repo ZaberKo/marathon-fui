@@ -4,88 +4,52 @@
  */
 import * as THREE from 'three/webgpu';
 import type { C2, Frame, ShotDef } from '../engine';
-import { clamp01, hash } from '../engine';
-import { C, F, checker, dataField, frameRect, glitchBlocks, line, microRows, rect, ring, text } from '../draw';
+import { H, W, clamp01, hash } from '../engine';
+import { C, F, arc, clipped, frameRect, line, rect, ring, text } from '../draw';
 import { backdrop, PAL_BLUE, PAL_GREEN } from '../backdrop';
-import { streakRing } from '../rings';
-import { makeBody } from '../models/body';
-import { brainGeometry } from '../models/anatomy';
+import { COMPLETION_RADIUS, completionDial } from './completion-dial';
+import { bodyHeadGeometry, makeBody } from '../models/body';
 import { flowMaterial } from '../models/flow';
-import { connectome, connectomeMaterial } from '../models/connectome';
-import { BRAIN_S, H2, head2Geometry, headWiring, opticPathway, wireEye } from '../models/head2';
+import { ascendingBundles, connectomeMaterial } from '../models/connectome';
+import { opticPathway, wireEye, type HeadAnatomy } from '../models/head2';
 import { HAZE } from '../models/hard';
 import { buildColony } from '../models/colony';
 import { contourMaterial } from '../../three/materials';
-import { pixelSurfaceTexture } from '../../three/procedural';
+import { pixelSurfaceMaterial } from '../../three/procedural';
+import { ORA_INK, oraBuildAt, oraWordmarkLayout, paintOraLetters, paintOraRing } from '../../lib/oraWordmark';
 import { ANCHORS, LINES } from './cues';
 import { ST } from './times';
-import { cutGlitch, easeInOutCubic, easeOutExpo, persp, px, smooth, span, vlabel } from './kit';
+import { easeInOutCubic, persp, px, smooth, span } from './kit';
+import { BUFFER_RETURN_DURATION, BUFFER_RETURN_FLASH, createBufferDial } from './buffer-dial';
+import { opticGlyph, transferMarks, type OpticGlyph } from './transfer-ui';
 
-const LIME = '#77f600';
 const at = (id: string) => LINES.find((l) => l.id === id)!.t;
+const mix = THREE.MathUtils.lerp;
+const ORBIT_FOV = 36;
+const ORBIT_DISTANCE = 36;
+const PLANET_RADIUS = 4;
+const ORBIT_POSITION = new THREE.Vector3(-6.65, 0.38, -ORBIT_DISTANCE);
+const ORBIT_FOCAL = H * 0.5 / Math.tan(ORBIT_FOV * Math.PI / 360);
+const ORBIT_X = W * 0.5 + ORBIT_POSITION.x * ORBIT_FOCAL / ORBIT_DISTANCE;
+const ORBIT_Y = H * 0.5 - ORBIT_POSITION.y * ORBIT_FOCAL / ORBIT_DISTANCE;
+const ORBIT_R = PLANET_RADIUS * ORBIT_FOCAL / ORBIT_DISTANCE;
+const ORBIT_INK = '#1427ca';
 
-/**
- * Geometric lowercase "ora" drawn from the ring stroke, letter by letter:
- * kr / ka are the growth of r and a (0..1). r grows its stem up from the
- * baseline, then its shoulder sweeps out; a draws its bowl as a sweeping arc,
- * then its stem drops in. Returns the current width so the word can recentre.
- */
-function wordmarkWidth(R: number, kr: number, ka: number) {
-  const s = R * 0.49;
-  return R * 2 + (s * 0.45 + s + R * 0.75) * smoothK(kr) + R * 2 * smoothK(ka) - s * 0.0;
+function orbitDisk(ctx: C2, x: number, y: number, radius: number, opacity = 1) {
+  ctx.save();
+  ctx.globalAlpha = opacity;
+  arc(ctx, x, y, 0, radius, 0, Math.PI * 2, ORBIT_INK);
+  ring(ctx, x, y, radius, '#5269ff', 2);
+  ctx.restore();
 }
-const smoothK = (k: number) => {
-  const x = Math.max(0, Math.min(1, k));
-  return x * x * (3 - 2 * x);
-};
-function wordmark(fg: C2, x: number, cy: number, R: number, kr: number, ka: number, color: string) {
-  const s = R * 0.49;
-  const ri = R - s;
-  fg.fillStyle = color;
-  // o
-  fg.beginPath();
-  fg.arc(x + R, cy, R, 0, Math.PI * 2);
-  fg.arc(x + R, cy, ri, 0, Math.PI * 2, true);
-  fg.fill();
-  ring(fg, x + R, cy, ri * 0.75, '#0a2a00', 2);
-  // r
-  if (kr > 0) {
-    const sx = x + R * 2 + s * 0.45;
-    const stem = smoothK(kr / 0.5);
-    rect(fg, sx, cy + R - R * 2 * stem, s, R * 2 * stem, color);
-    const sh = smoothK((kr - 0.4) / 0.6);
-    if (sh > 0) {
-      const ccx = sx + s + ri * 0.6;
-      const ccy = cy - R + R * 0.95;
-      fg.beginPath();
-      fg.arc(ccx, ccy, R * 0.95, Math.PI, Math.PI + Math.PI * 0.5 * sh);
-      fg.arc(ccx, ccy, R * 0.95 - s, Math.PI + Math.PI * 0.5 * sh, Math.PI, true);
-      fg.fill();
-      // a round terminal leads the sweep
-      const ea = Math.PI + Math.PI * 0.5 * sh;
-      fg.beginPath();
-      fg.arc(ccx + Math.cos(ea) * (R * 0.95 - s / 2), ccy + Math.sin(ea) * (R * 0.95 - s / 2), s / 2, 0, Math.PI * 2);
-      fg.fill();
-    }
-  }
-  // a
-  if (ka > 0) {
-    const ax = x + R * 2 + s * 0.45 + s + R * 0.75;
-    const bowl = smoothK(ka / 0.6);
-    const a0 = -Math.PI / 2;
-    fg.beginPath();
-    fg.arc(ax + R, cy, R, a0, a0 + Math.PI * 2 * bowl);
-    fg.arc(ax + R, cy, ri, a0 + Math.PI * 2 * bowl, a0, true);
-    fg.fill();
-    if (bowl < 1) {
-      const ea = a0 + Math.PI * 2 * bowl;
-      fg.beginPath();
-      fg.arc(ax + R + Math.cos(ea) * (R - s / 2), cy + Math.sin(ea) * (R - s / 2), s / 2, 0, Math.PI * 2);
-      fg.fill();
-    }
-    const st = smoothK((ka - 0.5) / 0.5);
-    if (st > 0) rect(fg, ax + R * 2 - s, cy - R * 0.2, s, R * 1.2 * st, color);
-  }
+
+function contractWipe(fg: C2, T: number, cut: number) {
+  const cover = smooth(span(T, cut - 0.13, cut)) * (1 - smooth(span(T, cut, cut + 0.20)));
+  if (cover <= 0) return;
+  const h = H * cover;
+  const y = T < cut ? 0 : H - h;
+  rect(fg, 0, y, W, h, '#05091f');
+  line(fg, 0, T < cut ? h : y, W, T < cut ? h : y, '#254bb3', 2);
 }
 
 export const s9: ShotDef[] = [
@@ -94,88 +58,85 @@ export const s9: ShotDef[] = [
     t0: ST.S21[0],
     t1: ST.S21[1],
     title: 'Defragmentation complete',
-    note: 'On the build the liminal buffer fills from 26 to 100; on the downbeat the completion ring bursts outward as hundreds of radial streaks, then everything collapses into one solid lime ring.',
-    build: () => ({
-      draw(f) {
-        const { bg, fg, T } = f;
-        const DB = ANCHORS.downbeat - ST.S21[0];
-        const v21 = at('v21');
-        if (f.t < DB) {
-          // pre-roll: the buffer fills to 100 on the build, then bursts on the downbeat
-          const pct = Math.floor(26 + 74 * smooth(span(T, v21 - 0.8, v21 + 2.0)));
-          const k = pct / 100;
-          ring(bg, 960, 540, 300, '#2a0408', 26);
-          fg.save();
-          fg.setLineDash([5, 3]);
-          ring(fg, 960, 540, 300, C.red, 26, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k);
-          fg.restore();
-          ring(fg, 960, 540, 250, 'rgba(255,40,60,0.5)', 1.5);
-          vlabel(fg, String(pct).padStart(2, '0'), 1010, 400, 150, C.red, { weight: 600, stretch: 'semi-expanded' });
-          vlabel(fg, 'LIMINAL BUFFER', 980, 400, 22, C.red, { weight: 800 });
-          if (pct >= 100 && Math.floor(f.t * 10) % 2 === 0) text(fg, 'FULL', 960, 900, { size: 26, family: F.mono, weight: 700, color: C.red, align: 'center', tracking: 8 });
-          cutGlitch(f, f.t, 0.1, ['#000', C.red], 26);
-          f.post.tint = [1, 0.5, 0.55];
-          return;
-        }
-        const t = f.t - DB;
-        const grow = easeOutExpo(span(t, 0, 0.9));
-        const end = ST.S21[1] - ANCHORS.downbeat;
-        const shrink = easeInOutCubic(span(t, end - 2.0, end - 0.25));
-        const r0 = 160 + grow * 380 - shrink * 410;
-        const r1 = 330 + grow * 1000 - shrink * 1060;
-        const solid = clamp01((t - (end - 0.3)) / 0.25);
-        if (solid < 1) streakRing(bg, 960, 540, Math.max(118, r0), Math.max(270, r1), 55 + Math.floor(t * 15) * (solid > 0 ? 0 : 1), solid, { n: 320, rot: t * 0.35, colors: ['#e8e8e8', '#b0b0b0', '#6a6a6a', '#d8d8d8', '#f4f4f4', '#9aff40', '#8a8a8a', '#e0e0e0', '#cc40d0', '#c8c8c8'] });
-        if (solid >= 1) {
-          bg.fillStyle = LIME;
-          bg.beginPath();
-          bg.arc(960, 540, 270, 0, Math.PI * 2);
-          bg.arc(960, 540, 140, 0, Math.PI * 2, true);
-          bg.fill();
-          ring(bg, 960, 540, 105, '#0a2a00', 2);
-        }
-        if (shrink < 0.05) {
-          vlabel(fg, '100', 985, 470, 84, C.red, { weight: 600, stretch: 'semi-expanded' });
-          vlabel(fg, 'BUFFER', 945, 470, 18, C.red, { weight: 800 });
-        }
-        if (T > at('v22') && shrink < 0.05) {
-          vlabel(fg, 'DEFRAG', 860, 520, 34, LIME, { weight: 800 });
-          ring(fg, 900, 470, 20, LIME, 10);
-        }
-        if (T > at('v22') + 0.8) text(fg, 'COMPLETE', 960, 900, { size: 26, family: F.mono, weight: 700, color: LIME, align: 'center', tracking: 8 });
-        cutGlitch(f, t, 0.1, ['#000', C.white, LIME], 27);
-        f.post.tint = [0.75, 0.9, 0.6];
-      },
-    }),
+    note: 'Two red tracks reach 100 percent. The readout changes ink before the track fragments fall away. A lime relay sheds its teeth into a macro radial print, then the compact COMPLETE wheel resolves into the ORA ring.',
+    build: async () => {
+      const buffer = await createBufferDial();
+      const downbeat = BUFFER_RETURN_FLASH + BUFFER_RETURN_DURATION;
+      return {
+        draw(f) {
+          if (f.t < BUFFER_RETURN_FLASH) {
+            rect(f.bg, 0, 0, 1920, 1080, C.crimson);
+            for (let i = 0; i < 11; i++) {
+              const x = 1456 + (i % 3) * 103;
+              const y = 315 + Math.floor(i / 3) * 113;
+              ring(f.fg, x, y, 25, C.white, 6);
+              ring(f.fg, x, y, 14, C.white, 16);
+            }
+          } else if (f.t < downbeat) {
+            buffer.resume(f, f.t - BUFFER_RETURN_FLASH, BUFFER_RETURN_DURATION);
+          } else {
+            completionDial(f.fg, f.t - downbeat, f.dur - downbeat);
+          }
+        },
+        dispose: buffer.dispose,
+      };
+    },
   },
   {
     id: 'S22',
     t0: ST.S22[0],
     t1: ST.S22[1],
     title: 'ORA',
-    note: 'The completed ring becomes the first letter of the support AI’s wordmark. The other letters are not placed, they grow out of it: the r pushes its stem up and sweeps its shoulder, the a draws its bowl and drops its stem, the word recentring as it widens; then the mark shrinks onto a green data wall.',
+    note: 'The completed ring grows into the ORA wordmark on the introduction. The mark docks with its support readout, then the O expands into the outline of Periapt IV.',
     build: () => ({
       draw(f) {
-        const { bg, fg, t } = f;
-        for (let y = 30; y < 1080; y += 60) for (let x = 30; x < 1920; x += 60) rect(bg, x, y, 2, 2, '#10180a');
-        // letters grow out of the ring on the beat (r, then a), the word recentring as it widens
-        const kr = span(t, 0.95, 1.55);
-        const ka = span(t, 1.6, 2.3);
-        const small = smoothK(span(t, 3.5, 4.0));
-        const R = (270 - 30 * smoothK(kr) - 35 * smoothK(ka)) * (1 - small) + 110 * small;
-        const totalW = wordmarkWidth(R, kr, ka);
-        const x = 960 - totalW / 2 - small * 120;
-        if (small > 0.5) {
-          backdrop(bg, { seed: 141, dx: t * 30, pal: PAL_GREEN, alpha: 0.9 });
-          dataField(bg, 0, 0, 1920, 1080, 57, { palette: ['#0c2a06', '#16500c', '#2a8a18', '#06200a'], ox: Math.floor(t * 6) * 10, alpha: 0.5 });
-          rect(bg, x - 30, 540 - R - 20, totalW + 200, R * 2 + 40, '#000');
-          rect(fg, x - 40, 540 - R, 6, R * 2, LIME);
-          const cx = x + totalW + 30;
-          for (let j = 0; j < 5; j++) for (let i = 0; i < 3; i++) if ((i + j) % 2 === 0 && i <= 2 - Math.abs(j - 2) + 1) rect(fg, cx + i * 18, 540 - 45 + j * 18, 18, 18, C.white);
-          text(fg, 'SUPPORT INTELLIGENCE · MANDATORY', x, 540 + R + 50, { size: 16, family: F.mono, weight: 700, color: LIME });
+        const { bg, fg, t, T, dur } = f;
+        const intro = T - at('v23');
+        const [kr, ka] = oraBuildAt(intro);
+        const dock = easeInOutCubic(span(intro, 2.75, 4.30));
+        const orbit = smooth(span(t, dur - 0.53, dur));
+        const reveal = smooth(span(intro, 3.56, 4.41));
+        const hold = (1 - orbit) * reveal;
+        const R = mix(COMPLETION_RADIUS - 14 * smooth(span(t, 0, 0.62)) - 20 * kr - 22 * ka, 108, dock);
+        const layout = oraWordmarkLayout(R, kr, ka);
+        const cy = mix(H * 0.5, 491, dock);
+        const x = W * 0.5 - layout.width / 2 - dock * 130;
+
+        bg.save();
+        bg.fillStyle = '#253b12';
+        const sweep = mix(0, W, span(t, 0.22, dur));
+        const fieldAlpha = smooth(span(t, 0, 0.50)) * (1 - orbit);
+        for (let dx = 30; dx < W; dx += 60) {
+          const offset = (dx - sweep) / 260;
+          bg.globalAlpha = fieldAlpha * (0.34 + 0.50 * Math.exp(-offset * offset));
+          for (let y = 30; y < H; y += 60) bg.fillRect(dx, y, 2, 2);
         }
-        wordmark(fg, x, 540, R, kr, ka, LIME);
-        if ([3.75].some((b) => Math.abs(t - b) < 0.05)) glitchBlocks(fg, Math.floor(t * 30), { n: 20, colors: ['#000', LIME], maxW: 300, maxH: 40 });
-        f.post.tint = [0.6, 1, 0.5];
+        bg.restore();
+
+        if (hold > 0) {
+          const fieldX = mix(1440, 1195, reveal) + 150 * orbit;
+          backdrop(bg, { seed: 141, pal: PAL_GREEN, alpha: 0.72 * hold, rect: [fieldX, 275, 650, 430] });
+          const barH = 2 * R * reveal;
+          rect(fg, x - 36, cy + R - barH, 5, barH, ORA_INK, hold);
+          const markerX = x + layout.width + 28;
+          for (let j = 0; j < 5; j++) {
+            for (let i = 0; i < 3; i++) {
+              if ((i + j) % 2 !== 0 || i > 3 - Math.abs(j - 2)) continue;
+              const settle = smooth(span(reveal, (i + j) * 0.07, 0.65 + (i + j) * 0.05));
+              const cell = 16 * settle;
+              rect(fg, markerX + i * 18 + (1 - settle) * 72, cy - 44 + j * 18, cell, cell, C.white, settle * (1 - orbit));
+            }
+          }
+          clipped(fg, x, cy + R + 24, layout.width * reveal, 30, () => {
+            text(fg, 'SUPPORT INTELLIGENCE · MANDATORY', x, cy + R + 47, { size: 16, family: F.mono, weight: 700, color: ORA_INK, alpha: 1 - orbit });
+          });
+        }
+        const ox = mix(x + R, ORBIT_X, orbit);
+        const oy = mix(cy, ORBIT_Y, orbit);
+        const radius = mix(R, ORBIT_R, orbit);
+        if (orbit > 0) orbitDisk(fg, ox, oy, radius, orbit);
+        paintOraRing(fg, ox, oy, radius, { inner: mix(R * 0.51, ORBIT_R - 1.5, orbit), opacity: 1 - orbit });
+        paintOraLetters(fg, x, cy, R, kr, ka, layout, 1 - orbit);
       },
     }),
   },
@@ -184,74 +145,148 @@ export const s9: ShotDef[] = [
     t0: ST.S23[0],
     t1: ST.S23[1],
     title: 'Contract — target: shell 06',
-    note: 'The contract card over the turning planet; then the payoff: in the ruins, the old shell stands in red lines, and the reticle locks.',
+    note: 'The orbital view picks up the ORA ring. A surface pointer traces into the contract readout as its fields resolve, then the view dives to the ruins and scans the moving target.',
     build: async () => {
       const scene = new THREE.Scene();
-      const cam = persp(36, 0.05, 1000);
-      const tex = pixelSurfaceTexture({ w: 1024, h: 512, base: '#1620ff', dark: '#0a10b0', ink: '#03063a', seed: 21 });
-      tex.repeat.set(3, 2);
-      const planet = new THREE.Mesh(new THREE.SphereGeometry(4, 96, 64), new THREE.MeshBasicMaterial({ map: tex }));
-      planet.position.set(0, 0, -30);
+      const cam = persp(ORBIT_FOV, 0.05, 1000);
+      const planetInk = pixelSurfaceMaterial({ cells: [1024, 512], repeat: [3, 2], base: 0x1620ff, dark: 0x0a10b0, ink: 0x03063a, seed: 21 });
+      planetInk.transparent = true;
+      const planet = new THREE.Mesh(new THREE.SphereGeometry(PLANET_RADIUS, 96, 64), planetInk);
+      planet.position.copy(ORBIT_POSITION);
       scene.add(planet);
-      // the colony ruins for the target reveal (same set as the descent)
       const ruins = buildColony({ seed: 4, haze: true, ruined: 0.5 });
       ruins.scale.setScalar(0.3);
       ruins.position.set(0, 0, -6);
       scene.add(ruins);
-      const old = await makeBody('runner', contourMaterial({ line: 0xff2a3a, body: 0x080002, freq: 34, width: 0.9, rim: 0xff4a5a, rimWidth: 0.3 }).mat);
+      const targetInk = contourMaterial({ line: 0xff2a3a, body: 0x080002, freq: 34, width: 0.9, rim: 0xff4a5a, rimWidth: 0.3, scan: 0xffa358, scanWidth: 0.055 });
+      const old = await makeBody('runner', targetInk.mat);
       old.root.position.set(0.8, 0, -3.2);
       scene.add(old.root);
       const v = new THREE.Vector3();
+      const site = new THREE.Vector3(-0.27, 0.28, 0.92).normalize().multiplyScalar(PLANET_RADIUS * 1.012);
+      const contractCue = at('v24');
+      const targetCue = at('v25');
+      const cut = targetCue - 0.10;
+      const fields = [
+        ['CLIENT ....... WITHHELD', 0.24],
+        ['SITE ......... PERIAPT IV / RUINS', 0.97],
+        ['TYPE ......... RECOVERY', 1.12],
+        ['ISSUED TO .... SHELL 07', 1.30],
+        ['PAYOUT ....... ON CONFIRMATION', 1.50],
+      ] as const;
       return {
         draw(f) {
-          const { fg, t, T } = f;
-          const reveal = T >= at('v25') - 0.1;
+          const { bg, fg, t, T } = f;
+          const reveal = T >= cut;
           planet.visible = !reveal;
           ruins.visible = reveal;
           old.root.visible = reveal;
           if (!reveal) {
-            planet.rotation.y = t * 0.2;
-            cam.position.set(0, 0, 0);
-            cam.lookAt(0, 0, -30);
+            const track = smooth(span(t, 0.0, 2.32));
+            const dive = easeInOutCubic(span(T, cut - 1.2, cut));
+            const diskBlend = smooth(span(t, 0, 0.4));
+            planetInk.opacity = diskBlend;
+            planet.rotation.set(-0.07 + t * 0.12, -0.18 + t * 0.37, -0.14 + t * 0.027);
+            cam.position.set(0.52 * track - 1.8 * dive, 0.18 * track + 0.68 * dive, -3.4 * track - 11.4 * dive);
+            cam.lookAt(-0.53 * track - 2.57 * dive, -0.35 * track + 0.82 * dive, -ORBIT_DISTANCE);
+            cam.updateMatrixWorld();
             f.three = { scene, camera: cam };
-            backdrop(f.bg, { seed: 151, dx: t * 15, pal: PAL_BLUE, alpha: 0.5 });
-            const x = 1180;
-            frameRect(fg, x, 260, 560, 300, C.white, 2);
-            rect(fg, x, 260, 560, 40, C.white);
-            text(fg, 'CONTRACT 0447', x + 14, 290, { size: 24, weight: 800, color: '#000' });
-            microRows(fg, x + 16, 340, ['CLIENT ....... WITHHELD', 'SITE ......... PERIAPT IV / RUINS', 'TYPE ......... RECOVERY', 'SHELL ........ 07 (SUBOPT.)', 'PAYOUT ....... ON CONFIRMATION'], { size: 17, family: F.mono, weight: 700, color: C.white, lh: 30 });
+            if (diskBlend < 1) orbitDisk(bg, ORBIT_X, ORBIT_Y, ORBIT_R, 1 - diskBlend);
+
+            const lead = T - contractCue;
+            const open = smooth(span(lead, -0.08, 0.60));
+            const close = smooth(span(T, cut - 0.58, cut - 0.10));
+            const marker = smooth(span(lead, -0.18, 0.34));
+            const pin = px(f, cam, planet.localToWorld(v.copy(site)));
+            const cardW = 560;
+            const cardH = 258;
+            const x = mix(1272, 1115, open) + 138 * close;
+            const y = mix(368, 300, open) + 35 * close + (pin.y - H * 0.5) * 0.12;
+            const extent = cardW * open * (1 - close);
+
+            if (marker > 0) {
+              const pulse = (1 - smooth(span(lead, 0.35, 0.93))) * 14;
+              ring(fg, pin.x, pin.y, mix(28, 11, marker) + pulse, C.lime, 2);
+              rect(fg, pin.x - 2, pin.y - 2, 4, 4, C.white, marker);
+              const trace = smooth(span(lead, 0.03, 0.76));
+              const bendX = Math.min(x - 34, pin.x + 112);
+              const bendY = y + 22;
+              fg.save();
+              fg.globalAlpha = 1 - close;
+              line(fg, pin.x, pin.y, mix(pin.x, bendX, Math.min(1, trace * 2)), mix(pin.y, bendY, Math.min(1, trace * 2)), C.lime);
+              if (trace > 0.5) line(fg, bendX, bendY, mix(bendX, x, trace * 2 - 1), bendY, C.lime);
+              fg.restore();
+            }
+            if (extent > 0) {
+              clipped(fg, x, y, extent, cardH, () => {
+                rect(fg, x, y, cardW, cardH, '#02040d', 0.86);
+                frameRect(fg, x, y, cardW, cardH, C.white, 2);
+                rect(fg, x, y, cardW, 44, C.white);
+                text(fg, 'CONTRACT 0447', x + 15, y + 30, { size: 24, weight: 800, color: C.black });
+                fields.forEach(([row, delay], i) => {
+                  const progress = smooth(span(lead, delay, delay + 0.44));
+                  if (progress <= 0) return;
+                  const yy = y + 83 + i * 33;
+                  clipped(fg, x + 16, yy - 24, (cardW - 32) * progress, 31, () => {
+                    text(fg, row, x + 16, yy, { size: 17, family: F.mono, weight: 700, color: i === 1 ? C.lime : C.white });
+                  });
+                });
+              });
+              line(fg, x + extent, y + 1, x + extent, y + cardH, C.lime);
+            }
+            contractWipe(fg, T, cut);
             return;
           }
-          const k = t - (at('v25') - 0.1 - (T - t));
+          const k = T - cut;
+          const track = smooth(span(k, 0, f.dur - (cut - ST.S23[0])));
+          const survey = smooth(span(k, 0.08, 0.94));
+          const lock = smooth(span(k, 0.26, 0.89));
           HAZE.near.value = 4;
           HAZE.far.value = 26;
-          old.clip('idle', T);
-          old.root.rotation.y = -0.3 + smooth(span(k, 0.8, 1.6)) * 0.3;
-          cam.position.set(-0.5 + k * 0.08, 1.45, 0.7 - k * 0.25);
-          cam.lookAt(0.7, 1.1, -3.2);
+          old.clip('idle', k + 0.22);
+          old.root.rotation.y = mix(-0.50, 0.14, smooth(span(k, 0.16, 1.72)));
+          targetInk.u.scanY.value = mix(-0.15, 2.13, survey);
+          targetInk.u.lineMix.value = mix(0.52, 1, survey);
+          cam.position.set(mix(-0.84, 0.31, track), mix(1.50, 1.19, track), mix(1.14, 0.26, track));
+          cam.lookAt(mix(0.43, 0.70, track), mix(1.14, 1.23, track), -3.2);
           cam.updateMatrixWorld();
           f.three = { scene, camera: cam };
           const c = px(f, cam, old.joint('Spine2', v));
-          const lock = smooth(span(k, 0.2, 1.1));
-          const r = 260 - lock * 180;
+          const aim = smooth(span(k, 0.06, 0.66));
+          const cx = mix(c.x - 156, c.x, aim);
+          const cy = mix(c.y + 94, c.y, aim);
+          const r = mix(242, 79 + 15 * track, lock);
+          const tip = mix(34, 22, lock);
+          fg.save();
+          fg.globalAlpha = smooth(span(k, 0.08, 0.37));
           fg.strokeStyle = C.red;
           fg.lineWidth = 3;
-          for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) {
-            fg.beginPath();
-            fg.moveTo(c.x + sx * r, c.y + sy * (r - 26));
-            fg.lineTo(c.x + sx * r, c.y + sy * r);
-            fg.lineTo(c.x + sx * (r - 26), c.y + sy * r);
-            fg.stroke();
+          fg.beginPath();
+          for (const sx of [-1, 1]) {
+            for (const sy of [-1, 1]) {
+              fg.moveTo(cx + sx * r, cy + sy * (r - tip));
+              fg.lineTo(cx + sx * r, cy + sy * r);
+              fg.lineTo(cx + sx * (r - tip), cy + sy * r);
+            }
           }
-          line(fg, c.x - r - 60, c.y, c.x - r, c.y, C.red, 1);
-          line(fg, c.x + r, c.y, c.x + r + 60, c.y, C.red, 1);
-          if (lock > 0.95) {
-            rect(fg, c.x + r + 20, c.y - r, 230, 30, C.red);
-            text(fg, 'TARGET · SHELL 06', c.x + r + 28, c.y - r + 22, { size: 18, weight: 800, color: '#000' });
-            text(fg, 'RANGE 0.84 KM · ACTIVE', c.x + r + 20, c.y - r + 52, { size: 14, family: F.mono, weight: 700, color: C.red });
+          fg.stroke();
+          const wing = mix(34, 68, lock);
+          line(fg, cx - r - wing, cy, cx - r, cy, C.red);
+          line(fg, cx + r, cy, cx + r + wing, cy, C.red);
+          fg.restore();
+          const confirm = smooth(span(T, targetCue + 0.64, targetCue + 1.02));
+          if (confirm > 0) {
+            const x = cx + r + 28;
+            const y = cy - r - 6 * (1 - confirm);
+            const distance = mix(0.91, 0.84, smooth(span(k, 0.74, 1.87)));
+            line(fg, cx + r, cy - r, mix(cx + r, x, confirm), y, C.red);
+            clipped(fg, x, y, 236 * confirm, 61, () => {
+              rect(fg, x, y, 236, 31, C.red);
+              text(fg, 'TARGET · SHELL 06', x + 8, y + 22, { size: 18, weight: 800, color: C.black });
+              text(fg, `RANGE ${distance.toFixed(2)} KM · ACTIVE`, x, y + 53, { size: 14, family: F.mono, weight: 700, color: C.red });
+            });
           }
-          cutGlitch(f, k, 0.12, ['#000', C.red], 28);
-          f.post.tint = [1, 0.45, 0.5];
+          contractWipe(fg, T, cut);
         },
       };
     },
@@ -262,7 +297,7 @@ export const s9: ShotDef[] = [
     t0: ST.S24[0],
     t1: ST.S24[1],
     title: 'Consciousness transfer',
-    note: 'A sculpted head drawn as a lat/long wire grid. Inside: the brain outline full of short circuits, blue orthogonal wiring, wire eyes, and the visual pathway in its own colour — about seventy fibres per eye gathering into the optic nerves, crossing at the chiasm and fanning over the visual cortex, signals flowing toward the eyes. The camera orbits from the face to the back of the skull and pushes through the brain until it looks out through the eyes; green blocks fill the brain as the psyche is written; the countdown runs in the eyes.',
+    note: 'The camera circles the shell, then keeps moving into the brain along the optic route throughout the countdown.',
     build: async () => {
       const rig = await headRig();
       return { draw: (f) => rig.transfer(f) };
@@ -273,7 +308,7 @@ export const s9: ShotDef[] = [
     t0: ST.S25[0],
     t1: ST.S25[1],
     title: 'Initiate',
-    note: 'Straight out of the countdown: INIT lights in both eyes and at once the view rushes down the optic nerves and through the eyes, the two eyes’ rings slide together into one, the field floods blue — the mind is now behind these eyes — black, and only: Good luck.',
+    note: 'INIT lights up in the internal optic view. The camera rushes toward the eyes, the two rings fuse into one and the field floods blue before the final blackout.',
     build: async () => {
       const rig = await headRig();
       return { draw: (f) => rig.initiate(f) };
@@ -289,36 +324,35 @@ const headRig = () => (headP ??= buildHeadRig());
 
 async function buildHeadRig() {
   const scene = new THREE.Scene();
-  const cam = persp(34, 0.002, 20);
+  const cam = persp(38, 0.002, 20);
   const add = { blending: THREE.AdditiveBlending, transparent: true, depthWrite: false };
-  const skin = contourMaterial({ line: 0x3a50ff, body: 0x000000, freq: 170, width: 1.0, axis: 'y', space: 'local', line2: 0xb4c858, freq2: 34, axis2: 'theta', width2: 0.9, rim: 0x3a2e8a, rimWidth: 0.1 });
+  const skin = contourMaterial({ line: 0x3040cc, body: 0x000000, freq: 170, width: 1.0, axis: 'y', space: 'local', line2: 0x20286a, freq2: 34, axis2: 'theta', width2: 0.9, rim: 0x30247a, rimWidth: 0.1 });
   Object.assign(skin.mat, add, { side: THREE.FrontSide });
   const head = new THREE.Group();
-  head.add(new THREE.Mesh(head2Geometry(), skin.mat));
-  const bm = contourMaterial({ line: 0xff2a5a, body: 0x000000, freq: 26, width: 0.9, axis: 'y', space: 'local', rim: 0xff4a7a, rimWidth: 0.35 });
-  Object.assign(bm.mat, add, { side: THREE.FrontSide });
-  bm.u.lineMix.value = 0.35;
-  const brain = new THREE.Mesh(brainGeometry(40, 3), bm.mat);
-  const BS = BRAIN_S;
-  brain.position.copy(H2.brain);
-  brain.scale.copy(BS);
+  const shell = new THREE.Mesh((await bodyHeadGeometry('runner')).geometry, skin.mat);
+  head.add(shell);
+  const eyeX = 0.030;
+  const eyeY = 0.014;
+  const eyeR = 0.0105;
+  const faceRay = new THREE.Raycaster(new THREE.Vector3(eyeX, eyeY, 0.2), new THREE.Vector3(0, 0, -1));
+  const face = faceRay.intersectObject(shell, false)[0];
+  const anatomy: HeadAnatomy = {
+    eyeX, eyeY, eyeR, eyeZ: face.point.z - eyeR - 0.004,
+    brain: new THREE.Vector3(0, 0.047, -0.012),
+    brainScale: new THREE.Vector3(0.080, 0.093, 0.074),
+  };
+  const net = ascendingBundles((rank, readiness) => readiness ? 0.7 + rank * 1.3 : -0.9 + rank * 2.4);
+  const cm = connectomeMaterial({ dim: 0.095, base: 0.43, flash: 0.22, pulse: 0.22, speed: 1.5 });
+  const brain = new THREE.LineSegments(net.geometry, cm.mat);
+  brain.position.copy(anatomy.brain);
+  brain.scale.copy(anatomy.brainScale);
   head.add(brain);
-  // tractography inside the brain: bundles running through it, signals flowing
-  const cm = connectomeMaterial({ dim: 0.1, base: 0.36, speed: 1.6 });
-  const tracts = new THREE.LineSegments(connectome({ seed: 11, scale: 1.1, timeOf: (r) => -20 + r }).fibres, cm.mat);
-  tracts.position.copy(H2.brain);
-  tracts.scale.copy(BS).multiplyScalar(0.98);
-  head.add(tracts);
-  const wiring = headWiring(9);
-  const wires = new THREE.LineSegments(wiring.wires, new THREE.LineBasicMaterial({ color: 0x3a6aff, ...add, opacity: 0.8 }));
-  head.add(wires);
-  head.add(new THREE.LineSegments(wiring.nodes, new THREE.LineBasicMaterial({ color: 0xffffff, ...add })));
   // the visual pathway: many fibres, signals flowing toward the eyes
-  const flow = flowMaterial({ base: 0.4, speed: -1.1, freq: 6 });
-  head.add(new THREE.LineSegments(opticPathway(13, 72), flow.mat));
+  const flow = flowMaterial({ base: 0.26, speed: -1.1, freq: 6 });
+  head.add(new THREE.LineSegments(opticPathway(13, 72, anatomy), flow.mat));
   const eyes = [-1, 1].map((sx) => {
-    const e = wireEye(0x8aa0ff, 0x77f600);
-    e.position.set(sx * H2.eyeX, H2.eyeY, H2.eyeZ - 0.003);
+    const e = wireEye(0x4f66c2, 0x92bd49, eyeR);
+    e.position.set(sx * eyeX, eyeY, anatomy.eyeZ);
     head.add(e);
     return e;
   });
@@ -328,159 +362,143 @@ async function buildHeadRig() {
     head.add(vb);
   }
   scene.add(head);
-  // write-progress blocks over the top of the brain (a 7 × 4 grid, in head space)
-  const blocks: THREE.Vector3[] = [];
-  // tiles laid over the top surface of the brain (ellipsoid approximation), written front to back
-  for (let j = 0; j < 6; j++)
-    for (let i = 0; i < 7; i++) {
-      const x = (i - 3) * 0.0135;
-      const z = 0.045 - j * 0.02;
-      const q = 1 - (x / 0.062) ** 2 - (z / 0.084) ** 2;
-      if (q <= 0.05) continue;
-      blocks.push(new THREE.Vector3(x, H2.brain.y + 0.074 * Math.sqrt(q) + 0.005, H2.brain.z + z));
-    }
   const v = new THREE.Vector3();
-  const centre = new THREE.Vector3(0, 0.012, 0);
+  const centre = new THREE.Vector3(0, 0.033, 0);
   const look = new THREE.Vector3();
-  const T0 = ST.S24[0];
-  const eyeStart: { x: number; y: number; R: number }[] = [];
-  const camEnd = new THREE.Vector3(0, 0.008, -0.035);
-  const lookEnd = new THREE.Vector3(0, 0.0, 0.08);
-  const eyeLabel = (T: number) => (T >= ANCHORS.final ? 'INIT' : T >= at('v29') ? '1' : T >= at('v28') ? '2' : T >= at('v27') ? '3' : '');
-  const drawEyes = (f: Frame, T: number, scale = 1) => {
-    const label = eyeLabel(T);
-    const out: { x: number; y: number; R: number }[] = [];
-    eyes.forEach((e) => {
-      e.getWorldPosition(v);
-      const p = px(f, cam, v);
-      if (p.z > 1) return;
-      const d = cam.position.distanceTo(v);
-      const R = Math.min(300, 9 / d) * scale;
-      out.push({ x: p.x, y: p.y, R });
-      ring(f.fg, p.x, p.y, R * 1.25, 'rgba(119,246,0,0.8)', 2, T * 2, T * 2 + 1.4);
-      if (label) text(f.fg, label, p.x, p.y + R * (label.length > 1 ? 0.22 : 0.45), { size: R * (label.length > 1 ? 0.62 : 1.2), weight: 800, color: '#e8ecff', align: 'center', stretch: label.length > 1 ? 'condensed' : 'normal' });
-    });
-    return out;
+  const camEnd = anatomy.brain.clone().add(new THREE.Vector3(0, -0.012, -0.038));
+  const lookEnd = new THREE.Vector3(0, eyeY, anatomy.eyeZ);
+  const orbitFov = cam.fov;
+  const insideFov = 72;
+  const insideNear = 0.009;
+  const orbitEnd = 1.52;
+  const transferEnd = ST.S24[1] - ST.S24[0];
+  const rearStart = -0.442;
+  const startDistance = anatomy.eyeZ - rearStart;
+  const endDistance = anatomy.eyeZ - camEnd.z;
+  const distanceRatio = endDistance / startDistance;
+  const approachSpeed = -endDistance * Math.log(distanceRatio) / (transferEnd - orbitEnd);
+  const startHalfAngle = Math.tan(THREE.MathUtils.degToRad(orbitFov / 2));
+  const endHalfAngle = Math.tan(THREE.MathUtils.degToRad(insideFov / 2));
+  const rearSurface = new THREE.Raycaster(new THREE.Vector3(0, camEnd.y, -0.48), new THREE.Vector3(0, 0, 1)).intersectObject(shell, false)[0].point.z;
+  const cameraPoint = new THREE.Vector3();
+  const projectEye = (f: Frame, camera: THREE.PerspectiveCamera, eye: THREE.Object3D) => {
+    eye.getWorldPosition(v);
+    const depth = -cameraPoint.copy(v).applyMatrix4(camera.matrixWorldInverse).z;
+    if (depth <= camera.near) return;
+    const p = px(f, camera, v);
+    const R = H * 0.5 * camera.projectionMatrix.elements[5] * eyeR / depth;
+    return { x: p.x, y: p.y, R };
+  };
+  const startCamera = cam.clone();
+  startCamera.fov = insideFov;
+  startCamera.near = insideNear;
+  startCamera.updateProjectionMatrix();
+  startCamera.position.copy(camEnd);
+  startCamera.lookAt(lookEnd);
+  startCamera.updateMatrixWorld();
+  const opticCues: [number, OpticGlyph][] = [[ANCHORS.final, 'INIT'], [at('v29'), '1'], [at('v28'), '2'], [at('v27'), '3']];
+  const drawEyes = (f: Frame, T: number) => {
+    const cue = opticCues.find(([time]) => T >= time);
+    for (const eye of eyes) {
+      const p = projectEye(f, cam, eye);
+      if (!p) continue;
+      ring(f.fg, p.x, p.y, p.R * 1.17, '#2437b3', 2, T * 1.5, T * 1.5 + 3.9);
+      ring(f.fg, p.x, p.y, p.R * 0.84, '#4261c8', 1, 1.1 - T, 5.2 - T);
+      ring(f.fg, p.x, p.y, p.R * 0.39, '#a3bbdc', 1.2);
+      if (cue) opticGlyph(f.fg, cue[1], p.x, p.y, p.R * (cue[1] === 'INIT' ? 0.87 : 1.70), T - cue[0]);
+    }
+  };
+  const transferBackground = (bg: C2, t: number, alpha = 1) => {
+    backdrop(bg, { seed: 161, dx: t * 13, pal: PAL_BLUE, alpha: alpha * 0.64, rect: [0, 70, 680, 920] });
+    backdrop(bg, { seed: 166, dx: t * 10, pal: PAL_BLUE, alpha: alpha * 0.69, rect: [1240, 70, 680, 920] });
   };
   const tick = (T: number) => {
-    cm.time.value = T;
     flow.time.value = T;
     eyes.forEach((e) => (e.rotation.y = Math.sin(T * 0.7) * 0.05));
   };
   return {
     transfer(f: Frame) {
       const { bg, fg, t, T } = f;
-      backdrop(bg, { seed: 161, dx: t * 8, pal: PAL_BLUE, alpha: 0.6 });
       tick(T);
       eyes.forEach((e) => (e.visible = true));
-      const u = clamp01(t / (ST.S24[1] - ST.S24[0] - 0.3));
-      // orbit face → back of the skull, then push in through the brain toward the eyes
-      const o = smooth(clamp01(u / 0.58));
+      const o = smooth(span(t, 0, orbitEnd));
       const theta = Math.PI * o;
-      const r = 0.62 - 0.4 * o;
-      if (u < 0.58) {
-        cam.position.set(Math.sin(theta) * r, 0.012 + Math.sin(theta) * 0.03, Math.cos(theta) * r);
+      const r = mix(0.48, -rearStart, o);
+      const progress = span(t, orbitEnd, transferEnd);
+      // Ease off the orbit with no jump in speed, then keep moving through INIT.
+      const push = progress * progress * (2 - progress);
+      if (t < orbitEnd) {
+        cam.position.set(Math.sin(theta) * r, 0.033 + Math.sin(theta) * 0.02, Math.cos(theta) * r);
         look.copy(centre);
       } else {
-        const pIn = easeInOutCubic(clamp01((u - 0.58) / 0.42));
-        cam.position.set(0, 0.04 - pIn * 0.032, -0.22 + pIn * 0.185);
-        look.set(0, 0.012 - pIn * 0.012, 0.08);
+        const z = anatomy.eyeZ - startDistance * Math.pow(distanceRatio, push);
+        cam.position.set(camEnd.x, mix(centre.y, camEnd.y, push), z);
+        look.copy(centre).lerp(lookEnd, push);
       }
-      cam.fov = 34;
+      const inside = t < orbitEnd ? 0 : smooth(span(cam.position.z, rearSurface - 0.018, rearSurface + 0.018));
+      const lensProgress = span(push, 0, 0.85);
+      const lens = lensProgress * (1.5 - 0.5 * lensProgress * lensProgress);
+      // Open the lens more slowly than the optic distance closes, so the eyes keep growing.
+      cam.fov = THREE.MathUtils.radToDeg(2 * Math.atan(startHalfAngle * Math.pow(endHalfAngle / startHalfAngle, lens)));
+      cam.near = THREE.MathUtils.lerp(0.002, insideNear, inside);
       cam.updateProjectionMatrix();
       cam.lookAt(look);
       cam.updateMatrixWorld();
-      // once the camera is inside the skull, the brain shell would smear across the lens: fade it out
-      const inside = clamp01((u - 0.66) / 0.08);
-      brain.visible = inside < 1;
-      bm.u.lineMix.value = 0.35 * (1 - inside);
-      cm.gain.value = 1 - 0.72 * clamp01((u - 0.6) / 0.15);
-      bm.u.rimWidth.value = 0.35 * (1 - inside) + 0.001;
+      shell.visible = inside < 1;
+      skin.mat.opacity = 1 - inside;
+      brain.visible = true;
+      cm.time.value = t;
+      cm.gain.value = THREE.MathUtils.lerp(0.48, 0.22, inside);
+      flow.gain.value = THREE.MathUtils.lerp(0.12, 0.23, inside);
       f.three = { scene, camera: cam };
-      // the psyche being written: green blocks fill the top of the brain
-      const w = clamp01((T - T0) / (ST.S24[1] - ST.S24[0] - 0.3));
-      if (inside < 1) {
-        const nOn = Math.floor(w * blocks.length);
-        for (let i = 0; i < nOn; i++) {
-          v.copy(blocks[i]);
-          head.localToWorld(v);
-          const p = px(f, cam, v);
-          if (p.z > 1) continue;
-          const s = Math.max(4, Math.min(44, 12 / cam.position.distanceTo(v)));
-          rect(fg, p.x - s / 2, p.y - s / 2, s * 0.86, s * 0.86, i === nOn - 1 ? '#e8ffe8' : 'rgba(46,232,102,0.78)');
-        }
-      }
+      if (inside < 1) transferBackground(bg, t, 1 - inside);
+      transferMarks(fg, 1 - 0.82 * inside);
       drawEyes(f, T);
       text(fg, 'CONSCIOUSNESS TRANSFER', 96, 1000, { size: 22, weight: 800, color: '#8aa0ff', stretch: 'semi-expanded' });
-      text(fg, `SHELL 07 ← PSYCHE 0447 · WRITE ${String(Math.floor(w * 100)).padStart(3, '0')}%`, 96, 1028, { size: 15, family: F.mono, weight: 700, color: '#8aa0ff' });
-      text(fg, u < 0.58 ? 'OPTIC ROUTE · EXTERNAL · 144 FIBRES' : 'OPTIC ROUTE · INTERNAL · 144 FIBRES', 1824, 1028, { size: 15, family: F.mono, weight: 700, color: '#ff8a1a', align: 'right' });
-      vlabel(fg, 'QR  EXC  FF  +', 500, 220, 22, '#3a4aff', { family: F.mono, weight: 700 });
-      checker(fg, 1300, 920, 3, 2, 12, '#2a3aff');
-      for (const id of ['v27', 'v28', 'v29']) if (Math.abs(T - at(id)) < 0.06) glitchBlocks(fg, Math.floor(T * 60), { n: 14, colors: ['#0a1490', '#2a3aff', '#000'], maxW: 400, maxH: 30 });
-      cutGlitch(f, t, 0.1, ['#000', C.blue], 29);
+      text(fg, `SHELL 07 ← PSYCHE 0447 · WRITE ${String(Math.floor(span(t, 0, transferEnd) * 100)).padStart(3, '0')}%`, 96, 1028, { size: 15, family: F.mono, weight: 700, color: '#8aa0ff' });
+      text(fg, inside >= 1 ? 'INTERNAL VIEW · OPTIC ROUTE' : 'OPTIC ROUTE · 144 FIBRES', 1824, 1028, { size: 15, family: F.mono, weight: 700, color: '#a0a4e5', align: 'right' });
     },
     initiate(f: Frame) {
-      const { bg, fg, t, T } = f;
+      const { fg, t, T } = f;
       const CUT = 1.35; // fast: rush, fuse, black
-      if (t >= CUT) {
-        // the device is running; the screen stays dark for the last line
-        f.post.lift = 0.1;
-        f.post.vignette = 0.9;
-        return;
-      }
+      if (t >= CUT) return;
       tick(T);
-      // rush forward from inside the skull, down the optic nerves, out through the eyes
-      const go = smooth(span(t, 0.06, 0.72));
+      // Continue from inside the brain along the optic axis.
+      const go = smooth(span(t, 0, 0.53));
       const acc = go * go;
-      cam.position.copy(camEnd).add(new THREE.Vector3(0, -0.01 * acc, 0.34 * acc));
-      cam.fov = 34 + 46 * acc;
+      const travel = mix(approachSpeed * t, anatomy.eyeZ + 0.15 - camEnd.z, acc);
+      cam.position.set(camEnd.x, camEnd.y - 0.01 * acc, camEnd.z + travel);
+      cam.fov = insideFov + 14 * acc;
+      cam.near = insideNear;
       cam.updateProjectionMatrix();
-      cam.lookAt(lookEnd.x, lookEnd.y - 0.01 * acc, lookEnd.z + 0.34 * acc);
+      cam.lookAt(lookEnd.x, lookEnd.y - 0.01 * acc, lookEnd.z + travel);
       cam.updateMatrixWorld();
-      brain.visible = false;
-      const flood = clamp01((t - 0.3) / 0.4);
-      if (flood < 1) {
-        backdrop(bg, { seed: 161, dx: 40 + t * 8, pal: PAL_BLUE, alpha: 0.6 * (1 - flood) });
+      shell.visible = false;
+      brain.visible = acc < 0.67;
+      cm.time.value = transferEnd + t;
+      cm.gain.value = 0.22 * (1 - smooth(span(acc, 0.07, 0.67)));
+      flow.gain.value = 0.23 + acc * 0.42;
+      const flood = t >= 0.52;
+      if (!flood) {
         f.three = { scene, camera: cam };
+        transferMarks(fg, 0.18 * (1 - acc));
       }
       // eyes: INIT in the 3D eyes until the rush starts; from then on they are 2D ring sets
       const rush = t >= 0.06;
       eyes.forEach((e) => (e.visible = !rush));
       if (!rush) drawEyes(f, T);
-      else if (!eyeStart.length) {
-        // where the eyes sat on screen at the start of the rush (from the end-of-countdown camera)
-        const c0 = cam.clone();
-        c0.position.copy(camEnd);
-        c0.fov = 34;
-        c0.updateProjectionMatrix();
-        c0.lookAt(lookEnd);
-        c0.updateMatrixWorld();
-        for (const e of eyes) {
-          e.getWorldPosition(v);
-          const p = px(f, c0, v);
-          eyeStart.push({ x: p.x, y: p.y, R: Math.min(300, 9 / c0.position.distanceTo(v)) });
-        }
-      }
-      if (t < 0.06) rect(fg, 0, 0, 1920, 1080, '#ffffff');
-      // blue flood over the 3D
-      if (flood > 0) {
-        const g = fg.createRadialGradient(960, 540, 60, 960, 540, 1150);
-        g.addColorStop(0, `rgba(58,74,255,${flood})`);
-        g.addColorStop(1, `rgba(10,20,192,${flood})`);
-        fg.fillStyle = g;
-        fg.fillRect(0, 0, 1920, 1080);
-      }
+      if (flood) rect(fg, 0, 0, 1920, 1080, C.blue);
       // speed lines streaming out from the centre
-      const sp = clamp01((t - 0.05) / 0.15) * (1 - clamp01((t - 1.05) / 0.25));
+      const sp = span(t, 0.12, 0.32) * (1 - span(t, 0.56, 0.9));
       if (sp > 0) {
         fg.save();
         fg.lineCap = 'round';
-        for (let i = 0; i < 220; i++) {
+        for (let i = 0; i < 72; i++) {
           const a = hash(i, 1) * Math.PI * 2;
           const ph = (hash(i, 2) + t * (0.9 + hash(i, 3) * 1.4)) % 1;
           const r0 = 40 + ph * ph * 1150;
           const len = 30 + r0 * (0.25 + acc * 0.5);
-          fg.strokeStyle = i % 3 ? `rgba(160,190,255,${0.5 * sp})` : `rgba(255,255,255,${0.7 * sp})`;
+          fg.strokeStyle = i % 3 ? `rgba(64,101,255,${0.35 * sp})` : `rgba(137,160,255,${0.55 * sp})`;
           fg.lineWidth = 1 + (i % 4 === 0 ? 1.5 : 0);
           fg.beginPath();
           fg.moveTo(960 + Math.cos(a) * r0, 540 + Math.sin(a) * r0);
@@ -491,26 +509,28 @@ async function buildHeadRig() {
       }
       // the two eyes' ring sets slide together into one (a single point of view)
       const conv = smooth(span(t, 0.22, 0.85));
-      if (rush && eyeStart.length === 2) {
+      if (rush) {
         const shrink = smooth(span(t, 0.95, CUT - 0.05));
         const grow = 1 + acc * 1.6;
-        eyeStart.forEach((e) => {
+        for (const eye of eyes) {
+          const e = projectEye(f, startCamera, eye);
+          if (!e) continue;
           const x = e.x + (960 - e.x) * conv;
           const y = e.y + (540 - e.y) * conv;
           const R = e.R * grow * (1 - conv * 0.35);
-          for (let k = 0; k < 9; k++) {
-            const rr = (R * 0.25 + k * R * 0.17) * (1 - shrink * 0.92);
-            ring(fg, x, y, rr, k % 3 === 0 ? 'rgba(255,255,255,0.95)' : 'rgba(160,190,255,0.85)', k === 0 ? 3 : 2);
+          for (let k = 0; k < 6; k++) {
+            const rr = (R * 0.26 + k * R * 0.18) * (1 - shrink * 0.92);
+            ring(fg, x, y, rr, k % 3 === 0 ? '#b8d9ff' : '#4866ff', k === 0 ? 2 : 1.5);
           }
           // INIT stretches with the rush and fades as the rings fuse
-          const ia = 1 - smooth(span(t, 0.4, 0.75));
+          const ia = 1 - smooth(span(t, 0.41, 0.54));
           if (ia > 0) {
             fg.save();
             fg.globalAlpha = ia;
-            for (let q = 0; q < 4; q++) text(fg, 'INIT', x + (x - 960) * q * 0.04 * acc, y + R * 0.22, { size: R * 0.62 * (1 + q * 0.08 * acc), weight: 800, color: q ? 'rgba(200,215,255,0.35)' : '#e8ecff', align: 'center', stretch: 'condensed' });
+            opticGlyph(fg, 'INIT', x, y, R * 0.87, t);
             fg.restore();
           }
-        });
+        }
         if (conv > 0.95) {
           text(fg, 'LINK ESTABLISHED · SHELL 07', 960, 540 + 230 * (1 - shrink), { size: 18, family: F.mono, weight: 700, color: '#e8ecff', align: 'center', tracking: 4 });
           if (Math.floor(t * 10) % 2 === 0) rect(fg, 956, 536, 8, 8, '#77f600');
@@ -518,8 +538,6 @@ async function buildHeadRig() {
       }
       // the last frames: the fused ring collapses to a point
       if (t > CUT - 0.1) rect(fg, 0, 0, 1920, 1080, `rgba(0,0,0,${clamp01((t - (CUT - 0.1)) / 0.1)})`);
-      f.post.lift = 0.3;
-      void bg;
     },
   };
 }

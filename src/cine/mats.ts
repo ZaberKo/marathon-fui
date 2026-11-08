@@ -52,20 +52,6 @@ export function screenDots(o: { color: number; cell?: number; gain?: number; bg?
   return { mat: m, col, gain };
 }
 
-/** Square pixel cells in screen space, lit cells only where facing > threshold. */
-export function screenPixels(o: { color: number; cell?: number; bg?: number; thresh?: number }) {
-  const col = uniform(v3(o.color));
-  const cell = o.cell ?? 8;
-  const p: N = screenCoordinate.xy.div(cell);
-  const f: N = fract(p);
-  const gap: N = step(float(0.18), f.x).mul(step(float(0.18), f.y));
-  const facing: N = abs(normalView.z);
-  const on: N = step(float(o.thresh ?? 0.35), facing).mul(gap);
-  const m = new THREE.MeshBasicNodeMaterial();
-  m.colorNode = mix(vec3(v3(o.bg ?? 0)), vec3(col), on);
-  return { mat: m, col };
-}
-
 export const basic = (color: number, o: { opacity?: number; additive?: boolean; side?: THREE.Side; depthTest?: boolean } = {}) =>
   new THREE.MeshBasicMaterial({
     color,

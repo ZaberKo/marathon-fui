@@ -5,16 +5,18 @@
 import * as THREE from 'three/webgpu';
 import { abs, float, fract, mix, positionWorld, smoothstep, step, uniform, vec3 } from 'three/tsl';
 import type { ShotDef } from '../engine';
-import { clamp01, hash } from '../engine';
+import { clamp01, hash, q } from '../engine';
 import { C, F, checker, frameRect, line, microRows, rect, ring, stripes, text } from '../draw';
 import { backdrop, PAL_BLUE } from '../backdrop';
+import { ASSERT_DURATION, ASSERT_REVEAL, assertionDial } from '../rings';
 import { makeBody, POSES } from '../models/body';
 import { brainGeometry } from '../models/anatomy';
 import { segmentsToLines, skinnedPositions, sliceAxis } from '../models/slices';
+import { VectorPlate } from '../models/vector-plate';
 import { contourMaterial } from '../../three/materials';
 import { ANCHORS } from './cues';
 import { ST } from './times';
-import { canvasPlane, cutGlitch, easeInOutCubic, persp, pixelCluster, px, smooth, span } from './kit';
+import { easeInOutCubic, persp, pixelCluster, px, smooth, span } from './kit';
 
 
 export const s6: ShotDef[] = [
@@ -89,25 +91,18 @@ export const s6: ShotDef[] = [
       }
       // the psyche: a brain on a grid platform over a blue panel, left of the body
       const BRAIN = new THREE.Vector3(-0.92, 0.3, -0.42);
-      const panel = canvasPlane(1.3, 1.05, 1024, { transparent: false });
-      {
-        const c = panel.ctx;
-        c.fillStyle = '#0a1ad8';
-        c.fillRect(0, 0, panel.cv.width, panel.cv.height);
-        c.fillStyle = '#000';
-        for (let i = 0; i < 9; i++) c.fillRect(40 + i * 104, 60, 52, 34);
-        c.fillRect(0, panel.cv.height - 120, panel.cv.width, 40);
-        c.fillRect(panel.cv.width - 260, 200, 220, 18);
-        c.fillStyle = '#3a5aff';
-        c.font = `700 40px ${F.mono}`;
-        c.fillText('PSYCHE 0447 · BUFFER', 40, 170);
-        c.fillStyle = '#e8d805';
-        for (let i = 0; i < 4; i++) c.fillRect(860, 330 + i * 70, 24, 40);
-        panel.tex.needsUpdate = true;
-      }
-      panel.mesh.rotation.x = -Math.PI / 2;
-      panel.mesh.position.set(BRAIN.x + 0.12, 0.002, BRAIN.z + 0.05);
-      scene.add(panel.mesh);
+      const plate = new VectorPlate(1024, 827, 1.3, 1.05);
+      plate.rect(0, 0, plate.width, plate.height, 0x0a1ad8, -0.5);
+      for (let i = 0; i < 9; i++) plate.rect(40 + i * 104, 60, 52, 34, 0x000000);
+      plate.rect(0, plate.height - 120, plate.width, 40, 0x000000);
+      plate.rect(plate.width - 260, 200, 220, 18, 0x000000);
+      plate.text('PSYCHE 0447 · BUFFER', 40, 141, 29, 0x3a5aff);
+      for (let i = 0; i < 4; i++) plate.rect(860, 330 + i * 70, 24, 40, 0xe8d805);
+      const panel = plate.mesh({ side: THREE.DoubleSide });
+      panel.name = 'Psyche buffer platform stencil';
+      panel.rotation.x = -Math.PI / 2;
+      panel.position.set(BRAIN.x + 0.12, 0.002, BRAIN.z + 0.05);
+      scene.add(panel);
       const pgrid = new THREE.GridHelper(0.62, 10, 0x9ab0ff, 0x6a80ff);
       pgrid.position.set(BRAIN.x, 0.012, BRAIN.z);
       scene.add(pgrid);
@@ -117,15 +112,20 @@ export const s6: ShotDef[] = [
       scene.add(psy);
       const v = new THREE.Vector3();
       const anchor = new THREE.Vector3(BRAIN.x + 0.16, 0.2, BRAIN.z + 0.02);
-      const end = ANCHORS.printEnd - ANCHORS.print; // 12.05
+      const end = ANCHORS.printEnd - ANCHORS.print;
       const GLITCH = ['#77f600', '#ff40c0', '#38f5d4', '#ffffff', '#2a40ff', '#e8d805'];
       const YEL = '#e8d805';
       return {
         draw(f) {
           const { bg, fg, t } = f;
-          backdrop(bg, { seed: 131, dx: t * 10, alpha: 0.4, pal: PAL_BLUE });
+          const cut = ASSERT_DURATION.print;
+          if (t < ASSERT_REVEAL.print) {
+            assertionDial(fg, 'print', t);
+            return;
+          }
+          backdrop(bg, { seed: 131, dx: q(t, 12) * 10, alpha: 0.4, pal: PAL_BLUE, rect: [0, 830, 735, 250] });
           // parallel progress with mechanical steps near the end (the score's hits)
-          let k = smooth(span(t, 0.5, end - 0.6)) * 0.93;
+          let k = smooth(span(t, cut, end - 0.6)) * 0.93;
           if (t > end - 3.9) k = Math.max(k, 0.93 + Math.floor((t - (end - 3.9)) / 0.8) * 0.0175);
           if (t >= end) k = 1.01;
           kU.value = k;
@@ -201,8 +201,7 @@ export const s6: ShotDef[] = [
             rect(fg, 0, 0, 1920, 1080, `rgba(232,236,255,${0.35 * fl})`);
             text(fg, 'SHELL 07 · PRINTED', 960, 1010, { size: 40, weight: 800, color: C.lemon, align: 'center', stretch: 'semi-expanded' });
           }
-          cutGlitch(f, t, 0.1, ['#000', '#8a7aff'], 16);
-          f.post.lift = 0.85;
+          if (t < cut) assertionDial(fg, 'print', t);
         },
       };
     },
@@ -224,9 +223,11 @@ export const s6: ShotDef[] = [
           const { bg, fg, t, T } = f;
           rect(bg, 0, 0, 1920, 1080, '#0716f8');
           body.clip('idle', t + 0.5);
-          const a = -0.6 + t * 0.12;
-          cam.position.set(Math.sin(a) * 3.4, 1.25, Math.cos(a) * 3.4);
-          cam.lookAt(0, 1.0, 0);
+          const close = t >= 2.8;
+          const a = close ? 0.25 : -0.6;
+          const distance = close ? 2.1 : 3.4;
+          cam.position.set(Math.sin(a) * distance, 1.25, Math.cos(a) * distance);
+          cam.lookAt(close ? -0.28 : 0, 1.0, 0);
           f.three = { scene, camera: cam };
           const y = 540;
           checker(fg, 390, y - 100, 2, 2, 100, C.white);
@@ -245,11 +246,6 @@ export const s6: ShotDef[] = [
           rect(fg, 800, y + 82, 380 * cure, 4, '#2ee866');
           text(fg, `CURING ${String(Math.floor(cure * 100)).padStart(3, '0')}%`, 1190, y + 90, { size: 12, family: F.mono, weight: 700, color: C.white });
           line(fg, 0, 1040, 1920, 1040, 'rgba(255,255,255,0.25)', 1);
-          cutGlitch(f, t, 0.1, [C.blue, C.white], 17);
-          f.post.lift = 0.2;
-          f.post.mottle = 0.9;
-          f.post.scan = 0.6;
-          void hash;
         },
       };
     },

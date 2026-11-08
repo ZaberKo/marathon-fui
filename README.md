@@ -56,10 +56,12 @@ pnpm build      # typecheck + production build → dist/
 src/styles/tokens.css      colours, type, [data-state] themes  ← start here
 src/styles/components.css  .k-* components (pure CSS, state-aware via --accent)
 src/styles/fx.css          marquee, text wall, entrances, marks, HUD widgets, perf tag, 3D labels
+src/styles/registration-screen.svg  tiled black registration ink, shared by CSS and cinema
 src/lib/glyphs.ts          static SVG generators (pixelIcon, checker, locator, barcode, blockText…)
 src/lib/marks.ts           ANIMATED marks: mountMark(el, kind) or <span data-mark="reticle">
                            checker · locator · crosshair · reticle · target · barcode · link · segring
                            dots · tri · sigil · blocktext · scanblock · countring · chevrons · bars · connector
+src/lib/scanBlock.ts       stepped plate displacement shared by the SVG scan block and cinema opening
 src/lib/motion.ts          scramble, typeOut, glitch, flashBlocks, reveal, barWipe, countTo, stamp
 src/lib/compose.ts         textWall() + animateTextWall()
 src/lib/standby.ts         STAND BY lockup: ECH tags, checker flags, sigil, micro code, LINK pill, word ↔ PLEASE, green garble noise, ticks
@@ -79,14 +81,13 @@ src/three/assets.ts        generated-model loader, skinned vertex sampling, Natu
 
 src/cine/main.ts           film player: the audio clock drives the picture, gate, captions, scrubber
 src/cine/engine.ts         seekable shot timeline, shared WebGPU/WebGL2 renderer, stepped-time helpers
-src/cine/post.ts           screen layers: uniform block mosaic (screen + multiply), grain, scanlines, vignette
-src/cine/backdrop.ts       layered UI-panel walls (3 depths, parallax, blur) — replaces flat random fields
+src/cine/backdrop.ts       sparse UI-panel groups on two parallax layers, clipped per shot
 src/cine/anatomy2d.ts      2D anatomical plate in smooth line work: nerve bundles in several colours, hatched
                            muscles, organs, brain with gyri, optic pathway; live nerve pulses and scan
-src/cine/draw.ts           Canvas2D frame kit: measured palette, type, scanlines, data field, stripes,
-                           checkers, bitmap/sigil glyphs, glitch blocks, triangle field
+src/cine/draw.ts           Canvas2D frame kit: palette, type, local registration ink, scanlines, stripes,
+                           checkers, bitmap/sigil glyphs, triangle field
 src/cine/rings.ts          defragRing (frame-scale, stepped, re-sorting) · streakRing · progressRing
-src/cine/mats.ts           xray (additive fresnel) · toon (two-tone cel) · screenDots · screenPixels
+src/cine/mats.ts           xray (additive fresnel) · toon (two-tone cel) · screenDots
 src/cine/models/sdf.ts     SDF primitives, Surface Nets mesher, skin weights from primitive proximity
 src/cine/models/body.ts    SDF humanoid on the motion rig (runner / armor / slim), authored poses
 src/cine/models/anatomy.ts neutral SDF head for the scene library; brain geometry re-export
@@ -101,11 +102,11 @@ src/cine/models/head2.ts   SDF head at real proportions, wire eyes, internal wir
 src/cine/models/slices.ts  cross-sections of a posed skinned mesh along any axis (print fronts)
 src/cine/film/*.ts         the film's 26 shots, times.ts (shot boundaries) + cues.ts (generated cue sheet: VO timings, music anchors)
 
-scripts/                   offline audio pipeline (Lyria needs GOOGLE_API_KEY in .env; voice needs edge-tts; ffmpeg with rubberband):
+scripts/                   offline audio pipeline (Lyria needs GOOGLE_API_KEY in .env; voice needs edge-tts; mixing needs ffmpeg):
   film-script.mjs            voice-over script (EN + 中文 captions) and delivery notes
-  gen-voice.mjs              edge-tts (en-US-AriaNeural +25 Hz) → ffmpeg chain (voice-chains/D|E), every line at −17 LUFS
+  gen-voice.mjs              edge-tts (en-US-AriaNeural +0 Hz) → ffmpeg chain (voice-chains/D|E), every line targeted at −17 LUFS
   gen-voice-gemini.mjs       previous engine (gemini-3.8-flash-tts), kept for reference
-  gen-music.mjs              Lyria 3.5 score from a timed brief
+  gen-music.mjs              one continuous Lyria 3.5 score from a timed brief for all 26 shots
   analyze-audio.py, analyze-sections.py, anchors.py  loudness / onsets / silences → music anchors for the edit
   cues.mjs, build-audio.mjs  edit decision list → mix (ducking, SFX, loudness) → public/audio/film.mp3 + cues.ts
   listen.mjs                 asks a multimodal Gemini model to QA audio (transcription, artefacts, balance)
@@ -139,9 +140,9 @@ scripts/                   offline audio pipeline (Lyria needs GOOGLE_API_KEY in
 - **SHELL 07** is an original story in the graphic-realism idiom. Its world names are our own: Periapt IV,
   ICAR Colonial Authority and ORA. It contains no footage, audio, logos or text from any existing trailer.
 - **Audio is AI-generated for this project.**
-  - The score is a Google Lyria 3.5 acid-techno take (128 BPM), re-cut on bar lines to the edit (`MUSIC.edit` in
-    `scripts/cues.mjs`).
-  - The narrator voice is Microsoft edge-tts (en-US-AriaNeural, pitch +25 Hz), processed with ffmpeg chain D:
+  - The score is one Google Lyria 3.5 instrumental take. The mix trims the lead-in, adjusts the overall tempo
+    slightly and ducks the music at picture cues (`MUSIC` in `scripts/cues.mjs`).
+  - The narrator voice is Microsoft edge-tts (en-US-AriaNeural, pitch +0 Hz), processed with ffmpeg chain D:
     mud cut, presence and air EQ, de-ess, a whisper of bit reduction, even compression and a sparse 60–100 ms
     reflection — no frequency shift or short combs. Alarm lines (chain E) add a faint monotone robot layer.
   - The SFX are synthesised with ffmpeg.

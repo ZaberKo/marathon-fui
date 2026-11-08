@@ -12,12 +12,14 @@ import { C, F, frameRect, line, microRows, rect, ring, text } from '../draw';
 import { makeBody, POSES, type Body } from '../models/body';
 import { brainGeometry } from '../models/anatomy';
 import { Hard, deck, toonLit } from '../models/hard';
+import { ASSERT_DURATION, ASSERT_REVEAL, assertionDial } from '../rings';
 import { WireCubes, burst, voxelPositions, voxelize, type VoxelSet } from '../models/voxels';
 import { ANCHORS } from './cues';
 import { ST } from './times';
-import { cutGlitch, easeInOutCubic, persp, px, smooth, span, vlabel } from './kit';
+import { easeInOutCubic, persp, px, smooth, span, vlabel } from './kit';
 
-const HIT = ANCHORS.impact; // 50.05
+const HIT = ANCHORS.impact;
+const WALK_IN = ANCHORS.hush + ASSERT_REVEAL.loss;
 const FALL = 0.85;
 const BREAK = HIT + FALL + 0.04;
 const GREEN = new THREE.Color(0x3ae830);
@@ -35,7 +37,7 @@ type DeathSet = {
 };
 
 function poseBody(body: Body, T: number) {
-  const walkT = Math.min(T, HIT) - ANCHORS.hush;
+  const walkT = Math.max(0, Math.min(T, HIT) - WALK_IN);
   const z0 = -2.2 + walkT * 0.55;
   body.clip('walk', walkT + 0.4);
   const u = clamp01((T - HIT) / FALL);
@@ -141,7 +143,7 @@ export const s5: ShotDef[] = [
     t0: ST.S10[0],
     t1: ST.S10[1],
     title: 'Terminated in the field',
-    note: 'The previous shell is a uniform cloud of green wireframe voxels walking the ruins. A reticle closes; on the impact it is hit — red spreads from the wound, it falls backwards, and the voxels burst and scatter across the deck.',
+    note: 'The cropped assertion register holds through the spoken ASSERT. It lifts to reveal the previous shell walking into the reticle. On impact the voxel shell turns red, falls and breaks across the deck.',
     build: async () => {
       const set = await deathSet();
       const cam = persp(32, 0.05, 200);
@@ -149,9 +151,13 @@ export const s5: ShotDef[] = [
       return {
         draw(f) {
           const { fg, T, t } = f;
+          if (t < ASSERT_REVEAL.loss) {
+            assertionDial(fg, 'loss', t);
+            return;
+          }
           stage(set, T);
           const shake = T > HIT && T < HIT + 0.35 ? (hash(Math.floor(T * 60)) - 0.5) * 0.08 * (1 - (T - HIT) / 0.35) : 0;
-          const u = easeInOutCubic(span(T, ANCHORS.hush, ANCHORS.impact + 0.5));
+          const u = easeInOutCubic(span(T, WALK_IN, HIT + 0.5));
           cam.position.set(2.4 - u * 1.1 + shake, 1.2 - u * 0.2, 3.9 - u * 1.2);
           cam.lookAt(-0.2, 0.6 - u * 0.3, -1.4);
           cam.updateMatrixWorld();
@@ -159,7 +165,7 @@ export const s5: ShotDef[] = [
           if (T < HIT) {
             poseBody(set.body, T);
             const c = px(f, cam, set.body.joint('Spine2', v));
-            const k = smooth(span(T, ANCHORS.hush + 0.2, HIT));
+            const k = smooth(span(T, WALK_IN, HIT));
             const r = 140 - k * 100;
             fg.strokeStyle = C.red;
             fg.lineWidth = 2;
@@ -199,9 +205,7 @@ export const s5: ShotDef[] = [
             const n = Math.floor(clamp01((T - BREAK) / 2.5) * set.vs.count);
             text(fg, `VOXEL LOSS ${String(n).padStart(4, '0')}/${set.vs.count}`, x, 300, { size: 14, family: F.mono, weight: 700, color: '#ff6a6a' });
           }
-          cutGlitch(f, t, 0.1, ['#000', C.blue], 15);
-          f.post.lift = 0.85;
-          f.post.tint = T > HIT ? [1, 0.5, 0.55] : [0.5, 1, 0.55];
+          if (t < ASSERT_DURATION.loss) assertionDial(fg, 'loss', t);
         },
       };
     },
@@ -242,7 +246,6 @@ export const s5: ShotDef[] = [
           text(fg, 'BUFFER 0447', c.x + R + 12, c.y - R + 32, { size: 14, family: F.mono, weight: 400, color: '#8a7aff' });
           vlabel(fg, 'PSYCHE', 300, 860, 120, '#3a2aff', { rot: -Math.PI / 2, stretch: 'expanded' });
           line(fg, c.x, c.y + R, c.x, 1080, 'rgba(180,154,255,0.35)', 1);
-          f.post.tint = [0.7, 0.55, 1];
         },
       };
     },

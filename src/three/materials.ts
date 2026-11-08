@@ -13,8 +13,8 @@
  */
 import * as THREE from 'three/webgpu';
 import {
-  abs, atan, float, floor, fract, fwidth, max, min, mix, normalView, positionLocal, positionWorld,
-  screenCoordinate, smoothstep, step, uniform, vec3,
+  abs, atan, dot, float, floor, fract, fwidth, length, max, min, mix, normalView, normalWorld, positionLocal, positionWorld,
+  screenCoordinate, smoothstep, step, uniform, vec2, vec3,
 } from 'three/tsl';
 
 // TSL node typings are very strict about swizzle/vector kinds; nodes here are
@@ -66,6 +66,27 @@ const bayer2 = (a: N) => {
   return fract(b.x.mul(0.5).add(b.y.mul(b.y).mul(0.75)));
 };
 const bayer4 = (a: N) => bayer2(a.mul(0.5)).mul(0.25).add(bayer2(a));
+
+/** Two-ink surface prints. Lighting changes coverage while the inks stay solid. */
+export function surfacePrintMaterial(mode: 'black-dots' | 'ordered', color: number) {
+  const key = vec3(-0.54, 0.68, 0.50).normalize();
+  const light = smoothstep(-0.26, 0.86, dot(normalWorld, key));
+  const tone = light.mul(0.94).add(abs(normalView.z).mul(0.12));
+  const px = screenCoordinate.xy;
+  const mat = new THREE.MeshBasicNodeMaterial();
+  if (mode === 'black-dots') {
+    const grid = px.div(5);
+    const distance = length(fract(grid).sub(0.5).mul(vec2(1, 0.90)));
+    const radius = mix(0.71, 0.18, tone.clamp());
+    const scan = step(0.15, fract(grid.y.mul(0.5)));
+    mat.colorNode = vec3(v3(color)).mul(step(radius, distance).mul(scan));
+  } else {
+    const density = floor(tone.clamp().mul(8).add(0.5)).div(8);
+    const threshold = bayer4(px.div(3)).add(1 / 32);
+    mat.colorNode = vec3(v3(color)).mul(step(threshold, density));
+  }
+  return mat;
+}
 
 export function contourMaterial(o: ContourOpts = {}) {
   const u = {

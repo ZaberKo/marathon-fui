@@ -9,9 +9,9 @@ const fmt = (t: number) => `${String(Math.floor(t / 60)).padStart(1, '0')}:${(t 
 
 /** Design decisions behind the film — each states the meaning first, then the treatment. */
 const NOTES: [string, string, string][] = [
-  ['Screen texture', 'Black should read as a dark screen, not as empty space.', 'A uniform block mosaic sits over every frame (6 px and 24 px cells, two blend layers), with grain, scanlines and a vignette. Backgrounds are layered UI panels at three depths with parallax and blur.'],
-  ['Motion', 'Stepping is a choice per element, not a global frame rate.', 'Cameras and 3D move smoothly. Type, counters and glyphs step. The cuts land on the score’s anchors.'],
-  ['The shell is printed, the mind plugs in', 'The opening shows both acts at once.', 'Green link lines drop from above into the crown of the empty shell while its body prints in four segments in parallel, each hanging from its own comb of print heads.'],
+  ['Solid fields', 'Black separates states and leaves room for the main signal.', 'Cobalt standby and orange-red fault fill the frame. Pixel gaps, clipped patterns and sparse panel groups stay within selected graphics.'],
+  ['Motion', 'Each element moves on its own clock.', 'Type, counters and plate displacement jump in steps. Shot cuts land on the score cues.'],
+  ['Acquiring the shell', 'The opening links the cached psyche to Shell 07.', 'Horizontal sections of the blue initiating plate shift along a stepped seam. The shell preview resolves beside the link indicator before the defragmentation ring takes over.'],
   ['Anatomy is a graphic plate', 'Quoting a medical plate in smooth line work, kept 2D.', 'Nerve bundles of many strands in several colours fan into fingers and toes; muscles are spline shapes filled with fibre lines; organs are hatched shapes; the brain has gyri, and the optic pathway runs in its own colour.'],
   ['3D structure, 2D signal', 'Memory is a physical module; “loaded” is a flat state.', 'Seen from almost straight above: a chip array of mixed cells (notched packages, dies, bosses, contact rows, edge pins), each a stack of thin layers, in 3D lines with hidden lines removed. Loaded cells become flat lemon graphics with their details cut out. The failure wall is continuous rows of words joined by underscores, the failing word inline.'],
   ['Connections inside the brain', 'The buffer filling is a brain coming alive from within.', 'Tractography: projection fans rising from the brain stem, the corpus callosum arching across, long association arcs front to back, U-fibres under the cortex, coloured by direction. They light from the core outward and signals keep flowing along them. The same network sits inside the transfer head.'],
@@ -30,10 +30,10 @@ export default function mount(root: HTMLElement) {
     <p class="page-lede">A support AI reassembles a dead runner into a newly printed shell, and finds the old shell is still walking.
     The film runs in the browser as a timeline where each frame depends only on the time.</p>
     <ul class="st-facts">
-      <li><b>Picture:</b> three.js (WebGPU, falling back to WebGL2) and Canvas2D, composited with CSS blend layers.</li>
+      <li><b>Picture:</b> three.js (WebGPU, falling back to WebGL2) layered with Canvas2D graphics.</li>
       <li><b>Models:</b> every model is generated in code; only the motion data is third-party.</li>
-      <li><b>Score:</b> Lyria 3.5 acid techno (128 BPM), re-cut on bar lines to the edit.</li>
-      <li><b>Voice:</b> Microsoft edge-tts (Aria, +25 Hz), cleanly processed with ffmpeg (EQ, light grit, compression, a sparse reflection); alarms add a faint robot layer.</li>
+      <li><b>Score:</b> a continuous Lyria 3.5 acid techno track at 128 BPM, with level changes timed to the edit.</li>
+      <li><b>Voice:</b> synthetic narration shaped by line and processed with ffmpeg.</li>
       <li><b>Mix:</b> everything is mixed offline with ffmpeg, and the audio clock drives the picture.</li>
     </ul>
     <div class="st-open">
