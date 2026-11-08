@@ -1,34 +1,25 @@
 import gsap from 'gsap';
 import { pageHead, section, spec } from './_ui';
-import { pixelIcon } from '../lib/glyphs';
-import { animateTextWall, textWall } from '../lib/compose';
-import { mountDefragRing, mountTerminal } from '../lib/hud';
+import { bitmap, pixelIcon } from '../lib/glyphs';
 import { hydrate } from '../lib/hydrate';
-import { flashBlocks, glitch } from '../lib/motion';
 import { notify } from '../lib/toast';
 import { bag, on, pad, stepLoop, $, $$ } from '../lib/util';
+
+const FAULT_WORDS = ['WARNING_', 'COGNITION_', 'RUNTIME_', 'ERROR_'];
+const faultMark = bitmap(['.###.', '##.##', '#.#.#', '##.##', '.###.'], { size: 40 });
 
 export default function mount(root: HTMLElement) {
   const b = bag();
   root.innerHTML = `
   <section class="page">
     ${pageHead('08', 'Runtime<br><span class="t-outline">Fault</span>', ['CRITICAL STATE', 'FULL-FIELD INVERSION', 'RECOVERABLE'], 178)}
-    <p class="page-lede">When the system fails, colour logic flips: the black field becomes <b>crimson</b>, type becomes <b>ink and cobalt</b>,
-    marquees run, alarm grids blink. The fault surface is just <b>data-state="fault"</b> on a container — every component re-themes itself.</p>
+    <p class="page-lede">The fault cuts to <b>solid crimson</b>. A single black band carries the changing warning in cobalt and hazard yellow.
+    Set <b>data-state="fault"</b> on the surface to apply the inverted palette.</p>
 
-    <div class="flt-monitor">
-      <div class="k-panel" data-state="cobalt">
-        <div class="k-panel__head"><span>System monitor</span><span class="t-pixel" style="font-size:8px;font-weight:400">MON-01</span></div>
-        <div class="k-panel__body flt-mon-body">
-          <div class="flt-ring"><canvas id="flt-ring"></canvas></div>
-          <div id="flt-log" style="min-width:0"></div>
-        </div>
-      </div>
-      <div class="flt-trigger">
-        <div class="t-micro">INJECT A SIMULATED RUNTIME EXCEPTION</div>
-        <button class="k-btn k-btn--danger k-btn--lg k-hold" data-hold="900" id="flt-go" style="width:100%">${pixelIcon('warn', { size: 16 })}<span data-label>Hold to inject fault</span></button>
-        <button class="k-btn k-btn--sm" id="flt-quick">Or trigger instantly</button>
-      </div>
+    <div class="flt-trigger">
+      <div class="t-micro">COGNITION RUNTIME / 0x0000003F</div>
+      <button class="k-btn k-btn--danger k-btn--lg k-hold" data-hold="900" id="flt-go">${pixelIcon('warn', { size: 16 })}<span data-label>Hold to inject fault</span></button>
+      <button class="k-btn k-btn--sm" id="flt-quick">Trigger instantly</button>
     </div>
 
     ${section('Alerts', '.k-alert · .k-modal')}
@@ -44,22 +35,11 @@ export default function mount(root: HTMLElement) {
           <div class="k-alert" data-state="critical"><span>${pixelIcon('cross', { size: 14 })}</span><div><b>Packet loss</b><p>Uplink unstable — 12% dropped.</p></div></div>`,
       })}
       ${spec({
-        code: 'ALR-02',
-        title: 'Caution banner',
-        cls: '.k-hazard + .k-band',
-        bodyCls: 'spec-body--col',
-        body: `
-          <div class="k-hazard k-hazard--anim" style="height:10px"></div>
-          <div class="k-band" data-state="caution" style="height:auto;padding:10px 12px;font-size:18px;justify-content:space-between"><span>Restricted zone</span>${pixelIcon('warn', { size: 22 })}</div>
-          <div class="k-hazard k-hazard--anim" style="height:10px"></div>
-          <div class="t-micro">EXPOSURE LIMIT 00:04:12 · SHELL DEGRADATION 0.3%/S</div>`,
-      })}
-      ${spec({
         code: 'ALR-03',
         title: 'Confirm modal',
         cls: '.k-modal',
         body: `<button class="k-btn k-btn--danger" id="flt-modal-open">Open modal</button>`,
-        foot: 'Stepped scale-in, backdrop scanlines, ESC to close.',
+        foot: 'Stepped scale-in. Press Esc to close.',
       })}
     </div>
   </section>
@@ -75,81 +55,75 @@ export default function mount(root: HTMLElement) {
     </div>
   </div>
 
-  <div class="flt-overlay" id="flt" data-state="fault" hidden>
-    <div class="flt-bgword t-display">Fault</div>
-    <div class="flt-marq flt-marq--a"><div class="k-marquee" style="--dur:9s;--marq-steps:90"><div class="k-marquee__track">${'<span class="t-display">Error_error_</span>'.repeat(6)}</div></div></div>
-    <div class="flt-wall">${textWall({ word: 'RUNTIME_', hot: 'WARNING_', hotFill: 'WARN_', rows: 3, hotRow: 1, dur: 10 })}</div>
-    <div class="flt-grid">
-      <div class="flt-tri"><span data-mark="tri" data-cols="14" data-rows="10" data-size="640" data-seed="13" data-fps="5"></span></div>
-      <div class="flt-alarm"><span data-mark="dots" data-cols="3" data-rows="6" data-size="54" data-mode="alarm" data-fps="4"></span></div>
-      <div class="flt-code t-mono">
-        <b class="t-display t-wide">Runtime error</b>
-        <div>EXCEPTION 0x0000003F</div>
-        <div>AT liminal.buffer.flush (core:07:441)</div>
-        <div>AT neural.transfer.commit (link:12:09)</div>
-        <div>SHELL INTEGRITY … <span class="fx-blink-fast">012%</span></div>
-        <div class="flt-count">AUTO-RECOVER IN <b id="flt-n">10</b></div>
+  <div class="flt-overlay" id="flt" data-state="fault" role="region" aria-label="Runtime fault" hidden>
+    <div class="flt-register" aria-hidden="true">${faultMark}${faultMark}</div>
+    <div class="flt-band" aria-hidden="true">
+      <div class="flt-band__ink t-pixel">Runtime_Error</div>
+      <div class="k-marquee flt-marq" style="--dur:8s;--marq-steps:128">
+        <div class="k-marquee__track">${'<span class="t-display" data-fault-word></span>'.repeat(2)}</div>
       </div>
     </div>
     <div class="flt-foot">
-      <div class="k-hazard k-hazard--anim" style="--h-a:#000;--h-b:var(--c-crimson);height:14px;flex:1"></div>
+      <div class="flt-code t-mono">
+        <b>EXCEPTION 0x0000003F</b>
+        <span class="flt-count">AUTO-RECOVER IN <b id="flt-n">10</b></span>
+      </div>
       <button class="k-btn k-btn--lg flt-ack" id="flt-ack">${pixelIcon('check', { size: 14 })} Acknowledge</button>
     </div>
   </div>`;
 
   b.add(hydrate(root));
-  b.add(mountDefragRing($('#flt-ring', root), { rings: 3, inner: 0.36, seed: 12 }));
-  b.add(mountTerminal($('#flt-log', root), { max: 9 }));
-  b.add(animateTextWall($('.flt-wall .k-textwall', root), ['WARNING_', 'RUNTIME_', 'FAULT_'], 1800));
 
   const overlay = $('#flt', root);
   const nEl = $('#flt-n', root);
+  const marquee = $('.flt-marq', overlay);
+  const words = $$('[data-fault-word]', marquee);
+  const acknowledge = $('#flt-ack', overlay);
   let countStop: (() => void) | null = null;
-  let active = false;
+  let returnFocus: HTMLElement | null = null;
 
-  const trigger = async () => {
-    if (active) return;
-    active = true;
-    const tl = gsap.timeline();
-    ['#ececec', '#000', '#ff2a17', '#000'].forEach((c, i) => tl.set(document.body, { backgroundColor: c }, i * 0.05));
-    await tl.then();
+  const paintFault = (elapsed: number) => {
+    const phase = Math.min(FAULT_WORDS.length - 1, Math.floor(elapsed / 0.9));
+    const word = FAULT_WORDS[phase].repeat(6);
+    marquee.classList.toggle('is-cobalt', phase % 2 === 1);
+    for (const span of words) if (span.textContent !== word) span.textContent = word;
+    const count = pad(Math.max(0, Math.ceil(10 - elapsed)));
+    if (nEl.textContent !== count) nEl.textContent = count;
+  };
+
+  const trigger = () => {
+    if (!overlay.hidden) return;
+    returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const started = performance.now() / 1000;
+    paintFault(0);
     overlay.hidden = false;
-    flashBlocks(overlay, { colors: ['#000', '#2424ff', '#ececec'], frames: 6, count: 20 });
-    glitch($('.flt-code b', overlay), { frames: 10, colors: ['#2424ff', '#000', '#ececec'] });
-    let n = 10;
-    nEl.textContent = pad(n);
-    countStop = stepLoop(1, (f) => {
-      if (f === 0) return;
-      n--;
-      nEl.textContent = pad(n);
-      if (n <= 0) recover();
+    acknowledge.focus();
+    countStop = stepLoop(12, (_, now) => {
+      const elapsed = now - started;
+      paintFault(elapsed);
+      if (elapsed >= 10) recover();
     });
   };
-  const recover = async () => {
-    if (!active) return;
+  const recover = () => {
+    if (overlay.hidden) return;
     countStop?.();
     countStop = null;
-    await flashBlocks(overlay, { colors: ['#000', '#2424ff', '#7dff1a'], frames: 5, count: 24 });
     overlay.hidden = true;
-    document.body.style.backgroundColor = '';
-    active = false;
+    returnFocus?.focus();
     notify({ title: 'System restored', msg: 'Fault acknowledged · integrity 97%', state: 'nominal' });
   };
 
   const go = $('#flt-go', root);
   // Fire when the hold completes (class is-done added by hydrate)
   const mo = new MutationObserver(() => {
-    if (go.classList.contains('is-done')) setTimeout(trigger, 250);
+    if (go.classList.contains('is-done')) trigger();
   });
   mo.observe(go, { attributes: true, attributeFilter: ['class'] });
   b.add(() => mo.disconnect());
   b.add(on($('#flt-quick', root), 'click', trigger));
-  b.add(on($('#flt-ack', root), 'click', recover));
-  b.add(on(window, 'keydown', (e: KeyboardEvent) => e.key === 'Escape' && (active ? recover() : closeModal())));
-  b.add(() => {
-    countStop?.();
-    document.body.style.backgroundColor = '';
-  });
+  b.add(on(acknowledge, 'click', recover));
+  b.add(on(window, 'keydown', (e: KeyboardEvent) => e.key === 'Escape' && (overlay.hidden ? closeModal() : recover())));
+  b.add(() => countStop?.());
 
   // modal
   const modal = $('#flt-modal', root);

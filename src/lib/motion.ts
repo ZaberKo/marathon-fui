@@ -13,12 +13,19 @@ export const BLOCKS = '█▓▒░▚▞▙▟▛▜';
 export function scramble(
   el: HTMLElement,
   text = el.dataset.text ?? el.textContent ?? '',
-  { fps = 30, duration = 0.7, charset = GLYPHS, keepSpaces = true } = {},
+  { fps = 30, duration = 0.7, charset = GLYPHS, keepSpaces = true, signal }: { fps?: number; duration?: number; charset?: string; keepSpaces?: boolean; signal?: AbortSignal } = {},
 ) {
+  if (signal?.aborted) return Promise.resolve();
   el.dataset.text = text;
   const total = Math.max(1, Math.round(duration * fps));
   const len = text.length;
   return new Promise<void>((resolve) => {
+    const finish = () => {
+      el.textContent = text;
+      stop();
+      signal?.removeEventListener('abort', finish);
+      resolve();
+    };
     const stop = stepLoop(fps, (f) => {
       const progress = f / total;
       let out = '';
@@ -28,12 +35,9 @@ export function scramble(
         else out += charset[(Math.random() * charset.length) | 0];
       }
       el.textContent = out;
-      if (f >= total) {
-        el.textContent = text;
-        stop();
-        resolve();
-      }
+      if (f >= total) finish();
     });
+    signal?.addEventListener('abort', finish, { once: true });
   });
 }
 
@@ -169,6 +173,115 @@ export async function barWipe(overlay: HTMLElement, swap: () => void | Promise<v
     tl2.to(bars[idx], { scaleX: 0, duration: 0.12, ease: 'steps(3)' }, 0.04 + i * 0.018);
   });
   await tl2.then();
+}
+
+type Slice = readonly [top: number, height: number, shift: number];
+type SliceFrame = readonly Slice[];
+const SLICE_OUT: readonly SliceFrame[] = [
+  [[0.21, 0.019, 0.022], [0.53, 0.032, -0.033], [0.79, 0.013, 0.015]],
+  [[0.13, 0.043, -0.067], [0.38, 0.029, 0.056], [0.61, 0.085, -0.081], [0.84, 0.019, 0.031]],
+  [[0.09, 0.033, 0.061], [0.27, 0.072, -0.085], [0.48, 0.118, 0.116], [0.76, 0.052, -0.066]],
+];
+const SLICE_IN: readonly SliceFrame[] = [
+  [[0.11, 0.062, -0.091], [0.3, 0.075, 0.092], [0.51, 0.103, -0.11], [0.83, 0.04, 0.061]],
+  [[0.19, 0.038, 0.052], [0.43, 0.064, -0.068], [0.68, 0.031, 0.052]],
+  [[0.34, 0.018, -0.026], [0.7, 0.012, 0.019], [0.91, 0.011, -0.016]],
+];
+const SVG_NS = 'http://www.w3.org/2000/svg';
+let nextSliceId = 0;
+
+/** Displace bands of the live element before and after a cut. */
+export async function sliceGlitchTransition(host: HTMLElement, swap: () => void | Promise<void>, signal: AbortSignal) {
+  if (signal.aborted) return;
+  const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  if (motion.matches) return swap();
+
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  const id = `route-slice-${++nextSliceId}`;
+  const indices = [0, 1, 2, 3];
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('width', '0');
+  svg.setAttribute('height', '0');
+  svg.style.position = 'absolute';
+  svg.innerHTML = `<defs><filter id="${id}" filterUnits="objectBoundingBox" primitiveUnits="objectBoundingBox" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB">
+    ${indices.map((i) => `<feFlood x="0" y="0" width="1" height="0" flood-color="white" result="band${i}"/>`).join('')}
+    <feMerge result="bands">${indices.map((i) => `<feMergeNode in="band${i}"/>`).join('')}</feMerge>
+    <feComposite in="SourceGraphic" in2="bands" operator="out" result="rest"/>
+    ${indices.map((i) => `<feComposite in="SourceGraphic" in2="band${i}" operator="in" result="slice${i}"/>
+    <feOffset in="slice${i}" result="shift${i}" dx="0"/>`).join('')}
+    <feFlood x="0" y="0" width="0" height="0" flood-color="var(--c-cobalt)" result="signal"/>
+    <feMerge><feMergeNode in="rest"/>${indices.map((i) => `<feMergeNode in="shift${i}"/>`).join('')}<feMergeNode in="signal"/></feMerge>
+  </filter></defs>`;
+  const floods = svg.querySelectorAll('feFlood');
+  const offsets = svg.querySelectorAll('feOffset');
+  const flash = floods[indices.length];
+  const previousFilter = host.style.filter;
+  const filter = `url("#${id}")`;
+
+  const render = (slices: SliceFrame) => {
+    indices.forEach((i) => {
+      const [top, height, shift] = slices[i] ?? [0, 0, 0];
+      floods[i].setAttribute('y', String(top));
+      floods[i].setAttribute('height', String(height));
+      offsets[i].setAttribute('dx', String(shift));
+    });
+    const [top, height, shift] = slices[1];
+    flash.setAttribute('x', String(shift > 0 ? 0 : 1 + shift));
+    flash.setAttribute('y', String(top + height * 0.62));
+    flash.setAttribute('width', String(Math.abs(shift) * 0.78));
+    flash.setAttribute('height', '0.004');
+  };
+  const clearFilter = () => {
+    if (host.style.filter === filter) host.style.filter = previousFilter;
+  };
+  const reset = () => {
+    clearFilter();
+    svg.remove();
+  };
+  const motionChanged = () => { if (motion.matches) reset(); };
+  const play = (frames: readonly SliceFrame[]) => new Promise<void>((resolve) => {
+    let start: number | undefined;
+    let previous = -1;
+    let raf = 0;
+    const finish = () => {
+      cancelAnimationFrame(raf);
+      signal.removeEventListener('abort', finish);
+      resolve();
+    };
+    const tick = (now: number) => {
+      start ??= now;
+      const index = Math.floor((now - start) / 36);
+      if (!svg.isConnected || index >= frames.length) return finish();
+      if (index !== previous) {
+        render(frames[index]);
+        previous = index;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    signal.addEventListener('abort', finish, { once: true });
+    raf = requestAnimationFrame(tick);
+  });
+
+  document.body.appendChild(svg);
+  host.style.filter = filter;
+  signal.addEventListener('abort', reset, { once: true });
+  motion.addEventListener('change', motionChanged);
+  try {
+    await play(SLICE_OUT);
+    if (signal.aborted) return;
+    // A page may need another import during mount. Keep the filter off while it waits.
+    clearFilter();
+    await swap();
+    if (!signal.aborted && svg.isConnected) {
+      render(SLICE_IN[0]);
+      host.style.filter = filter;
+      await play(SLICE_IN);
+    }
+  } finally {
+    reset();
+    signal.removeEventListener('abort', reset);
+    motion.removeEventListener('change', motionChanged);
+  }
 }
 
 /** Random hex-ish readout that keeps flickering (texture layer). */

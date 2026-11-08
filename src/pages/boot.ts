@@ -1,9 +1,8 @@
-import gsap from 'gsap';
 import { ROUTES } from '../routes';
 import { checker, pixelIcon, pixelSigil, barcode, locator } from '../lib/glyphs';
 import { mountDefragRing } from '../lib/hud';
 import { hydrate } from '../lib/hydrate';
-import { flashBlocks, reveal, scramble, typeOut } from '../lib/motion';
+import { countTo, reveal, scramble, typeOut } from '../lib/motion';
 import { bag, pad } from '../lib/util';
 import { mountGL } from './_gl';
 
@@ -12,11 +11,11 @@ const DESC: Record<string, string> = {
   signal: 'Black field + flat signal colours. Colour is state, not decoration. Theme flips.',
   controls: 'Buttons, switches, sliders, fields, tabs, steppers, progress — all stepped.',
   glyphs: 'Pixel icons, sigils, locators, barcodes, connectors, patterns. SVG generators.',
-  telemetry: 'Defrag rings, orbit charts, spectra, gauges, memory grids, logs, trackers.',
+  telemetry: 'HUD instruments, tracking and readouts. Film dials in Radial sequences.',
   motion: 'Stepped easing, hard cuts, glitch slices, block flashes, wipes, marquees.',
   spatial: 'WebGPU scenes: slice-line figures, neural voxels, bar-field planets, CAD bays.',
   fault: 'Runtime-error state: red inversion, alarm grid, error marquee, recovery.',
-  study: 'SHELL 07 — a 2-minute web film built from the kit: score, AI voice, generated 3D, seekable timeline.',
+  study: 'SHELL 07 — the kit in a browser film with a score, synthetic narration and a seekable timeline.',
 };
 
 export default function mount(root: HTMLElement) {
@@ -59,10 +58,6 @@ export default function mount(root: HTMLElement) {
           Swiss grid, flat acid colour, vector tech marks, stepped motion.</p>
         </div>
         <div class="boot-log" id="boot-log"></div>
-        <div class="k-meter">
-          <div class="k-meter__row"><span>LOADING MEMORY</span><b id="boot-pct">000</b></div>
-          <div class="k-progress k-progress--tall" id="boot-bar" style="--p:0%"></div>
-        </div>
         <div class="boot-links">
           <span class="c-lime" data-state="cobalt" data-mark="link" data-cols="4" data-rows="1" data-size="200" data-fps="8"></span>
           <span class="c-acid" data-mark="chevrons" data-count="6" data-size="84"></span>
@@ -81,7 +76,7 @@ export default function mount(root: HTMLElement) {
       </div>
     </div>
 
-    <div class="k-band boot-band k-dotscreen" style="--ds:16px"><div class="k-marquee" style="--dur:24s"><div class="k-marquee__track">${'<span>STAND BY ▚ LINK ESTABLISHED ▚ TRANSFER WINDOW OPEN ▚ </span>'.repeat(6)}</div></div></div>
+    <div class="k-band boot-band"><div class="k-marquee" style="--dur:24s"><div class="k-marquee__track">${'<span>STAND BY ▚ LINK ESTABLISHED ▚ TRANSFER WINDOW OPEN ▚ </span>'.repeat(6)}</div></div></div>
 
     <h2 class="section-label">Module index <span class="t-micro">09 DEMO SURFACES / ALL COMPONENTS REUSABLE</span></h2>
     <div class="boot-index">
@@ -123,26 +118,14 @@ export default function mount(root: HTMLElement) {
   ];
   let alive = true;
   b.add(() => (alive = false));
-  const bar = root.querySelector<HTMLElement>('#boot-bar')!;
-  const pct = root.querySelector<HTMLElement>('#boot-pct')!;
   const integ = root.querySelector<HTMLElement>('#boot-int')!;
   const status = root.querySelector<HTMLElement>('#boot-status')!;
+  const integrity = countTo(integ, 97, { steps: 24, duration: 3.2, fmt: (value) => `${pad(value, 3)}%` });
+  b.add(() => integrity.kill());
 
   (async () => {
-    flashBlocks(root.querySelector('.boot-hero')!, { frames: 7, count: 18 });
     reveal(root.querySelector<HTMLElement>('[data-boot="vert"]')!, { from: 'bottom', steps: 8, duration: 0.5 });
     reveal(root.querySelector<HTMLElement>('[data-boot="title"]')!, { from: 'left', steps: 5, duration: 0.4 });
-    const o = { p: 0 };
-    gsap.to(o, {
-      p: 100,
-      duration: 3.2,
-      ease: 'steps(24)',
-      onUpdate: () => {
-        bar.style.setProperty('--p', `${o.p}%`);
-        pct.textContent = pad(o.p, 3);
-        integ.textContent = `${pad(Math.min(97, o.p), 3)}%`;
-      },
-    });
     for (const l of lines) {
       if (!alive) return;
       const d = document.createElement('div');

@@ -2,7 +2,7 @@
  * SHELL — the body as flat colour. Three world-lit tones with hard steps
  * (no gradients, no dither) and a hard black edge at grazing angles; stencil
  * decals ride the bones. On the beat the field floods cobalt and the shell
- * inverts to black with an acid edge. A fan of connector curves arrives
+ * inverts to a black silhouette. A fan of connector curves arrives
  * from the left and terminates on the surface; outline triangles pop in
  * small stepped groups.
  */
@@ -24,24 +24,23 @@ const v3 = (hex: number) => {
 /** three flat tones by a world key light + a hard edge by facing ratio */
 function celShell() {
   const L = uniform(new THREE.Vector3(-0.45, 0.7, 0.55).normalize());
-  const u = { lit: uniform(v3(0x5a60ff)), mid: uniform(v3(0x2424ff)), shade: uniform(v3(0x0c0e5a)), edge: uniform(v3(0x000000)), edgeW: uniform(0.26) };
+  const u = { lit: uniform(v3(0x5a60ff)), mid: uniform(v3(0x2424ff)), shade: uniform(v3(0x0c0e5a)) };
   const d = dot(normalWorld, L);
   let c = mix(vec3(u.shade), vec3(u.mid), step(float(0.0), d));
   c = mix(c, vec3(u.lit), step(float(0.55), d));
-  c = mix(vec3(u.edge), c, step(u.edgeW, abs(normalView.z)));
+  c = mix(vec3(0), c, step(float(0.26), abs(normalView.z)));
   const mat = new THREE.MeshBasicNodeMaterial();
   mat.colorNode = c;
-  const set = (p: { lit: number; mid: number; shade: number; edge: number }) => {
+  const set = (p: { lit: number; mid: number; shade: number }) => {
     u.lit.value.copy(v3(p.lit));
     u.mid.value.copy(v3(p.mid));
     u.shade.value.copy(v3(p.shade));
-    u.edge.value.copy(v3(p.edge));
   };
   return { mat, set };
 }
 
-const NORMAL = { lit: 0x5a60ff, mid: 0x2424ff, shade: 0x0c0e5a, edge: 0x000000 };
-const FLOOD = { lit: 0x16163a, mid: 0x07071c, shade: 0x000000, edge: PAL.acid };
+const NORMAL = { lit: 0x5a60ff, mid: 0x2424ff, shade: 0x0c0e5a };
+const FLOOD = { lit: 0x16163a, mid: 0x07071c, shade: 0x000000 };
 
 export async function mountShell(host: HTMLElement, { fps = 12, pixel = 1, labels = true }: SceneOpts = {}): Promise<SceneHandle> {
   const camera = new THREE.PerspectiveCamera(24, 1, 0.1, 100);
@@ -86,11 +85,6 @@ export async function mountShell(host: HTMLElement, { fps = 12, pixel = 1, label
   const groups = Array.from({ length: 4 }, () => ({ v: sampleVerts(mesh, 5, r), born: 0 }));
   const fanEnds = sampleVerts(mesh, 9, r);
 
-  // black dot screen over the flood frame (CSS, regular grid — texture, not noise)
-  const dots = document.createElement('div');
-  dots.className = 'k-dotscreen';
-  dots.style.cssText = 'position:absolute;inset:0;z-index:1;pointer-events:none;display:none';
-  host.appendChild(dots);
   let word: HTMLElement | null = null;
   if (labels) {
     word = document.createElement('div');
@@ -126,7 +120,6 @@ export async function mountShell(host: HTMLElement, { fps = 12, pixel = 1, label
       cel.set(flood ? FLOOD : NORMAL);
       renderer.setClearColor(flood ? PAL.cobalt : 0x000000, 1);
       word?.classList.toggle('is-ink', flood);
-      dots.style.display = flood ? '' : 'none';
     }
 
     // one triangle group re-seeds every 9 frames
@@ -167,7 +160,6 @@ export async function mountShell(host: HTMLElement, { fps = 12, pixel = 1, label
     stage,
     dispose() {
       word?.remove();
-      dots.remove();
       body.mixer.stopAllAction();
       stage.dispose();
     },

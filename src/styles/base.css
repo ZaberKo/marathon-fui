@@ -105,14 +105,13 @@ select {
   position: fixed;
   inset: 0;
   display: grid;
-  grid-template-columns: var(--rail-w) 1fr;
-  grid-template-rows: var(--bar-h) 1fr var(--ticker-h);
+  grid-template-columns: var(--rail-w) minmax(0, 1fr);
+  grid-template-rows: var(--bar-h) minmax(0, 1fr) var(--ticker-h);
   grid-template-areas:
     'brand bar'
     'rail stage'
     'rail ticker';
-  background:
-    linear-gradient(var(--c-void), var(--c-void)) padding-box;
+  background: var(--c-void);
 }
 
 .brand {
@@ -186,9 +185,13 @@ select {
   grid-area: rail;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   border-right: 1px solid var(--c-line);
+  overflow-x: hidden;
   overflow-y: auto;
-  scrollbar-width: none;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-cobalt) var(--c-void);
 }
 .rail a {
   position: relative;
@@ -230,6 +233,10 @@ select {
 .rail a:hover::before {
   transform: scaleY(1);
 }
+.rail a:focus-visible {
+  outline: 1px solid var(--c-bone);
+  outline-offset: -2px;
+}
 .rail a[aria-current='page'] {
   color: var(--c-void);
 }
@@ -244,12 +251,6 @@ select {
   isolation: isolate;
 }
 
-.ambient {
-  grid-area: stage;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
 .stage {
   grid-area: stage;
   position: relative;
@@ -258,11 +259,11 @@ select {
   overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: var(--c-cobalt) var(--c-void);
-  background-image:
-    linear-gradient(to right, rgba(36, 36, 255, 0.07) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(36, 36, 255, 0.07) 1px, transparent 1px);
-  background-size: 32px 32px;
-  background-attachment: local;
+  background: var(--c-void);
+}
+
+.route-view {
+  display: contents;
 }
 
 .ticker {
@@ -471,27 +472,6 @@ select {
 
 /* --- overlays ---------------------------------------------------------- */
 
-.wipe {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 50;
-  display: grid;
-  grid-template-rows: repeat(9, 1fr);
-}
-.wipe i {
-  display: block;
-  background: var(--c-cobalt);
-  transform: scaleX(0);
-  transform-origin: left;
-}
-.wipe i:nth-child(3n) {
-  background: var(--c-void);
-}
-.wipe i:nth-child(4n + 1) {
-  background: var(--c-acid);
-}
-
 .reticle {
   position: fixed;
   left: 0;
@@ -521,13 +501,27 @@ select {
 
 /* --- responsive -------------------------------------------------------- */
 
+@media (min-width: 761px) and (max-height: 900px) {
+  .rail a {
+    flex-basis: 44px;
+    justify-content: center;
+    gap: 3px;
+    padding: 4px 2px;
+  }
+  .rail a .r-label {
+    writing-mode: horizontal-tb;
+    transform: none;
+  }
+}
+
 @media (max-width: 760px) {
   :root {
     --rail-w: 0px;
+    --rail-h: 48px;
   }
   .shell {
-    grid-template-columns: 1fr;
-    grid-template-rows: var(--bar-h) 48px 1fr var(--ticker-h);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: var(--bar-h) var(--rail-h) minmax(0, 1fr) var(--ticker-h);
     grid-template-areas: 'bar' 'rail' 'stage' 'ticker';
   }
   .brand {
@@ -538,6 +532,7 @@ select {
     border-right: none;
     border-bottom: 1px solid var(--c-line);
     overflow-x: auto;
+    overflow-y: hidden;
   }
   .rail a {
     flex: 0 0 auto;
@@ -553,6 +548,19 @@ select {
   }
   .topbar .tb-hide-m {
     display: none;
+  }
+  .topbar > * {
+    padding-inline: 8px;
+  }
+  .topbar .tb-route {
+    min-width: 0;
+  }
+  .topbar .tb-route > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .topbar .tb-spacer {
+    padding-inline: 0;
   }
   .page {
     padding: 20px 16px 60px;

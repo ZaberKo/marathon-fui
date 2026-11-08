@@ -1,6 +1,5 @@
 /**
- * Asset loading: meshopt-compressed GLB models (cached, cloned per use)
- * and a land/ocean mask rasterised from Natural Earth (world-atlas).
+ * Procedural models and coastline queries from Natural Earth vector data.
  */
 import * as THREE from 'three/webgpu';
 
@@ -98,43 +97,35 @@ export function vertexWorld(mesh: THREE.Mesh, i: number, target: THREE.Vector3) 
 /* ------------------------------------------------------------------ */
 let landP: Promise<(lat: number, lon: number) => boolean> | null = null;
 
-/** Returns sample(latDeg, lonDeg) → is land. Rasterised once (1024×512). */
+/** Sample land from coastline intersections cached for each requested latitude. */
 export function loadLandMask() {
   if (landP) return landP;
   landP = (async () => {
     const [{ feature }, topo] = await Promise.all([import('topojson-client'), import('world-atlas/land-110m.json')]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const land = feature((topo as any).default ?? topo, ((topo as any).default ?? topo).objects.land) as any;
-    const W = 1024;
-    const H = 512;
-    const cv = document.createElement('canvas');
-    cv.width = W;
-    cv.height = H;
-    const g = cv.getContext('2d', { willReadFrequently: true })!;
-    g.fillStyle = '#000';
-    g.fillRect(0, 0, W, H);
-    g.fillStyle = '#fff';
-    const proj = (lon: number, lat: number) => [((lon + 180) / 360) * W, ((90 - lat) / 180) * H];
     const polys: number[][][][] = land.features.flatMap((f: any) =>
       f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates,
     );
-    for (const poly of polys) {
-      g.beginPath();
-      for (const ring of poly) {
-        ring.forEach(([lon, lat], i) => {
-          const [x, y] = proj(lon, lat);
-          if (i === 0) g.moveTo(x, y);
-          else g.lineTo(x, y);
-        });
-        g.closePath();
-      }
-      g.fill('evenodd');
-    }
-    const data = g.getImageData(0, 0, W, H).data;
+    const rings = polys.flat();
+    const rows = new Map<number, number[]>();
     return (lat: number, lon: number) => {
-      const x = Math.min(W - 1, Math.max(0, Math.floor(((((lon + 180) % 360) + 360) % 360 / 360) * W)));
-      const y = Math.min(H - 1, Math.max(0, Math.floor(((90 - lat) / 180) * H)));
-      return data[(y * W + x) * 4] > 127;
+      let crossings = rows.get(lat);
+      if (!crossings) {
+        crossings = [];
+        for (const ring of rings) {
+          for (let i = 1; i < ring.length; i++) {
+            const [x0, y0] = ring[i - 1];
+            const [x1, y1] = ring[i];
+            if ((y0 > lat) === (y1 > lat)) continue;
+            crossings.push(x0 + (x1 - x0) * (lat - y0) / (y1 - y0));
+          }
+        }
+        crossings.sort((a, b) => a - b);
+        rows.set(lat, crossings);
+      }
+      const x = ((lon + 180) % 360 + 360) % 360 - 180;
+      return crossings.findIndex((boundary) => boundary > x) % 2 === 1;
     };
   })();
   return landP;

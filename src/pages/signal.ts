@@ -6,7 +6,7 @@ import { scramble } from '../lib/motion';
 import { bag, on, $$ } from '../lib/util';
 
 const SW = [
-  { tok: '--c-void', hex: '#000000', name: 'Void', role: 'Negative space. 70–85% of every frame.', ink: '#ececec' },
+  { tok: '--c-void', hex: '#000000', name: 'Void', role: 'Negative space between signal beats.', ink: '#ececec' },
   { tok: '--c-cobalt', hex: '#2424FF', name: 'Cobalt', role: 'Structure, frames, idle system. Full-bleed fields.', ink: '#ececec' },
   { tok: '--c-acid', hex: '#7DFF1A', name: 'Acid', role: 'Nominal / OK / active selection.', ink: '#000' },
   { tok: '--c-lime', hex: '#D4FF00', name: 'Link', role: 'Connection, memory, transfer.', ink: '#000' },
@@ -17,28 +17,15 @@ const SW = [
 ];
 
 const STATES = [
-  ['nominal', 'NOMINAL', 'All subsystems within tolerance'],
-  ['link', 'LINK', 'Uplink established / memory transfer'],
-  ['caution', 'CAUTION', 'Thermal delta exceeding band'],
-  ['critical', 'CRITICAL', 'Integrity below threshold'],
-  ['cobalt', 'STANDBY', 'Idle — awaiting operator'],
+  ['nominal', 'NOMINAL', 'All subsystems within tolerance', 'check'],
+  ['link', 'LINK', 'Uplink established / memory transfer', 'link'],
+  ['caution', 'CAUTION', 'Thermal delta exceeding band', 'warn'],
+  ['critical', 'CRITICAL', 'Integrity below threshold', 'warn'],
+  ['cobalt', 'STAND BY', 'Awaiting operator', 'power'],
 ];
 
 export default function mount(root: HTMLElement) {
   const b = bag();
-  const statePanel = (st: string, label: string, msg: string) => `
-    <div class="k-panel sig-state" data-state="${st}">
-      <div class="k-panel__head"><span>${label}</span><span>${pixelIcon(st === 'critical' ? 'warn' : st === 'link' ? 'link' : st === 'caution' ? 'warn' : 'check', { size: 14 })}</span></div>
-      <div class="k-panel__body">
-        <div class="t-micro" style="margin-bottom:10px">${msg}</div>
-        <div class="k-progress" style="--p:${st === 'critical' ? 18 : st === 'caution' ? 54 : 86}%"></div>
-        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-          <button class="k-btn k-btn--solid k-btn--sm">Confirm</button>
-          <button class="k-btn k-btn--sm">Details</button>
-          <span class="k-tag k-tag--dot">${label}</span>
-        </div>
-      </div>
-    </div>`;
 
   root.innerHTML = `
   <section class="page">
@@ -60,32 +47,27 @@ export default function mount(root: HTMLElement) {
       ).join('')}
     </div>
 
-    ${section('Ratio', 'PER FRAME')}
-    <div class="sig-ratio">
-      <i style="flex:78;background:var(--c-void)"><span>VOID 78</span></i>
-      <i style="flex:12;background:var(--c-cobalt)"><span>COBALT 12</span></i>
-      <i style="flex:6;background:var(--c-acid);color:#000"><span>ACID 6</span></i>
-      <i style="flex:3;background:var(--c-bone);color:#000"><span>3</span></i>
-      <i style="flex:1;background:var(--c-crimson)"></i>
-    </div>
-    <p class="t-micro" style="margin-top:8px">One dominant signal colour per frame + one counterpoint. Red appears only for fault, and when it appears it takes the whole field.</p>
-
     ${section('State themes', 'data-state="…"')}
-    <div class="sig-states">${STATES.map(([a, b2, c]) => statePanel(a, b2, c)).join('')}</div>
+    <div class="sig-states">${STATES.map(([state, label, message, icon]) => `
+      <div class="sig-state" data-state="${state}">
+        <div class="k-band"><span>${label}</span>${pixelIcon(icon, { size: 16 })}</div>
+        <p class="t-micro">${message}</p>
+      </div>`).join('')}</div>
 
     ${section('Field combinations', 'POSTER STUDIES')}
+    <p class="t-micro">Black gives isolated signals room. Standby and fault can cut to a full field of solid colour.</p>
     <div class="spec-grid">
       ${spec({
         code: 'CB-01',
         title: 'Stand by lockup · acid on cobalt',
         bodyCls: 'spec-body--flush',
-        body: `<div class="sig-poster k-dotscreen" style="background:var(--c-cobalt)">${standbyLockup({ size: 7.5, seed: 11 })}</div>`,
+        body: `<div class="sig-poster" style="background:var(--c-cobalt)">${standbyLockup({ size: 7.5, seed: 11 })}</div>`,
       })}
       ${spec({
         code: 'CB-02',
         title: 'Cobalt on crimson',
         bodyCls: 'spec-body--flush',
-        body: `<div class="sig-poster k-dotscreen" style="background:var(--c-crimson);flex-direction:column;align-items:flex-start">
+        body: `<div class="sig-poster" style="background:var(--c-crimson);flex-direction:column;align-items:flex-start">
           <b class="t-display" style="color:var(--c-cobalt)">Error_err</b>
           <span class="t-micro" style="color:#000">B2EE/S · A 5PN - RR · 0 WWW</span>
         </div>`,
@@ -94,7 +76,7 @@ export default function mount(root: HTMLElement) {
         code: 'CB-03',
         title: 'Ink on hazard',
         bodyCls: 'spec-body--flush',
-        body: `<div class="sig-poster k-dotscreen" style="background:var(--c-hazard);color:#000">
+        body: `<div class="sig-poster" style="background:var(--c-hazard);color:var(--c-void)">
           <span>${pixelIcon('eject', { size: 46 })}</span>
           <b class="t-display t-wide" style="font-size:40px">Eject<br>transf</b>
         </div>`,

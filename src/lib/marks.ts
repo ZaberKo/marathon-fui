@@ -1,5 +1,5 @@
 /**
- * Animated vector marks — live SVG instruments updated by stepLoop.
+ * Animated marks — live SVG and canvas instruments updated by stepLoop.
  *
  *   mountMark(el, 'checker', { cols: 3, mode: 'noise' })
  *   <span data-mark="reticle" data-size="96"></span>   (auto via hydrate)
@@ -8,7 +8,9 @@
  * pauses off-screen, returns a cleanup.
  */
 import { mountDefragRing } from './defrag';
+import { createGlyphNoise } from './glyphNoise';
 import { pixelSigil, blockText } from './glyphs';
+import { SCAN_BLOCK, scanBlockFrame } from './scanBlock';
 import { pad, rng, stepLoop } from './util';
 
 const NS = 'http://www.w3.org/2000/svg';
@@ -332,25 +334,34 @@ const blocktextMark: MarkFn = (el, o) => {
 };
 
 /* ------------------------------------------------------------------ */
-/* SCANBLOCK — the "INITIATING" composition                             */
+/* SCANBLOCK — stepped horizontal slice displacement                  */
 const scanblock: MarkFn = (el, o) => {
-  const W = 160;
-  const H = 60;
-  const s = svgRoot(el, W, H, Number(o.size ?? 320));
-  S('path', { d: `M0 2H118v4h6v4h6v6h8v6h8v6H138v4h-8v6h-6v6H118v6H0z`, fill: 'var(--c-cobalt)' }, s);
-  S('rect', { x: 0, y: 12, width: 100, height: 3, fill: '#000', opacity: 0.35 }, s);
-  S('rect', { x: 0, y: 30, width: 70, height: 2, fill: '#000', opacity: 0.35 }, s);
-  S('rect', { x: 0, y: 53, width: W, height: 2, fill: 'var(--c-cobalt)' }, s);
-  const bar = S('rect', { y: 2, width: 3, height: 48, fill: ACC }, s);
-  const prog = S('rect', { y: 52, width: 10, height: 4, fill: ACC }, s);
-  const px = S('g', { fill: 'var(--c-cobalt)' }, s);
-  const r = rng(4);
-  return stepLoop(Number(o.fps ?? 12), (f) => {
-    bar.setAttribute('x', String(((f * 7) % 130) + 2));
-    prog.setAttribute('x', String((Math.floor(f / 3) * 10) % (W - 10)));
-    px.innerHTML = '';
-    for (let k = 0; k < 10; k++) S('rect', { x: 120 + Math.floor(r() * 38), y: 8 + Math.floor(r() * 40), width: 2 + Math.floor(r() * 4), height: 2, opacity: r() < 0.5 ? 1 : 0.5 }, px);
+  const s = svgRoot(el, SCAN_BLOCK.width, SCAN_BLOCK.height, Number(o.size ?? 320));
+  const initial = scanBlockFrame(5);
+  const plate = S('path', { d: initial.plate, fill: 'var(--c-cobalt)' }, s);
+  const signal = S('path', { d: initial.signal, fill: ACC }, s);
+  return stepLoop(Number(o.fps ?? SCAN_BLOCK.fps), (frame) => {
+    const paths = scanBlockFrame(frame);
+    plate.setAttribute('d', paths.plate);
+    signal.setAttribute('d', paths.signal);
   }, el);
+};
+
+const glyphnoise: MarkFn = (el, o) => {
+  const canvas = document.createElement('canvas');
+  canvas.setAttribute('aria-hidden', 'true');
+  canvas.style.display = 'block';
+  canvas.style.width = '100%';
+  canvas.style.height = `${Number(o.height ?? 27)}px`;
+  el.style.display = 'block';
+  el.style.width = `min(100%, ${Number(o.size ?? 360)}px)`;
+  el.replaceChildren(canvas);
+  const noise = createGlyphNoise(canvas, Number(o.seed ?? 7));
+  const stop = stepLoop(Number(o.fps ?? 12), noise.draw, el);
+  return () => {
+    stop();
+    noise.dispose();
+  };
 };
 
 /* ------------------------------------------------------------------ */
@@ -431,7 +442,7 @@ const connector: MarkFn = (el, o) => {
 
 const MARKS: Record<string, MarkFn> = {
   checker, locator, crosshair, reticle, target, barcode, link, segring, dots, tri, sigil,
-  blocktext: blocktextMark, scanblock, countring, chevrons, bars, connector,
+  blocktext: blocktextMark, scanblock, glyphnoise, countring, chevrons, bars, connector,
 };
 export const markNames = Object.keys(MARKS);
 

@@ -17,7 +17,7 @@ export const SCENES: SceneDef[] = [
     code: 'GPU-01',
     title: 'Contour runner',
     asset: 'SDF body (armour) · Mixamo motion',
-    note: 'Body = black occluder; form = 1px world-Y iso-lines with every fifth an index contour, silhouette rim, sweeping scan band. A tracked pose skeleton rides the rig; link threads from above converge on the crown with stepped pulses; floor dial with a 120-tick scale.',
+    note: 'Body = black occluder; form = 1px world-Y iso-lines with every fifth an index contour, silhouette rim, sweeping scan band. A tracked pose skeleton and leader lines ride the rig above a 120-tick floor dial.',
     mount: async (h, o) => (await import('./runner')).mountRunner(h, o),
   },
   {
@@ -25,7 +25,7 @@ export const SCENES: SceneDef[] = [
     code: 'GPU-02',
     title: 'Shell / flat cel',
     asset: 'SDF body (armour) · stencil decals',
-    note: 'Three world-lit flat tones with hard steps and a hard black edge — no gradients, no dither. Stencil decals ride the bones. On the beat the field floods cobalt and the shell inverts to black with an acid edge; connector fan and stepped triangle groups.',
+    note: 'Three world-lit flat tones with hard steps and a hard black edge — no gradients, no dither. Stencil decals ride the bones. On the beat the field floods cobalt behind the dark silhouette, connector fan and stepped triangle groups.',
     mount: async (h, o) => (await import('./shell')).mountShell(h, o),
   },
   {
@@ -48,8 +48,8 @@ export const SCENES: SceneDef[] = [
     key: 'dropzone',
     code: 'GPU-05',
     title: 'Drop zone',
-    asset: 'procedural pixel texture',
-    note: 'Planet horizon in flat cobalt with nearest-filtered plate texture; target triangles; green arcs fall from an orbital source cluster, drawing in sequence.',
+    asset: 'procedural planet shader',
+    note: 'The shader draws flat cobalt plates and broken dot rows on the planet. Green arcs fall from the orbital source to marked targets in sequence.',
     mount: async (h, o) => (await import('./dropzone')).mountDropzone(h, o),
   },
   {
@@ -71,9 +71,9 @@ export const SCENES: SceneDef[] = [
   {
     key: 'subject',
     code: 'GPU-08',
-    title: 'Subject / pixel noise',
-    asset: 'SDF body + head · RenderPipeline',
-    note: 'Models as flat-colour noise: the body is rendered to a 1/5-res mask and shown as solid cobalt cells that drop out and flip tone each step; a huge head behind is only dash rows. Green contour brain over the crown, triangles shed off the back, lime shards, a RUNNER lockup.',
+    title: 'Subject / surface prints',
+    asset: 'SDF armour · RenderPipeline',
+    note: 'The profile, walking figure and camera are shared by all three prints. Pixel Noise uses broken cobalt runs, Black Dots cuts holes into yellow ink, and Ordered Dither screens green ink through a Bayer matrix.',
     mount: async (h, o) => (await import('./subject')).mountSubject(h, o),
   },
 ];

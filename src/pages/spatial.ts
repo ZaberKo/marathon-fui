@@ -21,17 +21,21 @@ export default async function mount(root: HTMLElement) {
     <div class="sp-toolbar">
       <div><span class="t-micro">FRAME RATE</span><div class="k-seg-ctl" id="sp-fps"><button data-value="6">6</button><button data-value="12" aria-pressed="true">12</button><button data-value="24">24</button><button data-value="60">60</button></div></div>
       <div><span class="t-micro">PIXEL SCALE</span><div class="k-seg-ctl" id="sp-px"><button data-value="1" aria-pressed="true">1×</button><button data-value="2">2×</button><button data-value="3">3×</button></div></div>
-      <div><span class="t-micro">LABELS</span><label class="k-switch"><input type="checkbox" id="sp-labels" checked><span class="k-switch__track"><span>OFF</span><span>ON</span></span></label></div>
       <div class="sp-toolbar__note t-micro">SCENES MOUNT WHEN SCROLLED INTO VIEW · PAUSE OFF-SCREEN · SEE PERF TAG FOR BACKEND / FPS / DRAWS</div>
     </div>
 
     ${section('Scenes', `${SCENES.length} × WebGPURenderer`)}
     <div class="sp-grid">
       ${SCENES.map(
-        (c, i) => `
-        <article class="spec sp-cell ${i === 0 || (i === SCENES.length - 1 && i % 2 === 1) ? 'is-wide' : ''}" data-key="${c.key}">
+        (c) => `
+        <article class="spec sp-cell" data-key="${c.key}">
           <div class="spec-head"><span class="code">${c.code}</span><span>${c.title}</span><span class="cls" data-fps>—</span>
-            <button class="sp-max" type="button" aria-label="Toggle wide" title="Toggle wide">${pixelIcon('scan', { size: 10 })}</button></div>
+            <button class="sp-max" type="button" aria-label="Toggle wide" aria-pressed="false" title="Toggle wide">${pixelIcon('scan', { size: 10 })}</button></div>
+          ${c.key === 'subject' ? `<div class="k-seg-ctl sp-subject-styles" id="sp-subject-style" role="group" aria-label="Subject surface treatment">
+            <button type="button" data-value="noise" aria-pressed="true">Pixel noise</button>
+            <button type="button" data-value="black-dots" aria-pressed="false">Black dots</button>
+            <button type="button" data-value="ordered" aria-pressed="false">Ordered dither</button>
+          </div>` : ''}
           <div class="sp-view"><div class="gl-host" data-gl></div>
             <span class="sp-ck tl">${checker(2, 2, { size: 12 })}</span><span class="sp-ck br">${checker(2, 2, { size: 12, invert: true })}</span>
           </div>
@@ -45,9 +49,9 @@ export default async function mount(root: HTMLElement) {
 
   const handles = new Map<string, SceneHandle>();
   const cleanups = new Map<string, () => void>();
+  const subjectStyles = $('#sp-subject-style', root);
   let fps = 12;
   let px = 1;
-  let labels = true;
 
   const mountCell = (cell: HTMLElement) => {
     const key = cell.dataset.key!;
@@ -59,9 +63,10 @@ export default async function mount(root: HTMLElement) {
       key,
       mountGL(
         host,
-        (h) => def.mount(h, { fps, pixel: px, labels }),
+        (h) => def.mount(h, { fps, pixel: px }),
         (h) => {
           handles.set(key, h);
+          if (key === 'subject') h.set?.('style', subjectStyles.querySelector<HTMLElement>('[aria-pressed="true"]')?.dataset.value);
           $('#sp-backend', root).textContent = h.stage.backend;
         },
       ),
@@ -99,7 +104,8 @@ export default async function mount(root: HTMLElement) {
     b.add(
       on(btn, 'click', () => {
         const cell = btn.closest('.sp-cell') as HTMLElement;
-        cell.classList.toggle('is-wide');
+        const wide = cell.classList.toggle('is-wide');
+        btn.setAttribute('aria-pressed', String(wide));
         cell.scrollIntoView({ block: 'nearest' });
       }),
     ),
@@ -116,12 +122,6 @@ export default async function mount(root: HTMLElement) {
       handles.forEach((h) => h.stage.setPixel(px));
     }),
   );
-  b.add(
-    on($('#sp-labels', root), 'change', (e: Event) => {
-      labels = (e.target as HTMLInputElement).checked;
-      root.classList.toggle('sp-nolabels', !labels);
-    }),
-  );
-
+  b.add(on(subjectStyles, 'k-change', (e: CustomEvent) => handles.get('subject')?.set?.('style', e.detail)));
   return b.dispose;
 }

@@ -11,10 +11,10 @@ const KEY = 'rk-perf-hud';
 type Saved = { x: number; y: number; open: boolean; on: boolean };
 
 /** `reserveBottom`: keep the window clear of a bottom bar (px); `key`: separate saved position */
-export function mountPerfHud(o: { reserveBottom?: number; key?: string; dock?: 'top' | 'bottom' } = {}) {
+export function mountPerfHud(o: { reserveBottom?: number; key?: string; dock?: 'top' | 'bottom'; defaultOn?: boolean } = {}) {
   startPageMeter();
   const skey = o.key ?? KEY;
-  const saved: Saved = { x: -1, y: -1, open: false, on: true, ...JSON.parse(localStorage.getItem(skey) ?? '{}') };
+  const saved: Saved = { x: -1, y: -1, open: false, on: o.defaultOn ?? true, ...JSON.parse(localStorage.getItem(skey) ?? '{}') };
   const save = () => localStorage.setItem(skey, JSON.stringify(saved));
 
   const el = document.createElement('div');

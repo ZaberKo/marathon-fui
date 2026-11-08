@@ -1,5 +1,5 @@
 import type { C2 } from './engine';
-import { FPS, H, W, clamp01, easeOut, hash, lerp } from './engine';
+import { FPS, H, W, clamp01, easeInOut, easeOut, hash, lerp } from './engine';
 import { C, F, arc, checker, clipped, line, microRows, plus, rect, ring, text } from './draw';
 
 const TAU = Math.PI * 2;
@@ -18,6 +18,7 @@ export function dialField(ctx: C2, draw: () => void) {
 // Angles in degrees, radii relative to the wheel, and solid ink.
 type Plate = readonly [start: number, end: number, inner: number, outer: number, ink: string];
 type CuePlate = readonly [...Plate, enter: number, settle: number];
+type Sector = (inner: number, outer: number, start: number, end: number, ink: string) => void;
 
 // These plates have three independently moving radii. The detached green
 // ribbon and the hole near one o'clock are landmarks of the protocol wheel.
@@ -54,18 +55,19 @@ const PROTOCOL: readonly CuePlate[] = [
   [17, 67, .764, .997, BLUE, 47, 7],
 ];
 
-function plate(ctx: C2, spec: Plate, radius: number, phase: number, seed: number, amount = 1) {
+function plate(ctx: C2, spec: Plate, radius: number, phase: number, seed: number, amount = 1, project?: Sector) {
   const [start, end, inner, outer, ink] = spec;
   const a = (start + phase) * RAD;
   const width = (end - start) * RAD * amount;
   const ri = inner * radius;
   const ro = outer * radius;
   const atAngle = (k: number) => a + width * k;
-  arc(ctx, 0, 0, ri, ro, a, a + width, ink);
-  arc(ctx, 0, 0, ri - radius * .022, ri + 1, atAngle(.12), atAngle(.46), ink);
-  arc(ctx, 0, 0, ro - 1, ro + radius * .012, atAngle(.19), atAngle(.62), ink);
-  arc(ctx, 0, 0, ro - radius * .027, ro + 2, atAngle(.70), atAngle(.84), '#000');
-  arc(ctx, 0, 0, ri - 2, ri + radius * .022, atAngle(.88), atAngle(.95), '#000');
+  const sector: Sector = project ?? ((inner, outer, start, end, color) => arc(ctx, 0, 0, inner, outer, start, end, color));
+  sector(ri, ro, a, a + width, ink);
+  sector(ri - radius * .022, ri + 1, atAngle(.12), atAngle(.46), ink);
+  sector(ro - 1, ro + radius * .012, atAngle(.19), atAngle(.62), ink);
+  sector(ro - radius * .027, ro + 2, atAngle(.70), atAngle(.84), '#000');
+  sector(ri - 2, ri + radius * .022, atAngle(.88), atAngle(.95), '#000');
   const stamp = atAngle(.25 + hash(seed, 23) * .44);
   ctx.save();
   ctx.rotate(stamp);
@@ -88,6 +90,56 @@ const METAL_PLATES: readonly (readonly [plate: Plate, seed: number])[] = [
   [[62, 90, .36, .53, '#b3d68d'], 27],
   [[-142, -120, .36, .48, '#a8d9a9'], 27],
 ];
+
+// Match the metal plates to the first nine arcs of the protocol wheel.
+const METAL_STARTERS = [2, 1, 5, 0, 8, 3, 6, 7, 4] as const;
+const metalBand = (inner: number) => inner >= .90 ? 0 : inner >= .70 ? 1 : 2;
+const metalTurns = (time: number) => [
+  time * 78,
+  -time * 62 - 12 * easeInOut(at(time, .35, .86)),
+  time * 46 + 22 * easeInOut(at(time, .55, 1.12)),
+] as const;
+
+function transferPlate(ctx: C2, target: Plate, radius: number, turn: number, index: number, amount: number, progress: number, turns: readonly number[], releaseTurns: readonly number[]) {
+  const [metal, seed] = METAL_PLATES[METAL_STARTERS[index]];
+  const [a0, b0, ri0, ro0, metalInk] = metal;
+  const [a1, b1, ri1, ro1, ink] = target;
+  const band = metalBand(ri0);
+  const delay = (2 - band) * .078 + index % 3 * .025;
+  const seat = easeInOut(at(progress, delay, .78 + delay));
+  if (seat === 1) {
+    plate(ctx, target, radius, turn, index, amount);
+    return;
+  }
+
+  const width = lerp(b0 - a0, (b1 - a1) * amount, seat);
+  const sourceAngle = (a0 + b0) / 2;
+  const targetAngle = a1 + turn + (b1 - a1) * amount / 2;
+  // Fix the winding at release so no plate flips direction at the angle seam.
+  const winding = 360 * Math.round((sourceAngle + releaseTurns[band] - targetAngle) / 360);
+  const center = lerp(sourceAngle + turns[band], targetAngle + winding, seat);
+  const r = lerp(METAL_RADIUS, radius, seat);
+  const lift = [34, 18, -9][band] * Math.sin(Math.PI * seat);
+  const inner = (lerp(ri0 * METAL_RADIUS, ri1 * radius, seat) + lift) / r;
+  const outer = (lerp(ro0 * METAL_RADIUS, ro1 * radius, seat) + lift) / r;
+  const lock = at(progress, delay + .16, delay + .72);
+  const start = center - width / 2;
+  const readHead = (start + width * lock) * RAD;
+  const sector: Sector = (ri, ro, a, b, color) => {
+    if (color !== metalInk || readHead <= a) {
+      arc(ctx, 0, 0, ri, ro, a, b, color);
+      return;
+    }
+    arc(ctx, 0, 0, ri, ro, a, Math.min(b, readHead), ink);
+    if (b > readHead) arc(ctx, 0, 0, ri, ro, readHead, b, metalInk);
+  };
+  plate(ctx, [start, start + width, inner, outer, metalInk], r, 0, lock < .65 ? seed : index, 1, sector);
+  if (lock > 0 && lock < 1) {
+    const edge = r * outer;
+    ring(ctx, 0, 0, edge + 6, '#a8d9a9', 2.4, Math.max(start * RAD, readHead - .16), readHead);
+    arc(ctx, 0, 0, edge - 11, edge + 9, readHead - .005, readHead + .005, '#dbe8cf');
+  }
+}
 
 /** Fine concentric lanes with a second, independent rotation. */
 function trackPrint(ctx: C2, radius: number, start: number, end: number, inner: number, outer: number, ink: readonly string[], seed: number, rows: number) {
@@ -115,10 +167,15 @@ function reticles(ctx: C2, spread: number, x = 0) {
 
 const REGISTER_MARK = new Path2D('M1 14H18V30H1Z M24 1H43V16H24Z M50 1H72V17H50Z M72 20H82V32H72Z M8 34H30L17 23 28 12 56 39V50H8Z M42 35 63 17 76 28 55 49Z');
 
-function registerReadout(ctx: C2, x: number, y: number, scale: number, ink: string) {
+function registerReadout(ctx: C2, x: number, y: number, scale: number, ink: string, reveal = 1) {
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(scale, scale);
+  if (reveal < 1) {
+    ctx.beginPath();
+    ctx.rect(-38, -65, 210 * reveal, 135);
+    ctx.clip();
+  }
   ctx.fillStyle = ink;
   ctx.fill(REGISTER_MARK);
   microRows(ctx, -8, -49, ['188  B91', '939  849', '939  02B'], { size: 13, family: F.mono, color: ink, lh: 15 });
@@ -156,63 +213,131 @@ export function protocolFlash(ctx: C2) {
   });
 }
 
-function metalDisc(ctx: C2) {
+function metalTracks(ctx: C2, turns: readonly number[], release = 0) {
+  const r = METAL_RADIUS * (1 + release * .14);
   ctx.save();
-  ctx.translate(PROTOCOL_AXIS, 538);
-  for (const [spec, seed] of METAL_PLATES) plate(ctx, spec, METAL_RADIUS, 0, seed);
-  trackPrint(ctx, METAL_RADIUS, -195, 166, .87, 1.03, ['#263138', '#607781', '#a8b0ab', '#415061'], 27, 38);
-  trackPrint(ctx, METAL_RADIUS, 15, 320, .33, .76, ['#283a59', '#667c87', '#3d4e24', '#546973'], 40, 55);
-  trackPrint(ctx, METAL_RADIUS, -157, 233, .13, .35, ['#1c292e', '#30363a', '#3d4747'], 43, 26);
+  ctx.globalAlpha *= 1 - release;
+  const outer = turns[0] * .62;
+  const middle = turns[1] * .73;
+  const inner = turns[2] * 1.4;
+  trackPrint(ctx, r, -195 + outer, 166 + outer, .87, 1.03, ['#263138', '#607781', '#a8b0ab', '#415061'], 27, 38);
+  trackPrint(ctx, r, 15 + middle, 320 + middle, .33, .76, ['#283a59', '#667c87', '#3d4e24', '#546973'], 40, 55);
+  trackPrint(ctx, r, -157 + inner, 233 + inner, .13, .35, ['#1c292e', '#30363a', '#3d4747'], 43, 26);
   ctx.restore();
-  reticles(ctx, 616);
 }
 
-export function protocolDial(ctx: C2, elapsed: number, duration: number) {
+function metalReadHeads(ctx: C2, time: number, release = 0) {
+  const lanes = [
+    [.32, 4.8, -.96, '#9dbfb0'],
+    [.655, -4.3, .42, '#b0d28b'],
+    [.88, 3.9, -2.12, '#b6c3cc'],
+  ] as const;
+  lanes.forEach(([radius, speed, phase, color], i) => {
+    const length = easeOut(at(time, .08 + i * .085, .35 + i * .085)) * (1 - release);
+    if (!length) return;
+    const head = phase + time * speed;
+    const r = METAL_RADIUS * (radius + .045 * release);
+    const tail = head - Math.sign(speed) * .48 * length;
+    ring(ctx, 0, 0, r, color, 2.8, Math.min(head, tail), Math.max(head, tail));
+    ring(ctx, 0, 0, r - 7, color, 1.4, head - .06 * length, head + .06 * length);
+    arc(ctx, 0, 0, r - 5 * length, r + 10 * length, head - .009 * length, head + .009 * length, color);
+  });
+}
+
+const metalReticle = (time: number) => 616 + 30 * easeOut(at(time, .09, .82));
+
+function metalDisc(ctx: C2, time = 0) {
+  const turns = metalTurns(time);
+  ctx.save();
+  ctx.translate(PROTOCOL_AXIS, 538);
+  for (const [spec, seed] of METAL_PLATES) plate(ctx, spec, METAL_RADIUS, turns[metalBand(spec[2])], seed);
+  metalTracks(ctx, turns);
+  metalReadHeads(ctx, time);
+  ctx.restore();
+  reticles(ctx, metalReticle(time));
+}
+
+export function protocolDial(ctx: C2, elapsed: number, duration: number, { ringIntro = false } = {}) {
   const playback = elapsed * FPS;
   const frames = Math.ceil(duration * FPS);
   const remaining = frames - playback;
-  const source = remaining <= 9 ? 59 - remaining : lerp(1, 50, at(playback, 1, frames - 9));
+  const releaseAt = frames * .225;
+  const lockAt = frames * .375;
+  const transfer = ringIntro ? at(playback, releaseAt, lockAt) : 1;
+  const body = at(playback, ringIntro ? lockAt : 1, frames - 9);
+  // Ramp the plate feed up after lock and still reach the same final cue.
+  const ramp = .08;
+  const advance = ringIntro ? (body < ramp ? body * body / (2 * ramp) : body - ramp / 2) / (1 - ramp / 2) : body;
+  const source = remaining <= 9 ? 59 - remaining
+    : lerp(ringIntro ? 5 : 1, 50, advance);
   dialField(ctx, () => {
-    if (playback < 1) {
-      metalDisc(ctx);
+    if (ringIntro ? playback <= releaseAt : playback < 1) {
+      metalDisc(ctx, ringIntro ? elapsed : 0);
       return;
     }
     const slide = at(source, 49.65, 53.15);
     const radius = 645 + 102 * easeOut(at(source, 2, 34)) + 26 * at(source, 42, 52);
-    const centerX = lerp(W / 2 + 36 * at(source, 14, 24), 701, slide);
+    const axis = ringIntro ? lerp(PROTOCOL_AXIS, W / 2, at(source, 5, 14)) : W / 2;
+    const centerX = lerp(axis + 36 * at(source, 14, 24), 701, slide);
     const travel = at(source, 1, 59);
     const innerTurn = 31 * travel;
     const middleTurn = -24 * travel;
     const outerTurn = 18 * travel - 9 * easeOut(at(source, 43, 59));
+    const scan = easeOut(at(transfer, .52, .98));
+    const turns = metalTurns(elapsed);
+    const releaseTurns = metalTurns(releaseAt / FPS);
     ctx.save();
     ctx.translate(centerX, 538);
+    if (ringIntro && source < 14) {
+      // The read lanes reach the new radius ahead of the solid plates.
+      const guide = easeInOut(at(transfer, .10, .90));
+      const r = lerp(METAL_RADIUS, radius, guide);
+      const phase = 12 + 42 * guide + 21 * (elapsed - releaseAt / FPS);
+      ctx.save();
+      ctx.globalAlpha *= guide * (1 - at(source, 5, 14));
+      trackPrint(ctx, r, phase - 128, phase + 146, .884, .978, ['#182d8f', '#2645bb', '#10236b'], 29, 24);
+      trackPrint(ctx, r, phase - 108, phase + 24, .516, .609, ['#124125', '#20743d', '#1a572f'], 18, 13);
+      ctx.restore();
+    }
+    ctx.save();
+    ctx.globalAlpha *= scan;
     trackPrint(ctx, radius, 38 + middleTurn, 84 + middleTurn, .68, .795, ['#062c15', '#164f27', '#217b3e'], 22, 26);
     if (source > 10) trackPrint(ctx, radius, -58 + innerTurn, 6 + innerTurn, .618, .759, ['#082c15', '#1e5324', '#198940'], 10, 30);
     if (source > 21) trackPrint(ctx, radius, 151 + middleTurn, 225 + middleTurn, .61, .753, ['#0b361d', '#1b5d38', '#16512c'], 32, 29);
+    ctx.restore();
     PROTOCOL.forEach(([a, b, ri, ro, ink, enter, settle], i) => {
       const motion = easeOut(at(source, enter, enter + settle));
       if (motion === 0) return;
       const turn = ri >= .98 ? -1.5 * outerTurn : ro >= .90 ? outerTurn : ri < .48 ? innerTurn : middleTurn;
       const direction = ink === GREEN ? -1 : 1;
       const phase = turn + (1 - motion) * 23 * direction;
-      plate(ctx, [a, b, ri, ro, ink], radius, phase, i, motion);
+      const spec: Plate = [a, b, ri, ro, ink];
+      if (transfer < 1 && i < METAL_STARTERS.length) transferPlate(ctx, spec, radius, phase, i, motion, transfer, turns, releaseTurns);
+      else plate(ctx, spec, radius, phase, i, motion);
     });
+    if (transfer < 1) {
+      const release = easeInOut(at(transfer, .06, .91));
+      metalTracks(ctx, turns, release);
+      metalReadHeads(ctx, elapsed, release);
+    }
+    ctx.globalAlpha *= scan;
     trackPrint(ctx, radius, 56 + middleTurn, 77 + middleTurn, .665, .791, ['#164a24', '#248946', '#0b311c'], 38, 24);
     if (source > 35) trackPrint(ctx, radius, -53 + outerTurn, -9 + outerTurn, .666, .96, ['#172abf', '#1c2bc2', '#1126bd'], 28, 21);
     // The inspection marks travel on their own paths as each plate seats.
-    const lead = -1.55 + travel * 4.3;
+    const lead = -1.55 + travel * 4.3 + (ringIntro ? elapsed * .65 : 0);
     ring(ctx, 0, 0, radius * .748, '#4964ff', 3.2, lead - .27, lead);
     ring(ctx, 0, 0, radius * .422, '#4bb854', 2.4, -lead * .73 - .3, -lead * .73);
     if (source > 10) arc(ctx, 0, 0, radius * .77, radius * .815, lead - .027, lead, '#4964ff');
     ctx.restore();
-    reticles(ctx, 617 + 98 * at(source, 15, 36) - 38 * at(source, 37, 59), -234 * slide);
+    const spread = lerp(metalReticle(elapsed), 617, transfer);
+    reticles(ctx, spread + 98 * at(source, 15, 36) - 38 * at(source, 37, 59), -234 * slide);
 
-    if (source >= 2) {
+    if (source >= 2 && scan > 0) {
       const grow = at(source, 2, 18);
       ctx.save();
       ctx.translate(lerp(1035, 1019, grow) + 39 * travel - 52 * slide, lerp(352, 529, grow) - 32 * travel);
       ctx.rotate(lerp(-.84, -.055, easeOut(grow)) + .115 * at(source, 19, 48));
-      registerReadout(ctx, -2, -26, 1, '#122ba9');
+      registerReadout(ctx, -2, -26, 1, '#122ba9', scan);
       if (source > 22) registerReadout(ctx, 216, -71, .93, '#173ce1');
       const label = 'DEFRAGMENTATION'.slice(0, Math.floor(at(source, 12, 38) * 15));
       text(ctx, label, 94, 1, { size: 47, weight: 750, color: '#91ff32', tracking: 2.4 });

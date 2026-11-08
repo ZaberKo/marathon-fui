@@ -1,12 +1,13 @@
 import { pageHead, section, spec } from './_ui';
-import { barcode, brackets, checker, dotMatrix, locator, pixelIcon, pixelIconNames, registration, segRing, triTile } from '../lib/glyphs';
+import { barcode, bitmap, brackets, checker, dotMatrix, locator, pixelIcon, pixelIconNames, registration, segRing, triTile } from '../lib/glyphs';
 import { hydrate } from '../lib/hydrate';
-import { mountMark } from '../lib/marks';
+import { markNames, mountMark } from '../lib/marks';
 import { scramble } from '../lib/motion';
-import { bag, on, stepLoop, $, $$ } from '../lib/util';
+import { bag, on, $, $$ } from '../lib/util';
 
 const mk = (kind: string, attrs: Record<string, string | number> = {}, cls = '') =>
   `<span class="${cls}" data-mark="${kind}" ${Object.entries(attrs).map(([k, v]) => `data-${k}="${v}"`).join(' ')}></span>`;
+const steppedWedge = bitmap(Array.from({ length: 12 }, (_, row) => '#'.repeat(row + 1)), { size: 100 });
 
 export default function mount(root: HTMLElement) {
   const b = bag();
@@ -25,19 +26,18 @@ export default function mount(root: HTMLElement) {
     barcodes mutate under a scan line, sigils re-roll. Every animated mark is <b>mountMark(el, kind, opts)</b> in <b>lib/marks.ts</b>
     (or just <b>&lt;span data-mark="reticle"&gt;</b> + <b>hydrate()</b>), updates at a fixed low frame rate and inherits <b>currentColor</b> / <b>--accent</b>.</p>
 
-    ${section('Animated marks', 'lib/marks.ts · 17 kinds')}
+    ${section('Animated marks', `lib/marks.ts · ${markNames.length} kinds`)}
     <div class="gly-marks">
       ${spec({ code: 'MK-01', title: 'Locator / checker', cls: 'locator · checker[mode]', body: `<span class="c-bone">${mk('locator', { size: 64 })}</span><span class="c-bone">${mk('checker', { size: 48, mode: 'invert' })}</span><span class="c-acid">${mk('checker', { cols: 3, rows: 3, size: 48, mode: 'noise', fps: 4 })}</span><span class="c-cobalt" style="color:var(--c-cobalt-hi)">${mk('checker', { cols: 4, rows: 2, size: 72, mode: 'shift', fps: 5 })}</span>` })}
       ${spec({ code: 'MK-02', title: 'Targeting', cls: 'crosshair · reticle', body: `<span class="c-bone">${mk('crosshair', { size: 64 })}</span><span class="c-acid">${mk('reticle', { size: 104 })}</span><span style="color:var(--c-cobalt-hi)">${mk('reticle', { size: 64, fps: 4 })}</span>` })}
       ${spec({ code: 'MK-03', title: 'Target lock', cls: 'target', body: `<span class="c-bone" data-state="caution">${mk('target', { size: 220 })}</span>` })}
       ${spec({ code: 'MK-04', title: 'LINK / sockets', cls: 'link[cols,rows]', body: `<span class="c-lime" data-state="cobalt">${mk('link', { cols: 3, rows: 3, size: 210 })}</span>`, foot: 'Plugs seat in 3 steps, socket fills, sequence loops.' })}
       ${spec({ code: 'MK-05', title: 'Barcode scan', cls: 'barcode', bodyCls: 'spec-body--col', body: `<span class="c-bone">${mk('barcode', { size: 260 })}</span><span class="c-acid">${mk('barcode', { size: 180, bars: 30, seed: 8, fps: 16 })}</span>` })}
-      ${spec({ code: 'MK-06', title: 'Defrag ring', cls: 'segring', body: `<span style="color:var(--c-cobalt-hi)">${mk('segring', { size: 140 })}</span><span class="c-acid">${mk('segring', { size: 96, rings: 2, segs: 18, seed: 9, fps: 8 })}</span>` })}
-      ${spec({ code: 'MK-07', title: 'Dot matrix', cls: 'dots[mode=wave|scan|alarm|noise]', body: `<span class="c-acid">${mk('dots', { cols: 14, rows: 5, size: 140, mode: 'wave' })}</span><span class="c-bone">${mk('dots', { cols: 10, rows: 4, size: 100, mode: 'scan' })}</span><span class="c-crimson">${mk('dots', { cols: 3, rows: 6, size: 36, mode: 'alarm', fps: 4 })}</span>` })}
+      ${spec({ code: 'MK-06', title: 'Defrag mark', cls: 'segring', body: `<span style="color:var(--c-cobalt-hi)">${mk('segring', { size: 116 })}</span>`, foot: 'See the full-size film dials in <a class="c-acid" href="#/telemetry">Telemetry</a>.' })}
+      ${spec({ code: 'MK-07', title: 'Scan / alarm dots', cls: 'dots[mode=scan|alarm]', body: `<span class="c-bone">${mk('dots', { cols: 10, rows: 4, size: 100, mode: 'scan' })}</span><span class="c-crimson">${mk('dots', { cols: 3, rows: 6, size: 36, mode: 'alarm', fps: 4 })}</span>` })}
       ${spec({ code: 'MK-08', title: 'Triangle tile', cls: 'tri', body: `<span style="color:var(--c-cobalt)" data-state="caution">${mk('tri', { cols: 12, rows: 5, size: 260 })}</span>` })}
       ${spec({ code: 'MK-09', title: 'Block text decode', cls: 'blocktext[text]', bodyCls: 'spec-body--col', body: `<div class="c-acid" id="bt-out" style="display:grid;place-items:center;min-height:70px">${mk('blocktext', { text: 'SHELL 07', size: 240 })}</div><label class="k-field"><span class="k-field__box"><span class="k-field__prefix">&gt;</span><input id="bt-in" value="SHELL 07" maxlength="14"></span></label>` })}
-      ${spec({ code: 'MK-10', title: 'Scan block', cls: 'scanblock', body: `<span data-state="nominal">${mk('scanblock', { size: 280 })}</span>`, foot: 'The "INITIATING" composition: sweep bar + progress tick + pixel edge noise.' })}
-      ${spec({ code: 'MK-11', title: 'Count ring', cls: 'countring[max,label]', body: `<span class="c-bone" data-state="critical">${mk('countring', { size: 140 })}</span><span class="c-bone" data-state="nominal">${mk('countring', { size: 100, max: 100, label: 'SYNC', fps: 14 })}</span>` })}
+      ${spec({ code: 'MK-10', title: 'Scan block', cls: 'scanblock', body: `<span data-state="nominal">${mk('scanblock', { size: 280 })}</span>`, foot: 'Shared with the cinema opening. Stepped bands, square gaps at the seam, and a scan bar clipped to the plate.' })}
       ${spec({ code: 'MK-12', title: 'Pins / chevrons / bars', cls: 'connector · chevrons · bars', body: `<span class="c-lime">${mk('connector', { pins: 4, size: 60 })}</span><span class="c-bone">${mk('chevrons', { count: 6, size: 110 })}</span><span class="c-acid">${mk('bars', { count: 8, size: 64 })}</span>` })}
     </div>
 
@@ -57,26 +57,56 @@ export default function mount(root: HTMLElement) {
       ${spec({ code: 'SG-03', title: 'Fields', cls: 'segRing triTile', body: `<span style="color:var(--c-cobalt-hi)">${segRing(6, { size: 104 })}</span><span style="color:var(--c-cobalt)">${triTile(8, 3, 4, { size: 150 })}</span>` })}
     </div>
 
-    ${section('Patterns', 'CSS only · .k-hazard .k-checker .k-dots .k-scan .k-dotscreen')}
+    ${section('Patterns', 'CSS tiles · dots, crosses, hatching and registration screens')}
     <div class="gly-patterns">
-      <div><div class="k-hazard k-hazard--anim" style="height:80px"></div><span class="t-micro">.k-hazard.k-hazard--anim</span></div>
       <div><div class="k-hazard k-hazard--bw k-hazard--anim" style="height:80px;--h-w:6px"></div><span class="t-micro">.k-hazard--bw --h-w:6px</span></div>
       <div><div class="k-hazard k-hazard--red" style="height:80px;--h-b:var(--c-cobalt)"></div><span class="t-micro">.k-hazard--red --h-b:cobalt</span></div>
       <div><div class="k-checker k-checker--anim" style="height:80px"></div><span class="t-micro">.k-checker.k-checker--anim</span></div>
       <div><div class="k-checker" style="height:80px;--ck:4px;--ck-a:var(--c-acid)"></div><span class="t-micro">.k-checker --ck:4px</span></div>
-      <div><div class="k-dots" style="height:80px"></div><span class="t-micro">.k-dots</span></div>
       <div><div class="k-dots" style="height:80px;--d:10px;--d-c:var(--c-cobalt)"></div><span class="t-micro">.k-dots --d:10px</span></div>
-      <div><div class="k-dotscreen" style="height:80px;background:var(--c-acid)"></div><span class="t-micro">.k-dotscreen (acid)</span></div>
-      <div><div class="k-dotscreen" style="height:80px;background:var(--c-cobalt);--ds:16px"></div><span class="t-micro">.k-dotscreen --ds:16px</span></div>
-      <div><div class="k-dotscreen k-dotscreen--fine" style="height:80px;background:var(--c-hazard)"></div><span class="t-micro">.k-dotscreen--fine</span></div>
-      <div><div class="k-scan k-scan--anim" style="height:80px"></div><span class="t-micro">.k-scan.k-scan--anim</span></div>
-      <div><div class="k-rule" style="margin-top:36px"></div><span class="t-micro" style="margin-top:35px">.k-rule</span></div>
+      <div><div class="k-dots k-dots--x gly-ink-swatch"></div><span class="t-micro">.k-dots--x · spaced crosses</span></div>
+      <div><div class="k-dots k-dots--x-block gly-ink-swatch"></div><span class="t-micro">.k-dots--x-block · square tips</span></div>
+      <div><div class="k-hatch gly-ink-swatch"></div><span class="t-micro">.k-hatch · diagonal lines</span></div>
+      <div><div class="k-hatch k-hatch--cross gly-ink-swatch"></div><span class="t-micro">.k-hatch--cross · diamond mesh</span></div>
+      <div><div style="height:80px;background:#000"><div class="k-dotscreen" style="width:78%;height:100%;background:var(--c-acid);clip-path:polygon(0 0,100% 0,100% 60%,75% 60%,75% 100%,0 100%)"></div></div><span class="t-micro">.k-dotscreen on a clipped plate</span></div>
     </div>
+    ${spec({
+      code: 'PT-01',
+      title: 'Broken signal field',
+      cls: 'Clipped texture layers',
+      bodyCls: 'spec-body--flush',
+      style: 'margin-top:var(--gap)',
+      body: `<div class="gly-overprint" aria-hidden="true">
+        <i class="k-dots gly-overprint__dots"></i>
+        <i class="k-hatch gly-overprint__hatch"></i>
+        <i class="k-hatch k-hatch--cross gly-overprint__mesh"></i>
+        <i class="k-dots k-dots--x gly-overprint__crosses"></i>
+        <i class="k-dots k-dots--x-block gly-overprint__dense"></i>
+        <span class="gly-overprint__code t-micro">RX 0447 / 07<br>SYNC LOST<br>NO RECOVERY</span>
+        <b class="gly-overprint__word t-display">Desync_</b>
+      </div>`,
+      foot: 'Open dots leave room for type. Clipped hatching and dense crosses build up texture in selected areas of the field.',
+    })}
+    ${spec({
+      code: 'PT-02',
+      title: 'Pixel marker field',
+      cls: '.k-dots.k-dots--motif',
+      bodyCls: 'spec-body--flush',
+      style: 'margin-top:var(--gap)',
+      body: `<div class="k-dots k-dots--motif gly-motif" aria-hidden="true">
+        <span class="gly-motif__wedge">${steppedWedge}</span>
+        <span class="gly-motif__wedge gly-motif__wedge--edge">${steppedWedge}</span>
+        <span class="gly-motif__index t-micro">SECTOR RX–06</span>
+        <span class="gly-motif__latch t-micro">LATCH / 06</span>
+        <b class="gly-motif__number t-display">6</b>
+      </div>`,
+      foot: 'Corners, squares and diagonal steps share a sparse grid. One large index and stepped wedges sit over the flat field.',
+    })}
   </section>`;
 
   b.add(hydrate(root));
 
-  // icons: copy on click; idle glitch on a random icon every few steps
+  // Copy the selected icon.
   const icons = $$<HTMLButtonElement>('.gly-icon', root);
   icons.forEach((btn) =>
     b.add(
@@ -91,17 +121,6 @@ export default function mount(root: HTMLElement) {
         await scramble(label, 'COPIED', { duration: 0.2 });
         setTimeout(() => (label.textContent = name), 600);
       }),
-    ),
-  );
-  b.add(
-    stepLoop(
-      2.5,
-      () => {
-        const ic = icons[Math.floor(Math.random() * icons.length)];
-        ic.classList.add('is-glitch');
-        setTimeout(() => ic.classList.remove('is-glitch'), 320);
-      },
-      $('.gly-icons', root),
     ),
   );
 

@@ -12,7 +12,7 @@ export default function mount(root: HTMLElement) {
   <section class="page">
     ${pageHead('03', 'Control<br><span class="t-outline">Surface</span>', ['HOVER / ACTIVE / FOCUS / DISABLED', 'ALL TRANSITIONS STEPPED', 'KEYBOARD ACCESSIBLE'], 73)}
     <p class="page-lede">Square corners, 1px frames, uppercase wide grotesque. Hover states <b>fill in 4 hard steps</b>, never fade.
-    Each card lists the class names to copy. Behaviours (scramble, hold, loading) are opt-in via data-attributes and <b>hydrate(root)</b>.</p>
+    Each card lists its reusable class names. Use <b>hydrate(root)</b> to activate the data attributes for decoding and hold actions.</p>
 
     ${section('Buttons', 'k-btn')}
     <div class="spec-grid">
@@ -55,18 +55,9 @@ export default function mount(root: HTMLElement) {
         title: 'Coded / split',
         cls: '.k-btn--split .k-btn__code',
         body: `
-          <button class="k-btn k-btn--split"><span>Transfer</span><span class="k-btn__cell">${ico('chevron', 12)}</span></button>
+          <button class="k-btn k-btn--split" data-scramble-hover><span data-label>Transfer</span><span class="k-btn__cell">${ico('chevron', 12)}</span></button>
           <button class="k-btn k-btn--split k-btn--cobalt"><span>Memory</span><span class="k-btn__cell k-btn__code">0x3F</span></button>
           <button class="k-btn"><span class="k-btn__code">A-01</span>Latch<span class="k-btn__code">KL2</span></button>`,
-      })}
-      ${spec({
-        code: 'BTN-05',
-        title: 'Behaviours',
-        cls: 'data-scramble-hover · data-glitch-hover · data-load-demo',
-        body: `
-          <button class="k-btn" data-scramble-hover><span data-label>Decode on hover</span></button>
-          <button class="k-btn k-btn--cobalt" data-glitch-hover>Glitch on hover</button>
-          <button class="k-btn k-btn--solid" data-load-demo style="min-width:150px">Click → load</button>`,
       })}
       ${spec({
         code: 'BTN-06',
@@ -82,7 +73,7 @@ export default function mount(root: HTMLElement) {
     <div class="spec-grid">
       <a class="k-cta" href="#/spatial">
         <span class="k-cta__code">CTA-01 / GPU</span>
-        <span class="k-cta__meta">Open spatial module<br>WebGPU renderer<br>7 scenes</span>
+        <span class="k-cta__meta">Open spatial module<br>WebGPU renderer<br>Contours / wire / pixels</span>
         <span class="k-cta__label">Enter shell</span>
         <span class="k-cta__arrow">${pixelIcon('arrow-r', { size: 22 })}</span>
       </a>
@@ -130,9 +121,7 @@ export default function mount(root: HTMLElement) {
         cls: '.k-seg-ctl .k-stepper',
         bodyCls: 'spec-body--col',
         body: `
-          <div class="t-micro">FRAME RATE</div>
-          <div class="k-seg-ctl"><button>6</button><button aria-pressed="true">12</button><button>24</button><button>60</button></div>
-          <div class="t-micro" style="margin-top:8px">MODE</div>
+          <div class="t-micro">MODE</div>
           <div class="k-seg-ctl"><button aria-pressed="true">Scan</button><button>Map</button><button>Link</button></div>
           <div class="t-micro" style="margin-top:8px">SQUAD</div>
           <div class="k-stepper"><button aria-label="decrease">-</button><output>03</output><button aria-label="increase">+</button></div>`,
@@ -183,9 +172,7 @@ export default function mount(root: HTMLElement) {
         title: 'Range',
         cls: '.k-range',
         bodyCls: 'spec-body--col',
-        body: ['Thermal limit', 'Signal gain', 'Buffer depth']
-          .map((l, i) => `<label class="k-range"><span class="k-range__label t-micro"><span>${l}</span><span>0–100</span></span><input type="range" min="0" max="100" value="${[62, 28, 84][i]}"><output class="k-range__out">000</output></label>`)
-          .join(''),
+        body: `<label class="k-range"><span class="k-range__label t-micro"><span>Signal gain</span><span>0–100</span></span><input type="range" min="0" max="100" value="28"><output class="k-range__out">000</output></label>`,
       })}
     </div>
 
@@ -197,7 +184,6 @@ export default function mount(root: HTMLElement) {
         cls: '.k-progress[style=--p:N%]',
         bodyCls: 'spec-body--col',
         body: `
-          <div class="k-meter"><div class="k-meter__row"><span>Loading memory</span><b>072</b></div><div class="k-progress" style="--p:72%"></div></div>
           <div class="k-meter" data-state="caution"><div class="k-meter__row"><span>Thermal</span><b>046</b></div><div class="k-progress k-progress--tall" style="--p:46%"></div></div>
           <div class="k-meter"><div class="k-meter__row"><span>Sync</span><b>—</b></div><div class="k-progress k-progress--indet"></div></div>
           <div class="k-meter" data-state="critical"><div class="k-meter__row"><span>Integrity</span><b>012</b></div><div class="k-progress k-progress--thin" style="--p:12%"></div></div>`,

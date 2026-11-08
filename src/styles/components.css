@@ -906,7 +906,45 @@
 .k-dots {
   --d: 6px;
   --d-c: var(--c-bone);
-  background: radial-gradient(circle, var(--d-c) 35%, transparent 38%) 0 0 / var(--d) var(--d);
+  --d-r: 35%;
+  background: radial-gradient(circle, var(--d-c) var(--d-r), transparent calc(var(--d-r) + 3%)) 0 0 / var(--d) var(--d);
+}
+.k-dots--x,
+.k-dots--x-block,
+.k-dots--motif {
+  --d: 14px;
+  --d-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m6 6 12 12m0-12L6 18' stroke='black' stroke-width='2.5'/%3E%3C/svg%3E");
+  position: relative;
+  isolation: isolate;
+  background-image: none;
+}
+:is(.k-dots--x, .k-dots--x-block, .k-dots--motif)::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--d-c);
+  mask: var(--d-mask) 0 0 / var(--d-mask-size, var(--d) var(--d)) repeat;
+}
+.k-dots--x-block {
+  --d: 12px;
+  --d-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M1 1h7v5l4 4 4-4V1h7v7h-5l-4 4 4 4h5v7h-7v-5l-4-4-4 4v5H1v-7h5l4-4-4-4H1z'/%3E%3C/svg%3E");
+}
+.k-dots--motif {
+  --d: 64px;
+  --d-mask-size: calc(var(--d) * 3) calc(var(--d) * 2);
+  --d-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 144 96' shape-rendering='crispEdges'%3E%3Cpath d='M20 24h4v-4h4v8h-8zM68 20h4v4h-4zM72 24h4v4h-4zM114 26h4v4h-4zM118 22h4v4h-4zM122 18h4v4h-4zM20 68h8v8h-8zM68 68h4v4h-4zM72 72h4v4h-4zM116 72h4v4h-4zM120 68h4v4h-4z'/%3E%3C/svg%3E");
+}
+.k-hatch {
+  --hatch-c: var(--c-bone);
+  --hatch-pitch: 12px;
+  --hatch-weight: 1px;
+  --hatch-ink: var(--hatch-c) 0 var(--hatch-weight), transparent var(--hatch-weight) var(--hatch-pitch);
+  background-image: repeating-linear-gradient(135deg, var(--hatch-ink));
+}
+.k-hatch--cross {
+  background-image: repeating-linear-gradient(135deg, var(--hatch-ink)), repeating-linear-gradient(45deg, var(--hatch-ink));
 }
 .k-scan {
   background: repeating-linear-gradient(0deg, var(--accent) 0 1px, transparent 1px 4px);

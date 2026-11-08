@@ -1,4 +1,5 @@
 import { pageHead, section } from './_ui';
+import { mountRadialSequences, radialSequences } from './telemetry-dials';
 import { checker, pixelIcon, pixelSigil } from '../lib/glyphs';
 import {
   mountDefragRing, mountGauge, mountMemoryGrid, mountOrbitMap, mountScope,
@@ -21,6 +22,7 @@ export default function mount(root: HTMLElement) {
     ${pageHead('05', 'Tele<br><span class="t-outline">metry</span>', ['CANVAS 2D INSTRUMENTS', 'STEP LOOPS 4–20 FPS', 'PAUSE OFF-SCREEN'], 115)}
     <p class="page-lede">Instruments for machine-vision dashboards. Each is <b>mountX(el, opts) → cleanup</b> in <b>lib/hud.ts</b>,
     driven by a fixed-rate <b>stepLoop</b> so readouts jump rather than glide, and pause automatically when scrolled out of view.</p>
+    ${radialSequences()}
 
     ${section('Dashboard', 'COMPOSITE')}
     <div class="tel-grid">
@@ -43,6 +45,7 @@ export default function mount(root: HTMLElement) {
     </div>
   </section>`;
 
+  b.add(mountRadialSequences(root));
   b.add(hydrate(root));
   b.add(mountOrbitMap($('#t-orbit', root), { target: 'VESTA (7)' }));
   const dn = $('#t-defrag-n', root);
@@ -63,7 +66,7 @@ export default function mount(root: HTMLElement) {
   b.add(mountTerminal($('#t-log', root)));
   b.add(mountTracker($('#t-track', root)));
 
-  // countdown
+  // Countdown
   const cn = $('#t-count', root);
   b.add(
     stepLoop(

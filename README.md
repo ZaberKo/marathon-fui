@@ -33,7 +33,7 @@ pnpm build      # typecheck + production build → dist/
 | 04 | `#/glyphs`   | 12 cards of animated marks (17 kinds), 24 pixel icons, morphing sigils, static generators, CSS patterns |
 | 05 | `#/telemetry`| Orbit map, defrag ring, countdown, gauges, spectrum, scope, memory grid, log, tracker, readouts |
 | 06 | `#/motion`   | Easing comparison, transition monitor, loaders (count ring, plug sequence, scan block…), text wall, marquees |
-| 07 | `#/spatial`  | 8 WebGPU scenes (below), lazy-mounted, with fps / pixel / label controls and a wide toggle |
+| 07 | `#/spatial`  | 8 compact WebGPU scenes (below), lazy-mounted, with FPS and pixel-scale controls and a wide toggle on each card |
 | 08 | `#/fault`    | Full-screen runtime-error inversion with a text wall, alarm grid, triangle field; alerts, banner, modal |
 | 09 | `#/study`    | Film page for SHELL 07: synopsis, design notes, and a shot list (with its voice-over) that deep-links into the player |
 
@@ -48,7 +48,7 @@ pnpm build      # typecheck + production build → dist/
 | `dropzone` | Drop zone        | Pixel-texture planet horizon; target triangles; green arcs fall from an orbital source in sequence |
 | `headscan` | Head scan        | Real-proportion SDF head in additive x-ray contours; wire eyes, brain contours, the visual pathway (eye → chiasm → LGN → V1) with flowing signals |
 | `terrain`  | Contour survey   | Marching-squares isolines lifted per level, coloured by elevation; a survey level climbs in steps; ruins as map symbols, drop-zone rings, pods landing |
-| `subject`  | Subject / pixel noise | Body rendered to a 1/5-res mask and shown as solid cobalt cells that drop out / flip tone per step; a huge head as dash rows; contour brain, shed triangles, RUNNER lockup (RenderPipeline) |
+| `subject`  | Subject / pixel noise | Shared with cinema S07. A 1/5-res body mask drives solid cobalt cells with stepped dropouts. A second mask clips broken rows to the head. Green contour and vector fragments render separately. |
 
 ## Reusing pieces
 
@@ -68,7 +68,6 @@ src/lib/standby.ts         STAND BY lockup: ECH tags, checker flags, sigil, micr
 src/lib/defrag.ts          defrag ring: sorted span behind a read head, fragments moved one per step, notches, hatch, scale
 src/lib/hud.ts             OrbitMap / Spectrum / Scope / MemoryGrid / Terminal / Gauge / Tracker (+ re-exports the defrag ring)
 src/lib/hydrate.ts         data-attribute behaviours (+ data-mark, stepped block-wipe entrances)
-src/lib/ambient.ts         flat cobalt slabs and hairline rules behind the stage (solid fills, no dither)
 src/lib/perf.ts, perfHud.ts  perf registry (no three import) + floating tag
 src/lib/toast.ts           notify({ title, msg, state })
 src/lib/util.ts            stepLoop (fixed-fps loop), rng, crispCanvas, cleanup bag
@@ -125,9 +124,9 @@ scripts/                   offline audio pipeline (Lyria needs GOOGLE_API_KEY in
 - **Rule 3 only holds between beats.** Hold frames and fault frames flood the whole field with one flat colour (cobalt,
   yellow, orange-red, crimson).
 - **Scale is part of the style.** Rings, words and figures are cropped by the frame edge.
-- **Flats stay solid; texture is regular.** No random grain or noise blocks behind content. Flood colours take a
-  *regular* black registration-dot screen (`.k-dotscreen`: cell grid, a black square at every corner). Noise is allowed
-  only as pure-colour cells that switch on/off — garbled green glyph rows, pixel-noise model renders.
+- **Keep page and state fields solid.** The kit stage is pure black and state cards use solid signal colour.
+  The Glyphs texture swatch shows `.k-dotscreen` on a bounded plate. Set `--ds` to size the registration tile.
+  Stepped pixel noise belongs to the object it describes, such as a garbled glyph row or a model silhouette.
 - **Pick the render style per shot.** One skeleton can be drawn as contour, x-ray, cel, halftone, voxels or triangle
   shards; the style changes between beats.
 

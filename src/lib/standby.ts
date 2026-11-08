@@ -8,9 +8,10 @@
  *   el.innerHTML = standbyLockup({ size: 14 });  const stop = mountStandby(el);
  *
  * All dimensions are in em, so `size` (px) scales the whole lockup.
- * Sits best on a flat cobalt field (with .k-dotscreen for texture).
+ * Set the lockup on a solid cobalt field.
  */
 import { checker, pixelSigil } from './glyphs';
+import { createGlyphNoise } from './glyphNoise';
 import { crispCanvas, rng, stepLoop } from './util';
 
 export function standbyLockup(o: { size?: number; word?: string; seed?: number } = {}) {
@@ -35,32 +36,6 @@ export function standbyLockup(o: { size?: number; word?: string; seed?: number }
     </div>
     <div class="sb-flag">${ech('t')}<span class="sb-chk">${checker(2, 2, { size: 64 })}</span>${ech('b')}</div>
   </div>`;
-}
-
-/** green garbled noise: 5×7 corrupt "glyphs" on a pixel grid, re-rolled a few at a time */
-function garble(canvas: HTMLCanvasElement, seed: number) {
-  const { ctx, size, dispose } = crispCanvas(canvas);
-  const r = rng(seed);
-  let slots: { on: boolean; bits: number[] }[] = [];
-  const roll = () => ({ on: r() > 0.28, bits: Array.from({ length: 35 }, () => (r() < 0.48 ? 1 : 0)) });
-  const draw = (f: number) => {
-    const { w, h } = size;
-    const px = Math.max(1, Math.round(h / 9));
-    const sw = px * 6;
-    const n = Math.floor(w / sw);
-    if (slots.length !== n) slots = Array.from({ length: n }, roll);
-    for (let k = 0; k < 3; k++) slots[Math.floor(r() * n)] = roll();
-    ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = getComputedStyle(canvas).color;
-    slots.forEach((s, i) => {
-      // a few slots are blank runs: the noise reads as broken words
-      if (!s.on || (i + Math.floor(f / 6)) % 9 === 0) return;
-      for (let b = 0; b < 35; b++) if (s.bits[b]) ctx.fillRect(i * sw + (b % 5) * px, Math.floor(b / 5) * px, px, px);
-    });
-    // a scatter line of single pixels under the glyphs
-    for (let x = 0; x < w; x += px) if (r() < 0.12) ctx.fillRect(x, 8 * px, px, px);
-  };
-  return { draw, dispose };
 }
 
 /** tick row: sparse vertical ticks on the left, corrupted micro text on the right */
@@ -95,7 +70,7 @@ function ticks(canvas: HTMLCanvasElement, seed: number) {
 export function mountStandby(el: HTMLElement, { fps = 12, words = ['Stand by', 'Please'] } = {}) {
   const word = el.querySelector<HTMLElement>('.sb-word');
   const parts = [
-    ...[...el.querySelectorAll<HTMLCanvasElement>('canvas.sb-garble')].map((c) => garble(c, Number(c.dataset.seed))),
+    ...[...el.querySelectorAll<HTMLCanvasElement>('canvas.sb-garble')].map((c) => createGlyphNoise(c, Number(c.dataset.seed))),
     ...[...el.querySelectorAll<HTMLCanvasElement>('canvas.sb-ticks')].map((c) => ticks(c, Number(c.dataset.seed))),
   ];
   const dot = el.querySelector<HTMLElement>('.sb-dot');

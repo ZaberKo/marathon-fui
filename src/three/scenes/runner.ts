@@ -2,10 +2,8 @@
  * CONTOUR RUNNER — armoured figure described only by 1px world-Y contour
  * lines on a black occluding body (every fifth an index contour), a
  * silhouette rim and a sweeping scan band. Machine vision rides on top:
- * a tracked pose skeleton (joints + bones from the rig), leader lines to
- * DOM labels, and a bundle of link threads from above converging on the
- * crown with stepped pulses — the consciousness link. A floor dial with a
- * precision scale turns with the stride.
+ * a tracked pose skeleton (joints + bones from the rig) and leader lines
+ * to DOM labels. A floor dial with a precision scale turns with the stride.
  */
 import * as THREE from 'three/webgpu';
 import { createStage, cornerBox, makeTag, ringLine } from '../core';
@@ -76,11 +74,7 @@ export async function mountRunner(host: HTMLElement, { fps = 12, pixel = 1, labe
   ];
   const tags = labels ? leaders.map((l) => makeTag(host, `<b>${l.label}</b><span>${l.code}</span>`)) : [];
 
-  // link threads: fixed anchor points high above, converging on the crown
-  const threads = Array.from({ length: 7 }, (_, i) => ({ x: -0.9 + i * 0.3, z: (i % 2 ? -0.25 : 0.2), ph: i * 5 }));
-
   const J = new Map<string, THREE.Vector3>(JOINTS.map((n) => [n, new THREE.Vector3()]));
-  const v = new THREE.Vector3();
   const w = new THREE.Vector3();
   const right = new THREE.Vector3();
   let speed = 1;
@@ -118,22 +112,6 @@ export async function mountRunner(host: HTMLElement, { fps = 12, pixel = 1, labe
       else if (/Hand|Foot/.test(n)) fills.color(PAL.hazard).square(p, 5);
       else marks.color(i % 4 === 0 ? PAL.bone : PAL.hazard).square(p, 6);
     });
-
-    // link threads from above into the crown, with a pulse stepping down each
-    const crown = v.copy(hd).setY(hd.y + 0.12);
-    threads.forEach((th, i) => {
-      w.set(th.x, 3.4, th.z);
-      const mid = new THREE.Vector3((w.x + crown.x) / 2, 2.4, (w.z + crown.z) / 2 * 0.5);
-      marks.color(PAL.acid, 0.55).bezier(w, mid, crown, 18);
-      const k = ((frame + th.ph) % 16) / 16;
-      const it = 1 - k;
-      const pp = new THREE.Vector3()
-        .addScaledVector(w, it * it)
-        .addScaledVector(mid, 2 * it * k)
-        .addScaledVector(crown, k * k);
-      fills.color(i === 3 ? PAL.bone : PAL.acid).square(pp, 4);
-    });
-    fills.color(PAL.acid).square(crown, 6);
 
     // leaders to labels
     leaders.forEach((l, k) => {
