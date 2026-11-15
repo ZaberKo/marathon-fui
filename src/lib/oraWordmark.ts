@@ -79,3 +79,67 @@ export function paintOraLetters(
   }
   ctx.restore();
 }
+
+const ease = (t: number, a: number, b: number) => {
+  const p = clamp((t - a) / (b - a));
+  return p < 0.5 ? 4 * p * p * p : 1 - (-2 * p + 2) ** 3 / 2;
+};
+
+/**
+ * Kit build of the wordmark on a fixed frame: the letters are laid out at
+ * their final size and never re-centre. The ring travels once to its seat;
+ * the R stem rises as a capsule whose round top becomes the start of the
+ * shoulder, and the A bowl's stroke grows from zero before it sweeps, so no
+ * shape appears in one jump. Ends on the same frame as the film's build.
+ * `w`, `h` are the drawing size in CSS px.
+ */
+export function paintOraKit(ctx: CanvasRenderingContext2D, t: number, w: number, h: number) {
+  const s = Math.min(w / 640, h / 264);
+  const R = 87 * s;
+  const L = oraWordmarkLayout(R, 1, 1);
+  const x = (w - L.width) / 2;
+  const y = h / 2;
+  const seat = ease(t, 0.05, 0.75);
+  const rise = ease(t, 0.3, 0.9);
+  const shoulder = ease(t, 0.9, 1.4) * Math.PI * 0.5;
+  const bowlIn = ease(t, 1.15, 1.4);
+  const bowl = ease(t, 1.25, 2.0);
+  const aStem = ease(t, 1.8, ORA_BUILD_DURATION);
+
+  // ring: from the canvas centre at its RD-06 size to its seat in the mark
+  const r = R * (1.2 - 0.2 * seat);
+  paintOraRing(ctx, w / 2 + (x + R - w / 2) * seat, y, r);
+
+  ctx.save();
+  ctx.fillStyle = ORA_INK;
+  ctx.strokeStyle = ORA_INK;
+  const stroke = L.stroke;
+  const sx = x + L.rStart;
+  const top = y - R * 0.105;
+  if (rise > 0) {
+    // capsule stem rises out of the baseline: full shape, clipped at the foot
+    const capY = y + R + stroke / 2 - (y + R + stroke / 2 - top) * rise;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(sx - 1, 0, stroke + 2, y + R);
+    ctx.clip();
+    ctx.fillRect(sx, capY, stroke, y + R - capY + 1);
+    ctx.beginPath();
+    ctx.arc(sx + stroke / 2, capY, stroke / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  if (shoulder > 0) {
+    ctx.lineWidth = stroke;
+    ctx.lineCap = 'round';
+    strokeArc(ctx, sx + stroke * 0.5 + R * 0.65, top, R * 0.65, Math.PI, Math.PI + shoulder);
+  }
+  if (bowlIn > 0) {
+    const cx = x + L.aCenter;
+    ctx.lineWidth = R * 0.49 * bowlIn;
+    ctx.lineCap = 'round';
+    strokeArc(ctx, cx, y, R * 0.755, -Math.PI / 2, -Math.PI / 2 + Math.max(0.0001, Math.PI * 2 * bowl));
+    if (aStem > 0) ctx.fillRect(cx + R * 0.51, y - R * 0.2, R * 0.49, R * 1.2 * aStem);
+  }
+  ctx.restore();
+}

@@ -1,85 +1,42 @@
-import { pageHead, section } from './_ui';
+import { pageHead, section, spec } from './_ui';
 import { mountRadialSequences, radialSequences } from './telemetry-dials';
-import { checker, pixelIcon, pixelSigil } from '../lib/glyphs';
 import {
-  mountDefragRing, mountGauge, mountMemoryGrid, mountOrbitMap, mountScope,
-  mountSpectrum, mountTerminal, mountTracker,
-} from '../lib/hud';
+  countdownHTML, cradleHTML, factionHTML, mountCountdown, mountCradle, mountDashField, mountFaction,
+  mountLaunchMap, mountRelayTerm, mountSwarm, relayTermHTML,
+} from '../lib/board';
 import { hydrate } from '../lib/hydrate';
-import { countTo, flickerReadout } from '../lib/motion';
-import { bag, pad, stepLoop, $, $$ } from '../lib/util';
+import { bag, $ } from '../lib/util';
 
 export default function mount(root: HTMLElement) {
   const b = bag();
-  const panel = (code: string, title: string, body: string, cls = '', state = '') => `
-    <div class="k-panel tel-cell ${cls}" ${state ? `data-state="${state}"` : ''}>
-      <div class="k-panel__head"><span>${title}</span><span class="t-pixel" style="font-weight:400;font-size:8px">${code}</span></div>
-      <div class="k-panel__body">${body}</div>
-    </div>`;
 
   root.innerHTML = `
   <section class="page">
-    ${pageHead('05', 'Tele<br><span class="t-outline">metry</span>', ['CANVAS 2D INSTRUMENTS', 'STEP LOOPS 4–20 FPS', 'PAUSE OFF-SCREEN'], 115)}
-    <p class="page-lede">Instruments for machine-vision dashboards. Each is <b>mountX(el, opts) → cleanup</b> in <b>lib/hud.ts</b>,
-    driven by a fixed-rate <b>stepLoop</b> so readouts jump rather than glide, and pause automatically when scrolled out of view.</p>
+    ${pageHead('05', 'Tele<br><span class="t-outline">metry</span>', ['CANVAS 2D · DOM', 'STEP LOOPS 2–12 FPS', 'PAUSE OFF-SCREEN'], 115)}
+    <p class="page-lede">Data surfaces in the reference idiom: flat inks on black, hairline grids with lime tabs, square pixel cells,
+    stepped text blocks and capsule dot type. Each module is <b>mountX(el) → cleanup</b> in <b>lib/board.ts</b>; readouts jump, nothing glides.</p>
     ${radialSequences()}
 
-    ${section('Dashboard', 'COMPOSITE')}
-    <div class="tel-grid">
-      ${panel('HUD-01', 'Orbital approach', `<div class="tel-orbit"><canvas id="t-orbit"></canvas>
-          <div class="tel-orbit__lbl"><span class="t-display t-wide">System</span><b class="t-display">Approach</b><span style="color:var(--c-cobalt-hi)">${pixelIcon('chevron', { size: 18 })}</span></div>
-          <div class="tel-orbit__codes t-micro">340 - 24967<br>QR ER6 9T8<br>TU XEI 0407<br><br>4830 - 2484<br>PK 576 928</div>
-          <span class="tel-orbit__ck" style="color:var(--c-cobalt)">${checker(4, 2, { size: 52 })}</span>
-        </div>`, 'tel-a', 'cobalt')}
-      ${panel('HUD-02', 'Defrag', `<div class="tel-defrag"><canvas id="t-defrag"></canvas><div class="tel-defrag__c"><span class="c-acid">${pixelSigil(4, { size: 20 })}</span><span class="t-pixel c-acid">DEFRAG</span><b class="t-pixel" id="t-defrag-n">000</b></div></div>`, 'tel-b')}
-      ${panel('HUD-03', 'Countdown', `<div class="tel-count"><canvas id="t-count-ring"></canvas><div class="tel-count__n"><b class="t-display t-cond" id="t-count">268</b><span class="t-micro">BUFFER REMAINING</span></div></div>`, 'tel-c', 'critical')}
-      ${panel('HUD-04', 'Gauges', `<div class="tel-gauges"><div id="g1"></div><div id="g2" data-state="caution"></div><div id="g3" data-state="link"></div></div>`, 'tel-d')}
-      ${panel('HUD-05', 'Spectrum', `<canvas class="tel-canvas" id="t-spec"></canvas>`, 'tel-e')}
-      ${panel('HUD-06', 'Oscilloscope', `<canvas class="tel-canvas" id="t-scope"></canvas>`, 'tel-f')}
-      ${panel('HUD-07', 'Loading memory', `<div class="tel-mem"><div id="t-mem"></div><div class="tel-mem__side t-micro"><span class="t-display c-lime" style="font-size:14px;writing-mode:vertical-rl">Loading memory</span><span>SDR37<br>24455<br>MQ EXC</span></div></div>`, 'tel-g', 'link')}
-      ${panel('HUD-08', 'System log', `<div id="t-log"></div>`, 'tel-h')}
-      ${panel('HUD-09', 'Target tracker', `<div id="t-track"></div>`, 'tel-i')}
-      ${panel('HUD-10', 'Readouts', `<div class="tel-reads">${['SHELL', 'CORE TEMP', 'O2 SAT', 'HEART', 'NEURAL', 'UPLINK', 'LAT', 'LON', 'ALT', 'VEL', 'SECTOR', 'GRID', 'PING', 'LOSS', 'CELL', 'SYNC']
-        .map((k, i) => `<div><span>${k}</span><b data-read="${i}">0000</b></div>`)
-        .join('')}</div>`, 'tel-j')}
+    ${section('Board', 'LIB/BOARD.TS')}
+    <div class="tel-board">
+      ${spec({ code: 'BD-01', title: 'Local times', cls: 'mountLaunchMap()', bodyCls: 'spec-body--flush tel-map', body: '<canvas id="bd-map"></canvas>', foot: 'Land as square cells from the 110 m atlas. City times are live; the magenta band sits where local midnight is now.' })}
+      ${spec({ code: 'BD-02', title: 'Capsule countdown', cls: 'countdownHTML() · capsuleText()', bodyCls: 'spec-body--flush', body: countdownHTML(), foot: 'Counts to the top of the hour. Each run of lit pixels is one pill.' })}
+      ${spec({ code: 'BD-03', title: 'Relay tracks', cls: 'cradleHTML() · mountCradle()', bodyCls: 'spec-body--flush', body: cradleHTML(), foot: 'One track takes or gives a block every 1.2 s; braided lines run to the fill edge and pinch at the nodes.' })}
+      ${spec({ code: 'BD-04', title: 'Relay terminal', cls: 'mountRelayTerm()', bodyCls: 'spec-body--flush', body: relayTermHTML() })}
+      ${spec({ code: 'BD-05', title: 'Swarm poster', cls: 'mountSwarm()', bodyCls: 'spec-body--flush tel-poster', body: '<canvas id="bd-swarm"></canvas>', foot: 'Outline triangles with solid red leads, crosses and coded tags; cells drop out per step.' })}
+      ${spec({ code: 'BD-06', title: 'Dash field poster', cls: 'mountDashField()', bodyCls: 'spec-body--flush tel-poster', body: '<canvas id="bd-dash"></canvas>', foot: 'A checker body with a moving edge; loose dash rows feed it from the left.' })}
+      ${spec({ code: 'BD-07', title: 'Faction standing', cls: 'factionHTML() · mountFaction()', bodyCls: 'spec-body--flush', body: factionHTML() })}
     </div>
   </section>`;
 
   b.add(mountRadialSequences(root));
   b.add(hydrate(root));
-  b.add(mountOrbitMap($('#t-orbit', root), { target: 'VESTA (7)' }));
-  const dn = $('#t-defrag-n', root);
-  b.add(mountDefragRing($('#t-defrag', root), { rings: 4, inner: 0.4, onProgress: (p) => (dn.textContent = pad(Math.round(p * 100), 3)) }));
-  let n = 268;
-  b.add(
-    mountDefragRing($('#t-count-ring', root), {
-      rings: 2, inner: 0.66, cell: 7, fps: 12, seed: 9, progress: () => 1 - n / 268,
-      on: '#ff2a17', data: '#8a1206', dim: '#2a0602', hi: '#ececec', line: '#5a1a12',
-    }),
-  );
-  b.add(mountGauge($('#g1', root), { label: 'SHELL INTEGRITY', value: 0.82 }));
-  b.add(mountGauge($('#g2', root), { label: 'THERMAL LOAD', value: 0.46 }));
-  b.add(mountGauge($('#g3', root), { label: 'LINK QUALITY', value: 0.91 }));
-  b.add(mountSpectrum($('#t-spec', root)));
-  b.add(mountScope($('#t-scope', root)));
-  b.add(mountMemoryGrid($('#t-mem', root), { cols: 10, rows: 7 }));
-  b.add(mountTerminal($('#t-log', root)));
-  b.add(mountTracker($('#t-track', root)));
-
-  // Countdown
-  const cn = $('#t-count', root);
-  b.add(
-    stepLoop(
-      2,
-      () => {
-        n = n <= 0 ? 268 : n - 1;
-        if (n % 20 === 0) countTo(cn, n, { from: n + 20, steps: 6, duration: 0.3, pad: 3 });
-        else cn.textContent = pad(n, 3);
-      },
-      cn,
-    ),
-  );
-
-  $$('[data-read]', root).forEach((el, i) => b.add(flickerReadout(el, { fps: 3 + (i % 4), len: 4, seed: i + 1 })));
+  b.add(mountLaunchMap($<HTMLCanvasElement>('#bd-map', root)));
+  b.add(mountCradle($('.k-cradle', root)));
+  b.add(mountRelayTerm($('.k-relay', root)));
+  b.add(mountSwarm($<HTMLCanvasElement>('#bd-swarm', root)));
+  b.add(mountDashField($<HTMLCanvasElement>('#bd-dash', root)));
+  b.add(mountFaction($('.k-faction', root)));
+  b.add(mountCountdown($('.k-count', root)));
   return b.dispose;
 }

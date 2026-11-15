@@ -1,5 +1,5 @@
 /** Markup helpers shared by demo pages. */
-import { pixelSigil } from '../lib/glyphs';
+import { emblem } from '../lib/glyphs';
 
 export function pageHead(num: string, title: string, meta: string[], seed = 1) {
   return `
@@ -7,7 +7,7 @@ export function pageHead(num: string, title: string, meta: string[], seed = 1) {
     <div class="page-index">${num} //</div>
     <h1 class="page-title">${title}</h1>
     <div class="page-meta">
-      <div style="justify-self:end;color:var(--accent)">${pixelSigil(seed, { w: 7, h: 5, size: 42 })}</div>
+      <div style="justify-self:end;color:var(--accent)">${emblem(seed, { size: 42 })}</div>
       ${meta.map((m) => `<div class="t-micro">${m}</div>`).join('')}
     </div>
   </header>`;

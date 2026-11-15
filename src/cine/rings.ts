@@ -245,8 +245,10 @@ function metalReadHeads(ctx: C2, time: number, release = 0) {
 }
 
 const metalReticle = (time: number) => 616 + 30 * easeOut(at(time, .09, .82));
+const FIXED_RETICLE = 640;
+const FIXED_PROTOCOL_RADIUS = 660;
 
-function metalDisc(ctx: C2, time = 0) {
+function metalDisc(ctx: C2, time = 0, fixed = false) {
   const turns = metalTurns(time);
   ctx.save();
   ctx.translate(PROTOCOL_AXIS, 538);
@@ -254,10 +256,14 @@ function metalDisc(ctx: C2, time = 0) {
   metalTracks(ctx, turns);
   metalReadHeads(ctx, time);
   ctx.restore();
-  reticles(ctx, metalReticle(time));
+  reticles(ctx, fixed ? FIXED_RETICLE : metalReticle(time));
 }
 
-export function protocolDial(ctx: C2, elapsed: number, duration: number, { ringIntro = false } = {}) {
+/**
+ * `fixed` is the kit framing: the axis, radius and reticles hold still and the closing
+ * flash cuts are dropped, so all motion stays inside the wheel. The film leaves it off.
+ */
+export function protocolDial(ctx: C2, elapsed: number, duration: number, { ringIntro = false, fixed = false } = {}) {
   const playback = elapsed * FPS;
   const frames = Math.ceil(duration * FPS);
   const remaining = frames - playback;
@@ -272,13 +278,13 @@ export function protocolDial(ctx: C2, elapsed: number, duration: number, { ringI
     : lerp(ringIntro ? 5 : 1, 50, advance);
   dialField(ctx, () => {
     if (ringIntro ? playback <= releaseAt : playback < 1) {
-      metalDisc(ctx, ringIntro ? elapsed : 0);
+      metalDisc(ctx, ringIntro ? elapsed : 0, fixed);
       return;
     }
     const slide = at(source, 49.65, 53.15);
-    const radius = 645 + 102 * easeOut(at(source, 2, 34)) + 26 * at(source, 42, 52);
+    const radius = fixed ? FIXED_PROTOCOL_RADIUS : 645 + 102 * easeOut(at(source, 2, 34)) + 26 * at(source, 42, 52);
     const axis = ringIntro ? lerp(PROTOCOL_AXIS, W / 2, at(source, 5, 14)) : W / 2;
-    const centerX = lerp(axis + 36 * at(source, 14, 24), 701, slide);
+    const centerX = fixed ? PROTOCOL_AXIS : lerp(axis + 36 * at(source, 14, 24), 701, slide);
     const travel = at(source, 1, 59);
     const innerTurn = 31 * travel;
     const middleTurn = -24 * travel;
@@ -330,12 +336,13 @@ export function protocolDial(ctx: C2, elapsed: number, duration: number, { ringI
     if (source > 10) arc(ctx, 0, 0, radius * .77, radius * .815, lead - .027, lead, '#4964ff');
     ctx.restore();
     const spread = lerp(metalReticle(elapsed), 617, transfer);
-    reticles(ctx, spread + 98 * at(source, 15, 36) - 38 * at(source, 37, 59), -234 * slide);
+    if (fixed) reticles(ctx, FIXED_RETICLE);
+    else reticles(ctx, spread + 98 * at(source, 15, 36) - 38 * at(source, 37, 59), -234 * slide);
 
     if (source >= 2 && scan > 0) {
       const grow = at(source, 2, 18);
       ctx.save();
-      ctx.translate(lerp(1035, 1019, grow) + 39 * travel - 52 * slide, lerp(352, 529, grow) - 32 * travel);
+      ctx.translate(lerp(1035, 1019, grow) + (fixed ? 0 : 39 * travel - 52 * slide), lerp(352, 529, grow) - (fixed ? 0 : 32 * travel));
       ctx.rotate(lerp(-.84, -.055, easeOut(grow)) + .115 * at(source, 19, 48));
       registerReadout(ctx, -2, -26, 1, '#122ba9', scan);
       if (source > 22) registerReadout(ctx, 216, -71, .93, '#173ce1');
@@ -343,10 +350,10 @@ export function protocolDial(ctx: C2, elapsed: number, duration: number, { ringI
       text(ctx, label, 94, 1, { size: 47, weight: 750, color: '#91ff32', tracking: 2.4 });
       ctx.restore();
     }
-    if (source >= 43 && source < 58) {
-      const giant = source >= 56;
+    if (source >= 43 && (fixed || source < 58)) {
+      const giant = !fixed && source >= 56;
       ctx.save();
-      ctx.translate(giant ? 951 : lerp(1113, 1068, slide), giant ? -21 : 565);
+      ctx.translate(giant ? 951 : fixed ? 1113 : lerp(1113, 1068, slide), giant ? -21 : 565);
       ctx.scale(giant ? 5.76 : 1.405, giant ? 5.76 : 1.405);
       ctx.fillStyle = ctx.strokeStyle = '#59ff34';
       if (source >= 54) ctx.fill(PROTOCOL_TYPE, 'evenodd');
@@ -356,7 +363,7 @@ export function protocolDial(ctx: C2, elapsed: number, duration: number, { ringI
       }
       ctx.restore();
     }
-    if (source >= 58) registerReadout(ctx, 1746, 381, 2.7, '#102bdc');
+    if (!fixed && source >= 58) registerReadout(ctx, 1746, 381, 2.7, '#102bdc');
   });
 }
 
@@ -479,15 +486,17 @@ function assertionWheel(ctx: C2, radius: number, phase: number, frame: number, v
   ctx.restore();
 }
 
-export function assertionDial(ctx: C2, variant: Assertion, elapsed: number) {
+export function assertionDial(ctx: C2, variant: Assertion, elapsed: number, { fixed = false } = {}) {
   const frame = elapsed * FPS;
   const front = variant === 'subject';
   const pair = variant === 'print';
   const duration = ASSERT_DURATION[variant];
-  const exit = front ? 0 : easeOut(at(elapsed, ASSERT_REVEAL[variant], duration));
+  const exit = front || fixed ? 0 : easeOut(at(elapsed, ASSERT_REVEAL[variant], duration));
   const rise = (H - FIELD_INSET * 2) * exit;
   const scan = at(elapsed, 0, duration);
-  const jump = at(frame, pair ? 14.8 : 16, pair ? 16 : 18);
+  // kit framing: wheels and registers keep their place; only the plates and heads move
+  const drift = fixed ? 0 : scan;
+  const jump = fixed ? 0 : at(frame, pair ? 14.8 : 16, pair ? 16 : 18);
   const phase = 7 * easeOut(at(elapsed, 0, .21)) + (pair ? 47 : 37) * scan;
   const outlined = variant === 'loss' ? (frame < 4 || (frame >= 6 && frame < 7)) : frame < (front ? 6 : 3.2);
   if (rise > 0) {
@@ -499,11 +508,11 @@ export function assertionDial(ctx: C2, variant: Assertion, elapsed: number) {
       rect(ctx, 0, 0, W, H, C.black);
       ctx.save();
       ctx.translate(0, -rise);
-      const cropX = 1048 - 98 * easeOut(at(frame, 2.6, 7.0)) - 46 * jump;
-      const positions = pair ? [445 - jump * 16 - scan * 13, 1211 + jump * 2 + scan * 15] : [front ? 938 - scan * 24 : cropX];
+      const cropX = fixed ? 960 : 1048 - 98 * easeOut(at(frame, 2.6, 7.0)) - 46 * jump;
+      const positions = pair ? [445 - jump * 16 - drift * 13, 1211 + jump * 2 + drift * 15] : [front ? 938 - drift * 24 : cropX];
       for (const [i, x] of positions.entries()) {
-        const y = pair ? 533 + 29 * jump + (i === 0 ? -18 : 14) * scan : front ? 522 + scan * 17 : 12 - 21 * jump;
-        const radius = pair ? 500 + 49 * jump : front ? 680 + frame * .73 : 1015 + 27 * jump;
+        const y = pair ? 533 + 29 * jump + (i === 0 ? -18 : 14) * drift : front ? 522 + drift * 17 : 12 - 21 * jump;
+        const radius = pair ? 500 + 49 * jump : front ? 680 + (fixed ? 20 : frame * .73) : 1015 + 27 * jump;
         ctx.save();
         ctx.translate(x, y);
         if (pair) {
@@ -530,8 +539,8 @@ export function assertionDial(ctx: C2, variant: Assertion, elapsed: number) {
 
       if (front && frame >= 4) {
         ctx.save();
-        ctx.translate(1092 - scan * 41, 508 + scan * 34);
-        ctx.rotate(-.157 + .068 * scan);
+        ctx.translate(1092 - drift * 41, 508 + drift * 34);
+        ctx.rotate(-.157 + .068 * drift);
         rect(ctx, 145, -375, 780, 330, C.black);
         diagnosticFeed(ctx, 'blue', 142, -386, elapsed);
         registerReadout(ctx, 4, -70, 1.76, '#1732ca');
@@ -547,7 +556,7 @@ export function assertionDial(ctx: C2, variant: Assertion, elapsed: number) {
         if (frame >= 1) diagnosticFeed(ctx, 'red', x + 18, 341, elapsed);
         if (frame >= 1.8) {
           ctx.save();
-          ctx.translate(x + 37, 140 - scan * 40);
+          ctx.translate(x + 37, 140 - drift * 40);
           ctx.rotate(Math.PI / 2);
           registerReadout(ctx, 0, -81, 2.05, '#1838d5');
           registerReadout(ctx, 562, -199, 2, '#1b33cd');

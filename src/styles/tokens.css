@@ -45,7 +45,8 @@
   /* --- type ------------------------------------------------------------ */
   --f-display: 'Archivo Variable', 'Archivo', 'Helvetica Neue', Arial, sans-serif;
   --f-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
-  --f-pixel: 'Silkscreen', var(--f-mono);
+  /* codes and indices: the mono face, bold — no small bitmap fonts in the 2D idiom */
+  --f-pixel: var(--f-mono);
 
   --t-micro: 9px;
   --t-small: 11px;

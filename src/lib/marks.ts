@@ -9,7 +9,7 @@
  */
 import { mountDefragRing } from './defrag';
 import { createGlyphNoise } from './glyphNoise';
-import { pixelSigil, blockText } from './glyphs';
+import { emblem, blockText } from './glyphs';
 import { SCAN_BLOCK, scanBlockFrame } from './scanBlock';
 import { pad, rng, stepLoop } from './util';
 
@@ -130,7 +130,7 @@ const target: MarkFn = (el, o) => {
   const br = S('path', { fill: 'none', 'stroke-width': 2 }, s);
   const fill = S('rect', { fill: ACC, opacity: 0 }, s);
   const t1 = S('text', { x: 4, y: h - 3, 'font-size': 6, fill: 'currentColor', 'font-family': 'IBM Plex Mono, monospace' }, s);
-  const t2 = S('text', { x: w - 4, y: h - 3, 'font-size': 6, 'text-anchor': 'end', fill: ACC, 'font-family': 'Silkscreen, monospace' }, s);
+  const t2 = S('text', { x: w - 4, y: h - 3, 'font-size': 6, 'text-anchor': 'end', fill: ACC, 'font-family': 'IBM Plex Mono, monospace', 'font-weight': 700 }, s);
   const insets = [26, 20, 14, 9, 6, 6, 6, 6, 6, 6, 26];
   return stepLoop(Number(o.fps ?? 8), (f) => {
     const k = f % insets.length;
@@ -206,7 +206,7 @@ const link: MarkFn = (el, o) => {
       const plug = S('path', { fill: 'currentColor' }, s);
       cells.push({ plug, sock, fill, x, y });
     }
-  const tag = S('text', { x: cols * cw, y: rows * ch, 'font-size': 6, 'text-anchor': 'end', fill: ACC, 'font-family': 'Silkscreen, monospace' }, s);
+  const tag = S('text', { x: cols * cw, y: rows * ch, 'font-size': 6, 'text-anchor': 'end', fill: ACC, 'font-family': 'IBM Plex Mono, monospace', 'font-weight': 700 }, s);
   const per = 4;
   return stepLoop(Number(o.fps ?? 8), (f) => {
     const total = cells.length * per + 10;
@@ -300,15 +300,15 @@ const tri: MarkFn = (el, o) => {
 const sigil: MarkFn = (el, o) => {
   let seed = Number(o.seed ?? 11);
   const size = Number(o.size ?? 56);
-  const w = Number(o.w ?? 7);
-  const h = Number(o.h ?? 5);
+  const cols = Number(o.w ?? 4);
+  const rows = Number(o.h ?? 4);
   el.classList.add('mk');
   return stepLoop(Number(o.fps ?? 8), (f) => {
     const phase = f % 16;
     if (phase === 0) seed++;
-    // frames 0-2 = noise, then resolve
+    // frames 0-2 cycle candidates, then the emblem holds
     const sd = phase < 3 ? seed * 1000 + f : seed;
-    el.innerHTML = pixelSigil(sd, { w, h, size, density: phase < 3 ? 0.5 : 0.55, sym: phase >= 3 });
+    el.innerHTML = emblem(sd, { cols, rows, size });
   }, el);
 };
 
@@ -374,7 +374,7 @@ const countring: MarkFn = (el, o) => {
   const arc = S('circle', { cx: 50, cy: 50, r: R, fill: 'none', stroke: ACC, 'stroke-width': 4, transform: 'rotate(-90 50 50)', 'stroke-dasharray': `0 ${C}` }, s);
   const full = S('circle', { cx: 50, cy: 50, r: 30, fill: 'none', stroke: ACC, 'stroke-width': 14, opacity: 0 }, s);
   const num = S('text', { x: 54, y: 56, 'font-size': 20, 'font-weight': 800, fill: ACC, 'text-anchor': 'middle', 'font-family': 'Archivo Variable, sans-serif', 'font-stretch': '62%' }, s);
-  const lbl = S('text', { x: 50, y: 66, 'font-size': 5, fill: 'currentColor', 'text-anchor': 'middle', 'font-family': 'Silkscreen, monospace' }, s);
+  const lbl = S('text', { x: 50, y: 66, 'font-size': 5, fill: 'currentColor', 'text-anchor': 'middle', 'font-family': 'IBM Plex Mono, monospace', 'font-weight': 700 }, s);
   lbl.textContent = String(o.label ?? 'BUFFER');
   const max = Number(o.max ?? 268);
   const r = rng(3);

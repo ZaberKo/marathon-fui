@@ -97,7 +97,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.45) 0 1px, transparent 1px 3px);
+  background: repeating-linear-gradient(0deg, #000 0 1px, transparent 1px 3px);
 }
 
 /* dither — ordered-dither style dot overlay */
@@ -110,9 +110,8 @@
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle, rgba(0, 0, 0, 0.9) 30%, transparent 32%) 0 0 / 3px 3px,
-    radial-gradient(circle, rgba(0, 0, 0, 0.6) 30%, transparent 32%) 1.5px 1.5px / 3px 3px;
-  mix-blend-mode: multiply;
+    radial-gradient(circle, #000 30%, transparent 32%) 0 0 / 3px 3px,
+    radial-gradient(circle, #000 22%, transparent 24%) 1.5px 1.5px / 3px 3px;
 }
 
 /* --- HUD: memory grid ------------------------------------------------- */
@@ -652,6 +651,40 @@
   --ds: 4px;
   background-image: radial-gradient(circle, #000 0 0.9px, transparent 1.1px);
   background-position: 0 0;
-  opacity: 0.55;
 }
 
+
+/* --- INITIATING signal tear (lib/initiating.ts) ---------------------------- */
+.k-initiating {
+  --init-mint: #2ee866;
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--c-void);
+}
+.k-initiating__title {
+  fill: var(--init-mint);
+  stroke: var(--init-mint);
+  stroke-width: 0;
+  font: 800 39px var(--f-display);
+  font-stretch: 62%;
+  letter-spacing: 0.025em;
+}
+.k-initiating__title.is-outline {
+  fill: transparent;
+  stroke-width: 0.75;
+}
+.k-initiating__plate {
+  fill: var(--c-cobalt);
+}
+.k-initiating__signal {
+  fill: var(--init-mint);
+}
+.k-initiating__dim {
+  fill: var(--c-cobalt-deep);
+}
+.k-initiating__data {
+  fill: #2a9051;
+  font: 9px var(--f-mono);
+  white-space: pre;
+}

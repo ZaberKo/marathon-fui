@@ -2,16 +2,17 @@ import '@fontsource-variable/archivo/wdth.css';
 import '@fontsource/ibm-plex-mono/400.css';
 import '@fontsource/ibm-plex-mono/500.css';
 import '@fontsource/ibm-plex-mono/700.css';
-import '@fontsource/silkscreen/400.css';
 import './styles/tokens.css';
 import './styles/base.css';
 import './styles/components.css';
 import './styles/fx.css';
 import './styles/pages.css';
+import './styles/menu.css';
 
 import { ROUTES } from './routes';
 import { scramble, sliceGlitchTransition } from './lib/motion';
-import { pixelIcon, crosshair } from './lib/glyphs';
+import { crosshair } from './lib/glyphs';
+import { icon } from './lib/icons';
 import { hex, pad, reducedMotion, stepLoop, type Cleanup } from './lib/util';
 import { mountPerfHud } from './lib/perfHud';
 
@@ -20,7 +21,7 @@ const STATES = ['nominal', 'link', 'caution', 'cobalt'] as const;
 
 app.innerHTML = `
 <div class="shell">
-  <a class="brand" href="#/" aria-label="Home">${pixelIcon('grid', { size: 22 })}</a>
+  <a class="brand" href="#/" aria-label="Home">${icon('grid', { size: 22 })}</a>
   <header class="topbar">
     <div class="tb-title">RUNTIME//KIT</div>
     <div class="tb-route"><span id="tb-route">SYS.BOOT</span></div>

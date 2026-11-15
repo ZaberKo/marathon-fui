@@ -14,45 +14,8 @@ const svg = (w: number, h: number, body: string, o: Opts & { vw?: number; vh?: n
 };
 
 /* ------------------------------------------------------------------ */
-/* Pixel icons — bitmaps                                               */
+/* Bitmaps — large-cell pixel shapes (icons live in lib/icons.ts)      */
 /* ------------------------------------------------------------------ */
-
-const B: Record<string, string[]> = {
-  'arrow-r': ['...##...', '....##..', '.....##.', '########', '########', '.....##.', '....##..', '...##...'],
-  chevron: ['##......', '.##.....', '..##....', '...##...', '...##...', '..##....', '.##.....', '##......'],
-  'chevron-2': ['##..##..', '.##..##.', '..##..##', '...##..#', '...##..#', '..##..##', '.##..##.', '##..##..'],
-  check: ['........', '.......#', '......##', '#....##.', '##..##..', '.####...', '..##....', '........'],
-  cross: ['##....##', '###..###', '.######.', '..####..', '..####..', '.######.', '###..###', '##....##'],
-  warn: ['....#....', '...#.#...', '...#.#...', '..#.#.#..', '..#.#.#..', '.#..#..#.', '.#.....#.', '#...#...#', '#########'],
-  target: ['...#...', '.#####.', '.#...#.', '###.###', '.#...#.', '.#####.', '...#...'],
-  power: ['...#...', '.#.#.#.', '#..#..#', '#..#..#', '#.....#', '.#...#.', '..###..'],
-  lock: ['..###..', '.#...#.', '.#...#.', '#######', '###.###', '###.###', '#######'],
-  link: ['..#...#..', '..#...#..', '.#######.', '.#######.', '.##...##.', '..#####..', '....#....', '....#....', '....#....'],
-  signal: ['......#', '......#', '....#.#', '....#.#', '..#.#.#', '..#.#.#', '#.#.#.#'],
-  battery: ['########.', '#.#.#..##', '#.#.#..##', '#.#.#..##', '########.'],
-  disk: ['#######.', '#.###.##', '#.###..#', '#......#', '#.####.#', '#.####.#', '########'],
-  eye: ['..#####..', '.#.....#.', '#..###..#', '#..###..#', '.#.....#.', '..#####..'],
-  node: ['##...##', '##...##', '..#.#..', '...#...', '...#...', '..###..', '..###..'],
-  down: ['...#...', '...#...', '...#...', '#..#..#', '.#.#.#.', '..###..', '...#...', '#######'],
-  menu: ['#######', '.......', '#######', '.......', '#######'],
-  grid: ['##.##.##', '##.##.##', '........', '##.##.##', '##.##.##', '........', '##.##.##', '##.##.##'],
-  unit: ['..###..', '..###..', '...#...', '#######', '..###..', '..#.#..', '.##.##.'],
-  bio: ['.##.##.', '#######', '#######', '.#####.', '..###..', '...#...'],
-  wave: ['...#.....', '...#..#..', '.#.#..#.#', '.#.#.##.#', '##.###.##', '.#.#.##.#', '.#.#..#.#', '...#..#..', '...#.....'],
-  plus: ['..##..', '..##..', '######', '######', '..##..', '..##..'],
-  eject: ['...#...', '..###..', '.#####.', '#######', '.......', '#######'],
-  scan: ['##...##', '#.....#', '.......', '#######', '.......', '#.....#', '##...##'],
-};
-
-export const pixelIconNames = Object.keys(B);
-
-const mirror = (rows: string[]) => rows.map((r) => r.split('').reverse().join(''));
-
-export function pixelIcon(name: string, o: Opts & { flip?: boolean } = {}) {
-  let rows = B[name] ?? B.cross;
-  if (o.flip) rows = mirror(rows);
-  return bitmap(rows, o);
-}
 
 /** Render any '#'/'.' bitmap as merged-run SVG rects. */
 export function bitmap(rows: string[], o: Opts = {}) {
@@ -90,6 +53,34 @@ export function pixelSigil(seed: number, o: Opts & { w?: number; h?: number; den
     rows.push(left + right);
   }
   return bitmap(rows, { size: o.size ?? w * 4, color: o.color, cls: o.cls });
+}
+
+/**
+ * Vectorheart emblem — a mirrored 4 × 4 grid where each cell is a square,
+ * a quarter disc, a 45° half-cell or a disc. Reads as a designed mark, not
+ * a pixel blob. Same seed → same emblem.
+ */
+const EMBLEM_CELLS = ['M0 0H1V1H0Z', 'M0 1V0A1 1 0 0 1 1 1Z', 'M0 0H1L0 1Z', 'M.5 0A.5 .5 0 1 1 .4999 0Z'];
+export function emblem(seed: number, o: Opts & { cols?: number; rows?: number; empty?: number } = {}) {
+  const r = rng(seed);
+  const cols = o.cols ?? 4;
+  const rows = o.rows ?? 4;
+  const half = Math.ceil(cols / 2);
+  let body = '';
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < half; x++) {
+      if (r() < (o.empty ?? 0.28)) continue;
+      const kind = r();
+      const d = EMBLEM_CELLS[kind < 0.4 ? 0 : kind < 0.7 ? 1 : kind < 0.9 ? 2 : 3];
+      const rot = Math.floor(r() * 4) * 90;
+      const cell = `<path d="${d}" transform="rotate(${rot} .5 .5)"/>`;
+      body += `<g transform="translate(${x} ${y})">${cell}</g>`;
+      const mx = cols - 1 - x;
+      if (mx !== x) body += `<g transform="translate(${mx + 1} ${y}) scale(-1 1)">${cell}</g>`;
+    }
+  }
+  const size = o.size ?? cols * 8;
+  return `<svg class="${o.cls ?? ''}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${cols} ${rows}" width="${size}" height="${Math.round((size * rows) / cols)}" fill="${o.color ?? 'currentColor'}" aria-hidden="true">${body}</svg>`;
 }
 
 /* ------------------------------------------------------------------ */

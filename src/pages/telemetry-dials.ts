@@ -19,30 +19,32 @@ type Dial = {
   paint: 'buffer' | ((ctx: C2, elapsed: number) => void);
 };
 
+// The kit holds the camera still: axis, radius and framing stay put; motion lives in the wheel.
+const KIT = { fixed: true } as const;
 const protocolDuration = ST.S02[1] - ST.S02[0] + 2;
 const returnAt = BUFFER_LOAD_DURATION + BUFFER_LOCK_DURATION;
 const completionDuration = ST.S21[1] - ANCHORS.downbeat;
 const DIAL_GROUPS: readonly (readonly Dial[])[] = [
   [{ code: 'RD-01', title: 'Defrag protocol', shots: 'S02', api: 'protocolDial()', duration: protocolDuration, still: 4.1,
     note: 'Three metal rings counter-rotate as their read heads sweep. The plates expand along the same axis and lock into cobalt and green tracks.',
-    paint: (ctx, elapsed) => protocolDial(ctx, elapsed, protocolDuration, { ringIntro: true }) }],
-  [{ code: 'RD-02', title: 'Liminal buffer', shots: 'S06 · S21', api: 'createBufferDial()', duration: returnAt + BUFFER_RETURN_DURATION, still: 5.5,
+    paint: (ctx, elapsed) => protocolDial(ctx, elapsed, protocolDuration, { ringIntro: true, fixed: true }) }],
+  [{ code: 'RD-02', title: 'Liminal buffer', shots: 'S06 · S21', api: 'createBufferDial(KIT)', duration: returnAt + BUFFER_RETURN_DURATION, still: 5.5,
     note: 'Load to 26%, seat the red lock and yellow insert, then return at 100% and break the tracks apart.',
     paint: 'buffer' }],
   [
     { code: 'RD-03', title: 'Subject assertion', shots: 'S07', api: "assertionDial('subject')", duration: ASSERT_DURATION.subject, still: 1.18,
       note: 'A red plate and a cobalt scan move against each other behind the ASSERT register.',
-      paint: (ctx, elapsed) => assertionDial(ctx, 'subject', elapsed) },
+      paint: (ctx, elapsed) => assertionDial(ctx, 'subject', elapsed, KIT) },
     { code: 'RD-04', title: 'Loss register', shots: 'S10', api: "assertionDial('loss')", duration: ASSERT_DURATION.loss, still: 1.28,
-      note: 'A cropped wheel and a vertical diagnostic feed lift out together to reveal the next shot.',
-      paint: (ctx, elapsed) => assertionDial(ctx, 'loss', elapsed) },
+      note: 'A cropped wheel turns against a vertical diagnostic feed. The film lifts the pair out; the kit holds frame.',
+      paint: (ctx, elapsed) => assertionDial(ctx, 'loss', elapsed, KIT) },
     { code: 'RD-05', title: 'Print queues', shots: 'S12', api: "assertionDial('print')", duration: ASSERT_DURATION.print, still: 1.35,
       note: 'The hold and print registers drive two cropped wheels in opposite directions.',
-      paint: (ctx, elapsed) => assertionDial(ctx, 'print', elapsed) },
+      paint: (ctx, elapsed) => assertionDial(ctx, 'print', elapsed, KIT) },
   ],
   [{ code: 'RD-06', title: 'Completion relay', shots: 'S21', api: 'completionDial()', duration: completionDuration, still: 2.8,
-    note: 'The lime relay sheds its teeth, cuts to a macro radial print, then closes into the ring that opens ORA.',
-    paint: (ctx, elapsed) => completionDial(ctx, elapsed, completionDuration) }],
+    note: 'The lime relay sheds its teeth while the radial print grows under the flying chips. The print merges to bone, then flips to the ORA ring in whole wedges.',
+    paint: (ctx, elapsed) => completionDial(ctx, elapsed, completionDuration, KIT) }],
 ];
 
 function mountDial(card: HTMLElement, group: readonly Dial[], fonts: Promise<void>) {
@@ -72,10 +74,10 @@ function mountDial(card: HTMLElement, group: readonly Dial[], fonts: Promise<voi
     const bg = $<HTMLCanvasElement>('.tel-dial__field', view).getContext('2d')!;
     const host = $('.tel-dial__portrait', view);
     layers.unshift(bg);
-    let tracks = bufferTracks();
+    let tracks = bufferTracks(undefined, KIT);
     loadPortrait = () => {
       loadPortrait = undefined;
-      void Promise.allSettled([createBufferDial(), createGL(host, quality(), 'BUFFER DIAL')]).then(([model, renderer]) => {
+      void Promise.allSettled([createBufferDial(KIT), createGL(host, quality(), 'BUFFER DIAL')]).then(([model, renderer]) => {
         const portrait = model.status === 'fulfilled' ? model.value : null;
         const device = renderer.status === 'fulfilled' ? renderer.value : null;
         if (disposed || !portrait || !device) {

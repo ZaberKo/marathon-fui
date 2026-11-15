@@ -95,41 +95,7 @@ export function vertexWorld(mesh: THREE.Mesh, i: number, target: THREE.Vector3) 
 /* ------------------------------------------------------------------ */
 /* Land mask                                                           */
 /* ------------------------------------------------------------------ */
-let landP: Promise<(lat: number, lon: number) => boolean> | null = null;
-
-/** Sample land from coastline intersections cached for each requested latitude. */
-export function loadLandMask() {
-  if (landP) return landP;
-  landP = (async () => {
-    const [{ feature }, topo] = await Promise.all([import('topojson-client'), import('world-atlas/land-110m.json')]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const land = feature((topo as any).default ?? topo, ((topo as any).default ?? topo).objects.land) as any;
-    const polys: number[][][][] = land.features.flatMap((f: any) =>
-      f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates,
-    );
-    const rings = polys.flat();
-    const rows = new Map<number, number[]>();
-    return (lat: number, lon: number) => {
-      let crossings = rows.get(lat);
-      if (!crossings) {
-        crossings = [];
-        for (const ring of rings) {
-          for (let i = 1; i < ring.length; i++) {
-            const [x0, y0] = ring[i - 1];
-            const [x1, y1] = ring[i];
-            if ((y0 > lat) === (y1 > lat)) continue;
-            crossings.push(x0 + (x1 - x0) * (lat - y0) / (y1 - y0));
-          }
-        }
-        crossings.sort((a, b) => a - b);
-        rows.set(lat, crossings);
-      }
-      const x = ((lon + 180) % 360 + 360) % 360 - 180;
-      return crossings.findIndex((boundary) => boundary > x) % 2 === 1;
-    };
-  })();
-  return landP;
-}
+export { loadLandMask } from '../lib/landMask';
 
 /** lat/lon (deg) → point on sphere of radius r (y up, lon 0 at +z). */
 export function latLon(lat: number, lon: number, r = 1, target = new THREE.Vector3()) {

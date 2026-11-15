@@ -1,9 +1,11 @@
 import { standbyLockup } from '../lib/standby';
+import { icon } from '../lib/icons';
 import { pageHead, section, spec } from './_ui';
-import { pixelIcon, triTile, dotMatrix } from '../lib/glyphs';
+import { triTile, dotMatrix } from '../lib/glyphs';
 import { hydrate } from '../lib/hydrate';
 import { scramble } from '../lib/motion';
-import { bag, on, $$ } from '../lib/util';
+import { faultPosterHTML, mountFaultLoop } from '../lib/faultPoster';
+import { bag, on, $, $$ } from '../lib/util';
 
 const SW = [
   { tok: '--c-void', hex: '#000000', name: 'Void', role: 'Negative space between signal beats.', ink: '#ececec' },
@@ -31,6 +33,7 @@ export default function mount(root: HTMLElement) {
   <section class="page">
     ${pageHead('02', 'Signal<br><span class="t-outline">Colour</span>', ['FLAT FILLS ONLY', 'NO GRADIENTS · NO GLOW', 'COLOUR = STATE'], 52)}
     <p class="page-lede">Pure black carries the frame. Signal colours are <b>flat, fully saturated, never blended</b> — each one maps to a system state.
+    A tonal ramp is only allowed as a dither of solid cells. Hold and fault frames cut to one full field of colour.
     Swap the whole UI by setting <b>data-state</b> on any ancestor: every component reads <b>--accent</b> / <b>--frame</b>. Try the ACCENT toggle in the top bar.</p>
 
     ${section('Palette', 'CLICK TO COPY HEX')}
@@ -48,9 +51,9 @@ export default function mount(root: HTMLElement) {
     </div>
 
     ${section('State themes', 'data-state="…"')}
-    <div class="sig-states">${STATES.map(([state, label, message, icon]) => `
+    <div class="sig-states">${STATES.map(([state, label, message, ico]) => `
       <div class="sig-state" data-state="${state}">
-        <div class="k-band"><span>${label}</span>${pixelIcon(icon, { size: 16 })}</div>
+        <div class="k-band"><span>${label}</span>${icon(ico, { size: 16 })}</div>
         <p class="t-micro">${message}</p>
       </div>`).join('')}</div>
 
@@ -65,19 +68,17 @@ export default function mount(root: HTMLElement) {
       })}
       ${spec({
         code: 'CB-02',
-        title: 'Cobalt on crimson',
+        title: 'Runtime error poster · cobalt on crimson',
+        cls: 'faultPosterHTML() · mountFaultLoop()',
         bodyCls: 'spec-body--flush',
-        body: `<div class="sig-poster" style="background:var(--c-crimson);flex-direction:column;align-items:flex-start">
-          <b class="t-display" style="color:var(--c-cobalt)">Error_err</b>
-          <span class="t-micro" style="color:#000">B2EE/S · A 5PN - RR · 0 WWW</span>
-        </div>`,
+        body: `<div class="sig-fault">${faultPosterHTML({ embed: true })}</div>`,
       })}
       ${spec({
         code: 'CB-03',
         title: 'Ink on hazard',
         bodyCls: 'spec-body--flush',
         body: `<div class="sig-poster" style="background:var(--c-hazard);color:var(--c-void)">
-          <span>${pixelIcon('eject', { size: 46 })}</span>
+          <span>${icon('eject', { size: 46 })}</span>
           <b class="t-display t-wide" style="font-size:40px">Eject<br>transf</b>
         </div>`,
       })}
@@ -94,6 +95,7 @@ export default function mount(root: HTMLElement) {
   </section>`;
 
   b.add(hydrate(root));
+  b.add(mountFaultLoop($('.sig-fault', root)));
   $$<HTMLButtonElement>('.sig-sw', root).forEach((btn) =>
     b.add(
       on(btn, 'click', async () => {

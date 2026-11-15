@@ -155,7 +155,11 @@ function releasePrint(ctx: C2, radius: number, inner: number, fracture: number) 
   }
 }
 
-export function bufferTracks(paintPortrait?: PaintPortrait) {
+/** `fixed` holds the ring radii and portrait scale for the kit; the film leaves it off. */
+export function bufferTracks(paintPortrait?: PaintPortrait, { fixed = false } = {}) {
+  const FIXED_RADIUS = 434;
+  const FIXED_INNER = 149;
+  const FIXED_PORTRAIT = 352;
   function load(f: BufferFrame) {
     const { bg, fg, t } = f;
     if (t < 1 / FPS) {
@@ -165,7 +169,7 @@ export function bufferTracks(paintPortrait?: PaintPortrait) {
     const value = EARLY_COUNTS.reduce((n, [when, count]) => t >= when / .967 * COUNT_AT ? count : n, 0);
     const reveal = at(t, .1, .38);
     const sweep = at(t, .22, BUFFER_LOAD_DURATION);
-    const radius = 435 - 40 * easeOut(at(t, .032, .18)) + 39 * at(t, .25, 2.0) + 7 * sweep;
+    const radius = fixed ? FIXED_RADIUS : 435 - 40 * easeOut(at(t, .032, .18)) + 39 * at(t, .25, 2.0) + 7 * sweep;
     const start = lerp(-1.92, -1.71, at(t, .2, 1.25)) + .20 * sweep;
     const end = start + TAU * .26 * easeOut(at(t, .038, COUNT_AT));
     bufferField(bg);
@@ -174,7 +178,7 @@ export function bufferTracks(paintPortrait?: PaintPortrait) {
     activeTrack(bg, radius, 10 + 11 * reveal, start, end);
     if (value > 0) {
       activeTrack(bg, 149, 4.5, start - sweep * 4.2, start + .38 - sweep * 4.2, false);
-      paintPortrait?.(f, 338 + 23 * at(t, .2, 1.45) + 12 * sweep, t * FPS, 4 * reveal);
+      paintPortrait?.(f, fixed ? FIXED_PORTRAIT : 338 + 23 * at(t, .2, 1.45) + 12 * sweep, t * FPS, 4 * reveal);
       trackPacket(bg, radius - 17, start + TAU * sweep, '#cb2652');
     }
     bufferReadout(fg, value, RED);
@@ -190,7 +194,7 @@ export function bufferTracks(paintPortrait?: PaintPortrait) {
     activeTrack(bg, 434, 21, -1.71, .018);
     lockPrint(bg, frame, insert, seal);
     trackPacket(bg, 400, .7 - elapsed * 3.5, '#cf234d');
-    paintPortrait?.(f, 364 - elapsed * 8, 73 + frame, 10);
+    paintPortrait?.(f, fixed ? FIXED_PORTRAIT : 364 - elapsed * 8, 73 + frame, 10);
     bufferReadout(fg, 26, RED);
   }
 
@@ -202,8 +206,8 @@ export function bufferTracks(paintPortrait?: PaintPortrait) {
     const value = RETURN_COUNTS.reduce<number | null>((n, [when, count]) => source >= when ? count : n, null);
     const travel = source / 44;
     const shrink = lerp(travel, easeOut(travel), .62);
-    const radius = lerp(891, 610, shrink);
-    const inner = lerp(350, 218, shrink);
+    const radius = fixed ? FIXED_RADIUS : lerp(891, 610, shrink);
+    const inner = fixed ? FIXED_INNER : lerp(350, 218, shrink);
     const turn = .36 * travel;
     const start = -1.94 + turn;
     const innerStart = -1.94 - turn * 1.4;
@@ -223,14 +227,14 @@ export function bufferTracks(paintPortrait?: PaintPortrait) {
         trackPacket(f.bg, inner + 12, 1.2 - travel * 5.8, '#db2451');
       }
     });
-    paintPortrait?.(f, 336 - 14 * at(source, 4, 40), source + fracture * 9, 4 + 15 * fracture);
+    paintPortrait?.(f, fixed ? FIXED_PORTRAIT : 336 - 14 * at(source, 4, 40), source + fracture * 9, 4 + 15 * fracture);
     bufferReadout(f.fg, value, yellow ? LEMON : RED, { wide: true, yellow });
   }
 
   return { load, lock, resume };
 }
 
-export async function createBufferDial() {
+export async function createBufferDial({ fixed = false } = {}) {
   const scene = new THREE.Scene();
   const camera = new THREE.OrthographicCamera();
   const anchor = new THREE.Vector3(0, .9, 0);
@@ -261,7 +265,7 @@ export async function createBufferDial() {
       f.fg.fillRect(CX - 114 + flicker * 9 - echo, y, 20 + strength * 44 + echo, i % 4 === 0 ? 2 : 1);
       f.fg.fillRect(CX + 106 + flicker * 6, y + 3, 7 + strength * 28, 1);
     }
-  });
+  }, { fixed });
   return {
     ...tracks,
     dispose() {

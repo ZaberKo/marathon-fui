@@ -10,11 +10,11 @@ const CX = W / 2;
 const CY = H / 2;
 const at = (t: number, a: number, b: number) => clamp01((t - a) / (b - a));
 export const COMPLETION_RADIUS = 270;
+const FIXED_RADIUS = 420;
 
 const RELAY_MARK = new Path2D('M0 0H23V24H0Z M0 51H23V74H0Z M51 0H74V23H51Z M51 51H74V74H51Z M37 5A32 32 0 1 1 36.99 5Z M37 24A13 13 0 1 0 37.01 24Z');
 
-function relayReadout(ctx: C2, frame: number, compact: boolean) {
-  const scale = compact ? .43 : 1;
+function relayReadout(ctx: C2, frame: number, compact: boolean, scale = compact ? .43 : 1) {
   ctx.save();
   ctx.translate(CX + 205 * scale, CY - 62 * scale);
   ctx.rotate(Math.PI / 2);
@@ -37,10 +37,38 @@ const RELAY_CUTS = Array.from({ length: 192 }, (_, i) => ({
   block: hash(i, 79) > .83,
 }));
 
-function relay(ctx: C2, frame: number) {
+/**
+ * Stepped black chevrons cut into the relay band on a polar pixel grid
+ * (14-cell period, two-cell stroke, filled peaks) with sparse pixel noise
+ * that re-seeds every second frame.
+ */
+function chevronBand(ctx: C2, r0: number, r1: number, a0: number, a1: number, frame: number) {
+  const rows = 6;
+  const h = (r1 - r0) / rows;
+  const cell = h / ((r0 + r1) / 2);
+  const step = Math.floor(frame / 2);
+  ctx.fillStyle = '#000';
+  ctx.beginPath();
+  for (let i = Math.ceil(a0 / cell); (i + 1) * cell <= a1; i++) {
+    const v = Math.abs((((i % 14) + 14) % 14) - 7);
+    for (let row = 0; row < rows; row++) {
+      const lit = v - row === 1 || v - row === 2 || (v <= 1 && row >= 4) || hash(i, row, step) < .06;
+      if (!lit) continue;
+      const ri = r0 + row * h;
+      const s = i * cell;
+      ctx.moveTo(Math.cos(s) * (ri + h), Math.sin(s) * (ri + h));
+      ctx.arc(0, 0, ri + h, s, s + cell);
+      ctx.arc(0, 0, ri, s + cell, s, true);
+      ctx.closePath();
+    }
+  }
+  ctx.fill();
+}
+
+function relay(ctx: C2, frame: number, fixed = false) {
   bufferField(ctx);
   const shed = at(frame, 13, 34);
-  const radius = 464 - 57 * easeOut(shed);
+  const radius = fixed ? FIXED_RADIUS : 464 - 57 * easeOut(shed);
   const turn = .036 * frame;
   const yellow = frame < 2;
   const ink = yellow ? '#ebff39' : '#99ff19';
@@ -53,10 +81,11 @@ function relay(ctx: C2, frame: number) {
   if (frame < 33) {
     for (let i = 0; i < 4; i++) {
       const a = i * Math.PI / 2;
-      arc(ctx, 0, 0, outer - 42, outer, a + .038, a + 1.425 - .26 * shed, ink);
+      arc(ctx, 0, 0, outer - 42, outer, a + .038, a + 1.425 - .26 * shed, fixed && frame < 4 ? '#e4f83a' : ink);
+      if (fixed) chevronBand(ctx, outer - 42, outer, a + .038, a + 1.425 - .26 * shed, frame);
     }
     ctx.fillStyle = '#0c2003';
-    for (const cut of RELAY_CUTS) {
+    for (const cut of fixed ? [] : RELAY_CUTS) {
       const r = cut.radius + outer - 220;
       ctx.save();
       ctx.rotate(cut.angle);
@@ -104,11 +133,11 @@ const CHIPS = Array.from({ length: 120 }, (_, i) => ({
 }));
 
 /** The small relay sheds its teeth clockwise before the macro shot cuts in. */
-function looseRadials(ctx: C2, frame: number) {
+function looseRadials(ctx: C2, frame: number, drop = 0) {
   ctx.save();
   ctx.translate(CX, CY);
-  for (const chip of CHIPS) {
-    if (frame < chip.birth) continue;
+  for (const [n, chip] of CHIPS.entries()) {
+    if (frame < chip.birth || hash(n, 7) < drop) continue;
     const travel = easeOut(at(frame, chip.birth, chip.birth + 13));
     const r = 178 + chip.depth * 86 + 68 * travel;
     ctx.save();
@@ -125,6 +154,7 @@ function looseRadials(ctx: C2, frame: number) {
   const disperse = easeOut(at(frame, 12, 33));
   const bits = 8 + Math.floor(disperse * 19);
   for (let i = 0; i < bits; i++) {
+    if (hash(i, 8) < drop) continue;
     const x = 1048 + 270 * hash(i, 31) + 29 * disperse;
     const y = 727 + 191 * hash(i, 57) + 26 * disperse;
     const wide = hash(i, 32);
@@ -166,13 +196,14 @@ const COMB = Array.from({ length: 352 }, (_, i) => ({
   strength: hash(i, 23),
 }));
 
-function metalTracks(ctx: C2, frame: number, radius: number, compact: boolean) {
+/** `whiten` (kit only) merges sectors into flat bone and thins the comb before the lime flip. */
+function metalTracks(ctx: C2, frame: number, radius: number, compact: boolean, { whiten = 0, fixed = false } = {}) {
   const rate = compact ? 1.14 : 1;
   const turn = .0035 * frame + .085 * easeOut(at(frame, 0, 30));
   const innerTurn = .32 - .009 * frame;
   ctx.save();
   ctx.translate(CX, CY);
-  if (!compact && frame < 29) {
+  if (!compact && !fixed && frame < 29) {
     ctx.globalAlpha = 1 - at(frame, 11, 29);
     arc(ctx, 0, 0, radius * .809, radius * 1.015, -.71 + turn, -.46 + turn, '#d3d9d3');
     arc(ctx, 0, 0, radius * .802, radius * 1.013, -.31 + turn, -.09 + turn, '#8abe42');
@@ -186,12 +217,13 @@ function metalTracks(ctx: C2, frame: number, radius: number, compact: boolean) {
     const angle = start * RAD + turn * (r0 < .72 ? .54 : 1) - (1 - life) * .19;
     const inner = radius * (compact ? Math.max(.56, r0 - .105) : r0);
     const outer = radius * r1;
-    arc(ctx, 0, 0, inner, outer, angle, angle + width, fill);
-    const dense = index % 3 === 2 || index === 11;
+    const merged = whiten > 0 && hash(index, 3) * 1.12 < whiten;
+    arc(ctx, 0, 0, inner, outer, angle, angle + width, merged ? '#d3d7d0' : fill);
+    const dense = !merged && (index % 3 === 2 || index === 11);
     const stripeCount = dense ? 37 : 16;
     for (let i = 0; i < stripeCount; i++) {
       const key = hash(i, index, 49);
-      if (key < .22) continue;
+      if (key < (merged ? .86 : .22)) continue;
       const a = angle + width * hash(i, index, 17);
       const ri = lerp(inner, outer, hash(i, index, 38) * .62);
       const ro = lerp(ri, outer, .52 + hash(i, index, 26) * .48);
@@ -219,7 +251,8 @@ function metalTracks(ctx: C2, frame: number, radius: number, compact: boolean) {
   for (const [lane, color] of ['#d6ded6', '#768178', '#414b44'].entries()) {
     ctx.beginPath();
     for (const tick of COMB) {
-      if (Math.floor(tick.strength * 3) !== lane) continue;
+      if (Math.floor(tick.strength * 3) !== lane || hash(tick.angle, 5) < whiten * .9) continue;
+      if (fixed && hash(tick.angle, 9) > at(frame, 0, 12)) continue;
       const a = (tick.angle + innerTurn + TAU) % TAU;
       const open = (tick.angle + .24) % TAU;
       const cluster = Math.sin(a * 2.6) + .31 * Math.sin(a * 6.2);
@@ -241,8 +274,27 @@ function metalTracks(ctx: C2, frame: number, radius: number, compact: boolean) {
   ctx.restore();
 }
 
-function macroRadials(ctx: C2, frame: number) {
+/** Kit furniture shared by the macro and bone phases so nothing pops at their seams. */
+function kitFurniture(ctx: C2, radius: number) {
+  bufferField(ctx);
+  ring(ctx, CX, CY, 145, '#62771d', 1.75);
+  for (const s of [-1, 1]) for (const t of [-1, 1]) plus(ctx, CX + s * radius * .62, CY + t * radius * .44, 11, '#168657', 2);
+}
+
+function macroRadials(ctx: C2, frame: number, fixed = false) {
   const local = frame - 38;
+  if (fixed) {
+    // Kit: the relay's outer arc retracts on steps, its chips and data bits
+    // keep flying and drop out one by one while the tracks grow underneath.
+    const radius = FIXED_RADIUS;
+    kitFurniture(ctx, radius);
+    const retract = Math.floor(at(local, 0, 14) * 7) / 7;
+    if (retract < 1) ring(ctx, CX, CY, radius, '#99ff19', 2.25, TAU - 2.13 + 2.52 * retract, TAU + .39);
+    metalTracks(ctx, local, radius, false, { fixed });
+    looseRadials(ctx, frame, at(local, 2, 40) * 1.05);
+    if (frame >= 84) relayReadout(ctx, frame, false, .43);
+    return;
+  }
   const radius = 970 + 15 * Math.sin(local * .035);
   metalTracks(ctx, local, radius, false);
   ctx.save();
@@ -265,9 +317,13 @@ function macroRadials(ctx: C2, frame: number) {
   if (frame >= 84) relayReadout(ctx, frame, false);
 }
 
-function compactRadials(ctx: C2, frame: number) {
+function compactRadials(ctx: C2, frame: number, fixed = false) {
+  if (fixed) {
+    limeFlip(ctx, frame, FIXED_RADIUS);
+    return;
+  }
   const lock = .70 * easeOut(at(frame, 126, 161)) + .30 * at(frame, 138, 194);
-  const radius = lerp(306, COMPLETION_RADIUS, lock);
+  const radius = fixed ? FIXED_RADIUS : lerp(306, COMPLETION_RADIUS, lock);
   if (frame < 138) {
     metalTracks(ctx, 71 + (frame - 110) * 2.24, radius, true);
     ring(ctx, CX, CY, 108, '#7e8d23', 1.65);
@@ -293,19 +349,79 @@ function compactRadials(ctx: C2, frame: number) {
   ctx.restore();
 }
 
-export function completionDial(ctx: C2, elapsed: number, duration: number) {
+// Lime flip: the bone ring turns lime in whole wedges, outer band first,
+// inner band a frame behind; leftover wedges keep their stripes until hit.
+type Wedge = { a0: number; a1: number; at: number };
+function wedges(seed: number, first: number, spread: number): Wedge[] {
+  const out: Wedge[] = [];
+  let a = hash(seed, 1) * TAU;
+  const end = a + TAU;
+  for (let i = 0; a < end; i++) {
+    const w = Math.min(end - a, (18 + hash(seed, i, 2) * 52) * RAD);
+    out.push({ a0: a, a1: a + w, at: first + Math.floor(hash(seed, i, 3) * spread) });
+    a += w;
+  }
+  return out;
+}
+const FLIP_OUTER = wedges(11, 138, 6);
+const FLIP_INNER = wedges(29, 139, 8);
+const FLIP_END = 147;
+const RESIDUE = Array.from({ length: 46 }, (_, i) => ({
+  angle: hash(i, 51) * TAU,
+  r: .535 + hash(i, 52) * .07,
+  len: .02 + hash(i, 53) * .07,
+  gone: FLIP_END + 2 + Math.floor(hash(i, 54) * 30),
+  ink: hash(i, 55) > .6 ? '#4f8f0c' : '#b9f27a',
+}));
+
+function limeFlip(ctx: C2, frame: number, radius: number) {
+  const mid = radius * .735;
+  if (frame < FLIP_END) {
+    const whiten = at(frame, 112, 136);
+    kitFurniture(ctx, radius);
+    // the gaps between sectors close in two steps so the bone reads as one disc
+    if (frame >= 126) arc(ctx, CX, CY, radius * (frame >= 132 ? .56 : .7), radius * .99, 0, TAU, '#c9cec6');
+    metalTracks(ctx, frame - 38, radius, false, { whiten, fixed: true });
+    if (frame < 134) relayReadout(ctx, frame, true);
+    for (const w of FLIP_OUTER) if (frame >= w.at) arc(ctx, CX, CY, mid, radius * 1.01, w.a0, w.a1, C.lime);
+    for (const w of FLIP_INNER) if (frame >= w.at) arc(ctx, CX, CY, radius * .51, mid + 1, w.a0, w.a1, C.lime);
+    return;
+  }
+  bufferField(ctx);
+  arc(ctx, CX, CY, radius * .51, radius, 0, TAU, C.lime);
+  arc(ctx, CX, CY, radius * .51, radius * .535, 0, TAU, '#5cbc06');
+  ctx.save();
+  ctx.translate(CX, CY);
+  for (const tick of RESIDUE) {
+    if (frame >= tick.gone) continue;
+    ctx.save();
+    ctx.rotate(tick.angle);
+    ctx.fillStyle = tick.ink;
+    ctx.fillRect(radius * tick.r, -1, radius * tick.len, 2);
+    ctx.restore();
+  }
+  ctx.restore();
+  ring(ctx, CX, CY, 145, '#c9d62c', 1.75);
+  for (const s of [-1, 1]) for (const t of [-1, 1]) {
+    plus(ctx, CX + s * radius * .25, CY + t * radius * .25, 7, '#20b884', 1.5);
+    plus(ctx, CX + s * radius * .62, CY + t * radius * .44, 11, '#168657', 2);
+  }
+}
+
+/** `fixed` keeps one radius from relay to lock (no macro cut, no shrink) for the kit. */
+export function completionDial(ctx: C2, elapsed: number, duration: number, { fixed = false } = {}) {
   // Reference-frame cue positions, sampled continuously on the film clock.
   const frame = elapsed / duration * 197;
   dialField(ctx, () => {
     if (frame < 1) {
       yellowBufferGuide(ctx);
     } else if (frame < 38) {
-      relay(ctx, frame);
+      relay(ctx, frame, fixed);
       if (frame > 12) looseRadials(ctx, frame);
     } else if (frame < 110) {
-      macroRadials(ctx, frame);
+      macroRadials(ctx, frame, fixed);
     } else {
-      compactRadials(ctx, frame);
+      compactRadials(ctx, frame, fixed);
     }
   });
 }

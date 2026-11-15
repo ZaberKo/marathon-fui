@@ -13,9 +13,11 @@
  *  .k-stepper              +/- numeric
  *  data-mark="checker"     animated vector mark (see lib/marks.ts)
  *  .k-standby              STAND BY lockup (see lib/standby.ts)
+ *  [data-initiating]       INITIATING signal tear, looped (see lib/initiating.ts)
  *  ENTER selector          stepped block-wipe entrance on scroll-in
  */
 import { mountStandby } from './standby';
+import { mountInitiatingLoop } from './initiating';
 import { glitch, reveal, scramble } from './motion';
 import { markOptsFrom, mountMark } from './marks';
 import { $$, bag, on, reducedMotion } from './util';
@@ -28,6 +30,7 @@ export function hydrate(root: HTMLElement) {
 
   $$('[data-mark]', root).forEach((el) => b.add(mountMark(el, el.dataset.mark!, markOptsFrom(el))));
   $$('.k-standby', root).forEach((el) => b.add(mountStandby(el)));
+  $$('[data-initiating]', root).forEach((el) => b.add(mountInitiatingLoop(el)));
 
   // page head choreography: title lines clip in, meta decodes
   const title = root.querySelector<HTMLElement>('.page-title');

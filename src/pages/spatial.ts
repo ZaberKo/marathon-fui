@@ -1,5 +1,6 @@
 import { pageHead, section } from './_ui';
-import { checker, pixelIcon } from '../lib/glyphs';
+import { icon } from '../lib/icons';
+import { checker } from '../lib/glyphs';
 import { hydrate } from '../lib/hydrate';
 import { adapter } from '../lib/perf';
 import { bag, on, stepLoop, $, $$ } from '../lib/util';
@@ -30,7 +31,7 @@ export default async function mount(root: HTMLElement) {
         (c) => `
         <article class="spec sp-cell" data-key="${c.key}">
           <div class="spec-head"><span class="code">${c.code}</span><span>${c.title}</span><span class="cls" data-fps>—</span>
-            <button class="sp-max" type="button" aria-label="Toggle wide" aria-pressed="false" title="Toggle wide">${pixelIcon('scan', { size: 10 })}</button></div>
+            <button class="sp-max" type="button" aria-label="Toggle wide" aria-pressed="false" title="Toggle wide">${icon('scan', { size: 10 })}</button></div>
           ${c.key === 'subject' ? `<div class="k-seg-ctl sp-subject-styles" id="sp-subject-style" role="group" aria-label="Subject surface treatment">
             <button type="button" data-value="noise" aria-pressed="true">Pixel noise</button>
             <button type="button" data-value="black-dots" aria-pressed="false">Black dots</button>

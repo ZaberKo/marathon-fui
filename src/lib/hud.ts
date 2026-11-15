@@ -47,7 +47,6 @@ export function mountOrbitMap(canvas: HTMLCanvasElement, { fps = 15, color = COL
       ctx.lineWidth = 1;
       // scatter crosses
       ctx.strokeStyle = color;
-      ctx.globalAlpha = 0.6;
       for (const [x, y] of crosses) {
         const px = Math.round(x * w) + 0.5;
         const py = Math.round(y * h) + 0.5;
@@ -58,7 +57,6 @@ export function mountOrbitMap(canvas: HTMLCanvasElement, { fps = 15, color = COL
         ctx.lineTo(px, py + 4);
         ctx.stroke();
       }
-      ctx.globalAlpha = 1;
       // star
       ctx.fillStyle = color;
       ctx.beginPath();
@@ -68,11 +66,9 @@ export function mountOrbitMap(canvas: HTMLCanvasElement, { fps = 15, color = COL
         const rx = b.d * S;
         const ry = rx * tilt;
         ctx.strokeStyle = color;
-        ctx.globalAlpha = 0.85;
         ctx.beginPath();
         ctx.ellipse(cx, cy, rx, ry, -0.18, 0, Math.PI * 2);
         ctx.stroke();
-        ctx.globalAlpha = 1;
         const a = b.a + t * b.sp * 0.25;
         const c = Math.cos(-0.18);
         const s = Math.sin(-0.18);
@@ -137,12 +133,11 @@ export function mountSpectrum(canvas: HTMLCanvasElement, { fps = 12, cols = 32, 
         v[i] = Math.max(0.04, Math.min(1, v[i] + (Math.random() - 0.5) * 0.35));
         pk[i] = Math.max(pk[i] - 0.03, v[i]);
         const n = Math.round(v[i] * rows);
-        ctx.fillStyle = color;
+        // two flat tones: the top fifth of the scale flips to the peak ink
         for (let k = 0; k < n; k++) {
-          ctx.globalAlpha = k > rows * 0.8 ? 1 : 0.55 + (k / rows) * 0.45;
+          ctx.fillStyle = k >= Math.ceil(rows * 0.8) ? peak : color;
           ctx.fillRect(Math.round(i * cw) + 1, h - (k + 1) * cell + 1, Math.max(1, Math.round(cw) - 2), cell - 2);
         }
-        ctx.globalAlpha = 1;
         ctx.fillStyle = peak;
         ctx.fillRect(Math.round(i * cw) + 1, h - Math.round(pk[i] * rows + 1) * cell + 1, Math.max(1, Math.round(cw) - 2), 2);
       }

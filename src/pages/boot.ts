@@ -1,20 +1,21 @@
 import { ROUTES } from '../routes';
-import { checker, pixelIcon, pixelSigil, barcode, locator } from '../lib/glyphs';
-import { mountDefragRing } from '../lib/hud';
+import { icon } from '../lib/icons';
+import { checker, emblem, barcode, locator } from '../lib/glyphs';
+import { initiatingLockup } from '../lib/initiating';
 import { hydrate } from '../lib/hydrate';
 import { countTo, reveal, scramble, typeOut } from '../lib/motion';
 import { bag, pad } from '../lib/util';
 import { mountGL } from './_gl';
 
 const DESC: Record<string, string> = {
-  type: 'Grotesque display, mono micro-copy, pixel face. Rotated, cropped, outlined. Kinetic decode.',
-  signal: 'Black field + flat signal colours. Colour is state, not decoration. Theme flips.',
-  controls: 'Buttons, switches, sliders, fields, tabs, steppers, progress — all stepped.',
-  glyphs: 'Pixel icons, sigils, locators, barcodes, connectors, patterns. SVG generators.',
-  telemetry: 'HUD instruments, tracking and readouts. Film dials in Radial sequences.',
-  motion: 'Stepped easing, hard cuts, glitch slices, block flashes, wipes, marquees.',
+  type: 'Wide grotesque cropped by the frame, mono micro-copy as texture, capsule dot readouts, the INITIATING tear.',
+  signal: 'Black field, flat inks, colour as state. Hold and fault frames flood one solid colour.',
+  controls: 'In-game menus: grey slabs, bone selection, bracket focus, lime claim bars, loadout and armory.',
+  glyphs: 'Vectorheart icons and emblems, live marks, register patterns. Solid geometry, no small bitmaps.',
+  telemetry: 'The film dials on a fixed camera, then the board: pixel map, capsule countdown, relay tracks.',
+  motion: 'Stepped readouts against continuous tracks, hard cuts, wide animated fields, marquees.',
   spatial: 'WebGPU scenes: slice-line figures, neural voxels, bar-field planets, CAD bays.',
-  fault: 'Runtime-error state: red inversion, alarm grid, error marquee, recovery.',
+  fault: 'The runtime-error poster: crimson field, cropped warning, diagnostic cluster, pixel dropout.',
   study: 'SHELL 07 — the kit in a browser film with a score, synthetic narration and a seekable timeline.',
 };
 
@@ -28,7 +29,6 @@ export default function mount(root: HTMLElement) {
       <div class="boot-left">
         <div class="boot-vert" data-boot="vert">INITIATING</div>
         <div class="boot-micro t-micro">${micro}</div>
-        <div class="boot-blocks" data-state="nominal"><span data-mark="scanblock" data-size="104"></span></div>
         <div class="c-acid"><span data-mark="checker" data-cols="3" data-rows="2" data-size="42" data-mode="invert"></span></div>
       </div>
 
@@ -53,9 +53,9 @@ export default function mount(root: HTMLElement) {
         <div class="t-micro">GRAPHIC REALISM / INTERFACE LIBRARY / REV 0.1</div>
         <h1 class="boot-title" data-boot="title">RUNTIME<br><span class="t-outline">//KIT</span></h1>
         <div class="boot-sub">
-          <span class="c-acid">${pixelSigil(7, { w: 5, h: 5, size: 26 })}</span>
-          <p>A reusable set of FUI elements in a neo-brutalist, machine-vision idiom.
-          Swiss grid, flat acid colour, vector tech marks, stepped motion.</p>
+          <span class="c-acid">${emblem(7, { size: 26 })}</span>
+          <p>A reusable 2D interface library in the graphic-realism idiom: Vectorheart marks on a Swiss grid,
+          flat high-contrast inks on black. No chrome, no gloss, no gradients. Readouts step; tracks travel.</p>
         </div>
         <div class="boot-log" id="boot-log"></div>
         <div class="boot-links">
@@ -64,11 +64,11 @@ export default function mount(root: HTMLElement) {
           <span class="c-bone" data-mark="barcode" data-size="150" data-bars="28" data-seed="12"></span>
         </div>
         <div class="boot-ringrow">
-          <div class="boot-ring"><canvas id="boot-ring"></canvas><span class="t-pixel">DEFRAG</span></div>
+          <div class="boot-init" data-initiating>${initiatingLockup()}</div>
           <div class="boot-ready">
             <span class="k-tag k-tag--dot k-tag--blink" id="boot-status">STAND BY</span>
             <a class="k-btn k-btn--solid k-btn--notch" href="#/controls" data-scramble-hover>
-              <span data-label>ENTER LIBRARY</span><span class="k-btn__ico">${pixelIcon('arrow-r', { size: 14 })}</span>
+              <span data-label>ENTER LIBRARY</span><span class="k-btn__ico">${icon('arrow-r', { size: 14 })}</span>
             </a>
             <span class="c-cobalt">${locator({ size: 28 })}</span>
           </div>
@@ -87,7 +87,7 @@ export default function mount(root: HTMLElement) {
           <span class="k-cta__code">${r.num} / ${r.code}</span>
           <span class="k-cta__meta">${DESC[r.id] ?? ''}</span>
           <span class="k-cta__label">${r.label}</span>
-          <span class="k-cta__arrow">${pixelIcon('chevron-2', { size: 20 })}</span>
+          <span class="k-cta__arrow">${icon('chevron-2', { size: 20 })}</span>
         </a>`,
         )
         .join('')}
@@ -95,7 +95,6 @@ export default function mount(root: HTMLElement) {
   </section>`;
 
   b.add(hydrate(root));
-  b.add(mountDefragRing(root.querySelector('#boot-ring')!, { rings: 3, inner: 0.42, cell: 8 }));
 
   // 3D hero
   b.add(

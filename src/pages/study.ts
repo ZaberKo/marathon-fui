@@ -1,5 +1,6 @@
 import { pageHead, section } from './_ui';
-import { pixelIcon } from '../lib/glyphs';
+import { icon } from '../lib/icons';
+
 import { hydrate } from '../lib/hydrate';
 import { bag } from '../lib/util';
 import { SHOTS } from '../cine/film';
@@ -41,7 +42,7 @@ export default function mount(root: HTMLElement) {
         <span class="k-cta__code">FILM 01 / PLAYER</span>
         <span class="k-cta__meta">Sound on · Space play · ←/→ 1 s · C captions EN/中文 · F fullscreen</span>
         <span class="k-cta__label">Play Shell 07</span>
-        <span class="k-cta__arrow">${pixelIcon('chevron-2', { size: 20 })}</span>
+        <span class="k-cta__arrow">${icon('chevron-2', { size: 20 })}</span>
       </a>
     </div>
 
