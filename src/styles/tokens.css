@@ -1,5 +1,5 @@
 /* ==========================================================================
-   RUNTIME//KIT — design tokens
+   MARATHON//ART — design tokens
    Pure black negative space + flat, unblended signal colours.
    Colour is never decoration: it encodes system state.
    ========================================================================== */
@@ -47,6 +47,8 @@
   --f-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
   /* codes and indices: the mono face, bold — no small bitmap fonts in the 2D idiom */
   --f-pixel: var(--f-mono);
+  /* menu screen titles only: a regular-weight, high-contrast condensed display serif */
+  --f-serif: 'Instrument Serif', 'Times New Roman', serif;
 
   --t-micro: 9px;
   --t-small: 11px;

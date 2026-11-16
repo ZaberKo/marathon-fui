@@ -77,12 +77,16 @@ export default function mount(root: HTMLElement) {
 
   root.innerHTML = `
   <section class="page">
-    ${pageHead('01', 'Type<br><span class="t-outline">Specimen</span>', ['ARCHIVO VAR · WDTH 62–125', 'IBM PLEX MONO', 'CAPSULE DOT 5×7'], 31)}
-    <p class="page-lede">Three voices. <b>Display</b> — a grotesque pushed to extreme widths, uppercase, tight leading, rotated 90° or cropped by the frame;
-    it sits in lime stepped blocks or hangs off hairline rules. <b>Mono</b> — coordinates, codes and commands, set tiny and dense as texture.
-    <b>Capsule dot</b> — big readouts and countdowns, each run of lit cells drawn as one pill. Menu screens add a serif for titles only.</p>
+    ${pageHead('01', 'Type<br><span class="t-outline">Specimen</span>', ['ARCHIVO VAR · WDTH 62–125', 'IBM PLEX MONO · CAPSULE DOT', 'INSTRUMENT SERIF · TITLES'], 31)}
+    <p class="page-lede">Four voices, each with one job. No small bitmap fonts.</p>
+    <ul class="type-voices">
+      <li><b class="t-display t-wide">Display</b><span>Archivo variable, widths 62–125, uppercase with tight leading. Cropped by the frame, rotated 90°, or set black in a lime stepped block.</span></li>
+      <li><b class="t-mono">Mono</b><span>IBM Plex Mono for coordinates, codes and commands. Set tiny and dense as a texture layer, not as reading copy.</span></li>
+      <li><b class="type-voices__cap">${capsuleText('DOT', { size: 54 })}</b><span>Capsule dot type: a 5 × 7 grid where each run of lit cells is one pill. Big readouts and countdowns only.</span></li>
+      <li><b class="type-voices__serif">Serif</b><span>Instrument Serif, regular weight, uppercase. Only for in-game screen titles — The Relay, Warden, Codex. Never bold, never body copy.</span></li>
+    </ul>
 
-    ${section('Scale', 'T-01 → T-07')}
+    ${section('Scale', 'T-01 → T-08')}
     <div class="type-scale">
       <div class="ts-row"><span class="t-micro">T-01 DISPLAY / WDTH 125 / 800</span><div class="t-display t-wide" style="font-size:clamp(48px,7vw,112px)">Signal</div></div>
       <div class="ts-row"><span class="t-micro">T-02 DISPLAY / WDTH 62 / 800</span><div class="t-display t-cond" style="font-size:clamp(56px,8vw,128px)">Consciousness</div></div>
@@ -91,6 +95,7 @@ export default function mount(root: HTMLElement) {
       <div class="ts-row"><span class="t-micro">T-05 MONO / 13 / 0.06EM</span><div class="t-mono" style="font-size:13px">assert shell.integrity &gt;= 0.92 :: liminal buffer stable</div></div>
       <div class="ts-row"><span class="t-micro">T-06 MICRO / 9 / 0.08EM</span><div class="t-micro" style="color:var(--c-bone)">SDR37 2445556 · QR EXC FF · RW 0x3F00 · 35 K 35 UV</div></div>
       <div class="ts-row"><span class="t-micro">T-07 CAPSULE DOT / 5×7</span><div class="c-acid">${capsuleText('LOAD 07/07 LINK OK', { size: 520 })}</div></div>
+      <div class="ts-row"><span class="t-micro">T-08 SERIF / INSTRUMENT 400 · SCREEN TITLES</span><div class="type-serif">The Relay</div></div>
     </div>
 
     ${section('Composition', 'LOCKUPS')}

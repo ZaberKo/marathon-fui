@@ -1,9 +1,11 @@
 import gsap from 'gsap';
 import { pageHead, section, spec } from './_ui';
-import { checker } from '../lib/glyphs';
-import { initiatingLockup } from '../lib/initiating';
+import { dotMatrix, triTile } from '../lib/glyphs';
+import { icon } from '../lib/icons';
+import { capsuleText } from '../lib/dotType';
 import { standbyLockup, mountStandby } from '../lib/standby';
-import { faultPosterHTML, mountFaultLoop } from '../lib/faultPoster';
+import { faultOverlayHTML, faultPosterHTML, mountFaultLoop, mountFaultOverlay } from '../lib/faultPoster';
+import { mountDashField, mountSwarm } from '../lib/board';
 import { hydrate } from '../lib/hydrate';
 import { markOptsFrom, mountMark } from '../lib/marks';
 import { animateTextWall, textWall } from '../lib/compose';
@@ -15,7 +17,7 @@ import { bag, on, $, $$ } from '../lib/util';
 const SLIDES = [
   `<div class="mo-slide" style="background:var(--c-cobalt)">${standbyLockup({ size: 22 })}</div>`,
   `<div class="mo-slide" style="background:#000">
-     <span style="color:var(--c-acid)" data-mark="blocktext" data-text="OK" data-size="200"></span>
+     <span class="c-acid">${capsuleText('LINK OK', { size: 420 })}</span>
      <span class="t-micro c-acid" style="align-self:flex-end">NEURAL SUBROUTINE<br>07/07 MOUNTED</span>
    </div>`,
   `<div class="mo-slide mo-slide--poster" style="background:#000">${faultPosterHTML({ embed: true })}</div>`,
@@ -25,16 +27,60 @@ export default function mount(root: HTMLElement) {
   const b = bag();
   root.innerHTML = `
   <section class="page">
-    ${pageHead('06', 'Stepped<br><span class="t-outline">Motion</span>', ['STEPPED READOUTS', 'CONTINUOUS TRACKS', 'HARD CUTS · SOLID FIELDS'], 136)}
-    <p class="page-lede">Two clocks. Letterforms, counters, masks and fields switch on discrete frames; radial tracks travel continuously
-    between those beats. Nothing fades — a state is either drawn or not. The <a class="c-acid" href="#/telemetry">film dials</a> run both clocks
-    in one composition; the wide fields below run them as full-width posters.</p>
+    ${pageHead('06', 'Full<br><span class="t-outline">Fields</span>', ['POSTERS · HOLD FRAMES', 'FAULT STATE', 'STEPPED · NO FADES'], 136)}
+    <p class="page-lede">Between beats the frame floods: one solid field, one lockup, the furniture around it. These are the hold frames,
+    the fault poster and the wide strips, plus the cuts between them. Fields switch on discrete frames and never fade; a state is
+    either drawn or not.</p>
 
-    ${section('Easing', 'SAME DURATION · DIFFERENT TIMING')}
-    <div class="mo-lanes">
-      <div class="mo-lane" style="--tf:linear"><span class="t-micro">LINEAR · TRACK TRAVEL</span><div><i></i></div></div>
-      <div class="mo-lane" style="--tf:steps(4,end)"><span class="t-micro">STEPS(4) · PLATE SWITCH</span><div><i></i></div></div>
-      <div class="mo-lane" style="--tf:steps(12,end)"><span class="t-micro">STEPS(12) · GLYPH LOCK</span><div><i></i></div></div>
+    ${section('Posters', 'FULL-FIELD COMPOSITIONS')}
+    <div class="spec-grid spec-grid--2 fd-grid">
+      ${spec({
+        code: 'FD-01',
+        title: 'Stand by · acid on cobalt',
+        cls: 'standbyLockup()',
+        bodyCls: 'spec-body--flush',
+        body: `<div class="sig-poster fd-poster" style="background:var(--c-cobalt)">${standbyLockup({ size: 9, seed: 11 })}</div>`,
+      })}
+      ${spec({
+        code: 'FD-02',
+        title: 'Runtime error',
+        cls: 'faultPosterHTML() · mountFaultOverlay()',
+        bodyCls: 'spec-body--flush',
+        body: `<div class="fd-fault"><div class="fd-fault__view">${faultPosterHTML({ embed: true })}</div>
+          <div class="fd-fault__ctl">
+            <button class="k-btn k-btn--danger k-hold" data-hold="900" data-fault-go>${icon('warn', { size: 14 })}<span data-label>Hold to inject fault</span></button>
+            <button class="k-btn k-btn--sm" data-fault-now>Full screen now</button>
+          </div></div>`,
+        foot: 'The same poster runs full screen for ten seconds with a recovery count; Acknowledge or Esc recovers.',
+      })}
+      ${spec({
+        code: 'FD-03',
+        title: 'Ink on hazard',
+        bodyCls: 'spec-body--flush',
+        body: `<div class="sig-poster fd-poster" style="background:var(--c-hazard);color:var(--c-void)">
+          <span>${icon('eject', { size: 64 })}</span>
+          <b class="t-display t-wide" style="font-size:clamp(34px,4vw,56px)">Eject<br>transf</b>
+        </div>`,
+      })}
+      ${spec({
+        code: 'FD-04',
+        title: 'Cobalt triangles + alarm',
+        bodyCls: 'spec-body--flush',
+        body: `<div class="sig-poster fd-poster" style="background:#000;padding:0;gap:0">
+          <span style="color:var(--c-cobalt-lo);flex:1;display:block;line-height:0;align-self:stretch">${triTile(10, 5, 9, { size: 400, alt: '#000' }).replace('width="400"', 'width="100%"').replace(/height="\d+"/, 'height="100%" preserveAspectRatio="none"')}</span>
+          <span style="color:var(--c-crimson);padding:0 22px">${dotMatrix(3, 6, () => true, { size: 36 }).replace(/r="1.3"/g, 'r="1.5"')}</span>
+        </div>`,
+      })}
+      ${spec({ code: 'FD-05', title: 'Swarm', cls: 'mountSwarm()', bodyCls: 'spec-body--flush tel-poster', body: '<canvas data-poster="swarm"></canvas>', foot: 'Outline triangles with solid red leads, crosses and coded tags; cells drop out per step.' })}
+      ${spec({ code: 'FD-06', title: 'Dash field', cls: 'mountDashField()', bodyCls: 'spec-body--flush tel-poster', body: '<canvas data-poster="dash"></canvas>', foot: 'A checker body with a moving edge; loose dash rows feed it from the left.' })}
+    </div>
+
+    ${section('Wide fields', 'lib/wide.ts · FULL-WIDTH POSTER STRIPS · 12 FPS')}
+    <div class="mo-wides">
+      ${spec({ code: 'WF-01', title: 'Transfer window', cls: 'mountTransferField()', bodyCls: 'spec-body--flush', body: '<canvas class="mo-wide" data-wide="transfer"></canvas>', foot: 'Dash rows merge into violet blobs and eat in from the right; the stepped block lands one line per four frames.' })}
+      ${spec({ code: 'WF-02', title: 'Swarm sweep', cls: 'mountSwarmField()', bodyCls: 'spec-body--flush', body: '<canvas class="mo-wide" data-wide="swarm"></canvas>', foot: 'Triangles turn a quarter and go acid as the sweep passes, then drop back in one cut.' })}
+      ${spec({ code: 'WF-03', title: 'Sector lock', cls: 'mountSectorField()', bodyCls: 'spec-body--flush', body: '<canvas class="mo-wide" data-wide="sector"></canvas>', foot: 'Block type crawls one cell per two frames over cross marks, hazard stripes, checker flags and a re-rolling barcode.' })}
+      ${spec({ code: 'WF-04', title: 'Defrag index', cls: 'mountDefragField()', bodyCls: 'spec-body--flush', body: '<canvas class="mo-wide mo-wide--tall" data-wide="defrag"></canvas>', foot: 'Fragments consolidate to lime behind a flashing head; the capsule counter turns lime at 100%.' })}
     </div>
 
     ${section('Transitions', 'CLICK TO CUT TO NEXT FRAME')}
@@ -57,14 +103,6 @@ export default function mount(root: HTMLElement) {
       </div>
     </div>
 
-    ${section('Wide fields', 'lib/wide.ts · FULL-WIDTH POSTER STRIPS · 12 FPS')}
-    <div class="mo-wides">
-      ${spec({ code: 'WF-01', title: 'Transfer window', cls: 'mountTransferField()', bodyCls: 'spec-body--flush', body: '<canvas class="mo-wide" data-wide="transfer"></canvas>', foot: 'Dash rows merge into violet blobs and eat in from the right; the stepped block lands one line per four frames.' })}
-      ${spec({ code: 'WF-02', title: 'Swarm sweep', cls: 'mountSwarmField()', bodyCls: 'spec-body--flush', body: '<canvas class="mo-wide" data-wide="swarm"></canvas>', foot: 'Triangles turn a quarter and go acid as the sweep passes, then drop back in one cut.' })}
-      ${spec({ code: 'WF-03', title: 'Sector lock', cls: 'mountSectorField()', bodyCls: 'spec-body--flush', body: '<canvas class="mo-wide" data-wide="sector"></canvas>', foot: 'Block type crawls one cell per two frames over cross marks, hazard stripes, checker flags and a re-rolling barcode.' })}
-      ${spec({ code: 'WF-04', title: 'Defrag index', cls: 'mountDefragField()', bodyCls: 'spec-body--flush', body: '<canvas class="mo-wide mo-wide--tall" data-wide="defrag"></canvas>', foot: 'Fragments consolidate to lime behind a flashing head; the capsule counter turns lime at 100%.' })}
-    </div>
-
     ${section('Signal noise', 'STAND BY · PIXEL GLYPH CORRUPTION')}
     ${spec({
       code: 'NO-01',
@@ -78,13 +116,6 @@ export default function mount(root: HTMLElement) {
       foot: 'Same renderer as Stand By. A few glyphs change per step, with blank runs and stray pixels between them.',
     })}
 
-    ${section('Signal marks', 'INDEX · LINK · SCAN')}
-    <div class="spec-grid">
-      ${spec({ code: 'MK-01', title: 'Checker index', cls: 'steps(4)', body: `<div class="mo-check-index">${checker(2, 2, { size: 64 })}</div>`, foot: 'The memory shot uses quarter-turns to advance the index.' })}
-      ${spec({ code: 'MK-02', title: 'Plug sequence', cls: 'data-mark="link"', body: `<span class="c-lime" data-mark="link" data-cols="4" data-rows="1" data-size="220" data-fps="10"></span>` })}
-      ${spec({ code: 'MK-03', title: 'Initiating signal tear', cls: 'initiatingLockup()', bodyCls: 'spec-body--flush', body: `<div class="gly-initiating" data-initiating>${initiatingLockup()}</div>`, foot: 'The TC-01 lockup: the torn plates only read with the vertical type and micro rows beside them.' })}
-    </div>
-
     ${section('Text wall', 'textWall() · animateTextWall()')}
     <div class="mo-wall" id="mo-wall">${textWall({ word: 'PASSPHRASE_', hot: 'COHESION_', hotFill: 'FAIL_', rows: 5 })}</div>
     <div class="mo-wall-tags t-micro"><span>anRTKL a005 <b class="c-hazard">LATCH</b></span><span>PULL ● KL2 KL4</span><span class="c-hazard" data-mark="chevrons" data-count="5" data-size="70"></span></div>
@@ -96,9 +127,17 @@ export default function mount(root: HTMLElement) {
       <div class="mo-marq-outline"><div class="k-marquee" style="--dur:30s;--marq-steps:120"><div class="k-marquee__track">${'<span class="t-display t-wide t-outline">Neural transfer ▚ </span>'.repeat(4)}</div></div></div>
       <div class="t-micro" style="border-top:1px solid var(--c-line);border-bottom:1px solid var(--c-line);padding:6px 0"><div class="k-marquee" style="--dur:40s"><div class="k-marquee__track">${'<span>0x3F00 SDR37 2445556 · QR EXC FF · RW KL2 KL4 · 35 K 35 UV · TU XEI 0407 · PK 576 928 · ASSERT · LIMINAL · </span>'.repeat(4)}</div></div></div>
     </div>
-  </section>`;
+  </section>
+  ${faultOverlayHTML()}`;
 
   b.add(hydrate(root));
+  b.add(mountFaultLoop($('.fd-fault', root)));
+  b.add(mountSwarm($<HTMLCanvasElement>('[data-poster="swarm"]', root)));
+  b.add(mountDashField($<HTMLCanvasElement>('[data-poster="dash"]', root)));
+  const fault = mountFaultOverlay($('.flt-overlay', root));
+  b.add(fault.dispose);
+  b.add(on($('[data-fault-go]', root), 'holddone', fault.trigger));
+  b.add(on($('[data-fault-now]', root), 'click', fault.trigger));
   const WIDE = { transfer: mountTransferField, swarm: mountSwarmField, sector: mountSectorField, defrag: mountDefragField } as const;
   $$<HTMLCanvasElement>('[data-wide]', root).forEach((c) => b.add(WIDE[c.dataset.wide as keyof typeof WIDE](c)));
 

@@ -80,7 +80,7 @@ export function emblem(seed: number, o: Opts & { cols?: number; rows?: number; e
     }
   }
   const size = o.size ?? cols * 8;
-  return `<svg class="${o.cls ?? ''}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${cols} ${rows}" width="${size}" height="${Math.round((size * rows) / cols)}" fill="${o.color ?? 'currentColor'}" aria-hidden="true">${body}</svg>`;
+  return `<svg class="${o.cls ?? ''}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${cols} ${rows}" width="${size}" height="${Math.round((size * rows) / cols)}" fill="${o.color ?? 'currentColor'}" stroke="${o.color ?? 'currentColor'}" stroke-width="0.03" aria-hidden="true">${body}</svg>`;
 }
 
 /* ------------------------------------------------------------------ */

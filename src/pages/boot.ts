@@ -8,15 +8,14 @@ import { bag, pad } from '../lib/util';
 import { mountGL } from './_gl';
 
 const DESC: Record<string, string> = {
-  type: 'Wide grotesque cropped by the frame, mono micro-copy as texture, capsule dot readouts, the INITIATING tear.',
-  signal: 'Black field, flat inks, colour as state. Hold and fault frames flood one solid colour.',
-  controls: 'In-game menus: grey slabs, bone selection, bracket focus, lime claim bars, loadout and armory.',
-  glyphs: 'Vectorheart icons and emblems, live marks, register patterns. Solid geometry, no small bitmaps.',
-  telemetry: 'The film dials on a fixed camera, then the board: pixel map, capsule countdown, relay tracks.',
-  motion: 'Stepped readouts against continuous tracks, hard cuts, wide animated fields, marquees.',
-  spatial: 'WebGPU scenes: slice-line figures, neural voxels, bar-field planets, CAD bays.',
-  fault: 'The runtime-error poster: crimson field, cropped warning, diagnostic cluster, pixel dropout.',
-  study: 'SHELL 07 — the kit in a browser film with a score, synthetic narration and a seekable timeline.',
+  type: 'Wide grotesque cropped by the frame, mono micro-copy as texture, capsule dot readouts, the INITIATING tear, the ORA build.',
+  colour: 'Black field, flat inks, colour as state. Gradients only as dither.',
+  marks: 'Vectorheart icons and emblems, live marks, register patterns. Solid geometry, no small bitmaps.',
+  interface: 'A playable in-game menu built from the marks: shell select, vault, armory, relay tracks, contracts; then the components.',
+  data: 'The film dials on a fixed camera, and the board: pixel map with live times, capsule countdown, terminal, factions.',
+  fields: 'Full-field posters, the runtime-error state, wide animated strips, transitions and marquees.',
+  spatial: 'WebGPU scenes drafted as contours, dither and wire: slice-line figures, voxels, bar-field planets.',
+  study: 'SHELL 07 — the study in a browser film with a score, synthetic narration and a seekable timeline.',
 };
 
 export default function mount(root: HTMLElement) {
@@ -50,11 +49,11 @@ export default function mount(root: HTMLElement) {
       </div>
 
       <div class="boot-right">
-        <div class="t-micro">GRAPHIC REALISM / INTERFACE LIBRARY / REV 0.1</div>
-        <h1 class="boot-title" data-boot="title">RUNTIME<br><span class="t-outline">//KIT</span></h1>
+        <div class="t-micro">GRAPHIC REALISM / 2D ART STUDY / REV 0.3</div>
+        <h1 class="boot-title" data-boot="title">MARATHON<br><span class="t-outline">//ART</span></h1>
         <div class="boot-sub">
           <span class="c-acid">${emblem(7, { size: 26 })}</span>
-          <p>A reusable 2D interface library in the graphic-realism idiom: Vectorheart marks on a Swiss grid,
+          <p>A study of the graphic-realism 2D idiom: Vectorheart marks on a Swiss grid,
           flat high-contrast inks on black. No chrome, no gloss, no gradients. Readouts step; tracks travel.</p>
         </div>
         <div class="boot-log" id="boot-log"></div>
@@ -67,7 +66,7 @@ export default function mount(root: HTMLElement) {
           <div class="boot-init" data-initiating>${initiatingLockup()}</div>
           <div class="boot-ready">
             <span class="k-tag k-tag--dot k-tag--blink" id="boot-status">STAND BY</span>
-            <a class="k-btn k-btn--solid k-btn--notch" href="#/controls" data-scramble-hover>
+            <a class="k-btn k-btn--solid k-btn--notch" href="#/type" data-scramble-hover>
               <span data-label>ENTER LIBRARY</span><span class="k-btn__ico">${icon('arrow-r', { size: 14 })}</span>
             </a>
             <span class="c-cobalt">${locator({ size: 28 })}</span>

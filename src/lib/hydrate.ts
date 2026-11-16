@@ -5,7 +5,7 @@
  *  data-scramble-hover     decode label on hover (targets [data-label] child or self)
  *  data-scramble-in        decode once when scrolled into view
  *  data-glitch-hover       slice-glitch on hover
- *  data-hold="1200"        press-and-hold to confirm (.k-hold)
+ *  data-hold="1200"        press-and-hold to confirm (.k-hold); fires a bubbling `holddone` event
  *  data-load-demo          click toggles .is-loading for 1.6s
  *  .k-range input          syncs --val + <output>
  *  .k-tabs                 tablist switching
@@ -23,7 +23,7 @@ import { markOptsFrom, mountMark } from './marks';
 import { $$, bag, on, reducedMotion } from './util';
 
 /** Elements that get the stepped block-wipe entrance when scrolled in. */
-const ENTER = '.spec, .k-panel, .k-cta, .sig-sw, .gly-icon, .mo-monitor, .flt-trigger, .sp-toolbar, .ts-row';
+const ENTER = '.spec, .k-panel, .k-cta, .sig-sw, .gly-icon, .mo-monitor, .sp-toolbar, .ts-row';
 
 export function hydrate(root: HTMLElement) {
   const b = bag();
@@ -119,6 +119,7 @@ export function hydrate(root: HTMLElement) {
         el.classList.remove('is-armed');
         el.classList.add('is-done');
         if (label) label.textContent = 'CONFIRMED';
+        el.dispatchEvent(new CustomEvent('holddone', { bubbles: true }));
         setTimeout(() => {
           el.classList.remove('is-done');
           el.style.setProperty('--p', '0');

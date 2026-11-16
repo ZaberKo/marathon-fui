@@ -1,11 +1,8 @@
-import { standbyLockup } from '../lib/standby';
 import { icon } from '../lib/icons';
-import { pageHead, section, spec } from './_ui';
-import { triTile, dotMatrix } from '../lib/glyphs';
+import { pageHead, section } from './_ui';
 import { hydrate } from '../lib/hydrate';
 import { scramble } from '../lib/motion';
-import { faultPosterHTML, mountFaultLoop } from '../lib/faultPoster';
-import { bag, on, $, $$ } from '../lib/util';
+import { bag, on, $$ } from '../lib/util';
 
 const SW = [
   { tok: '--c-void', hex: '#000000', name: 'Void', role: 'Negative space between signal beats.', ink: '#ececec' },
@@ -57,45 +54,9 @@ export default function mount(root: HTMLElement) {
         <p class="t-micro">${message}</p>
       </div>`).join('')}</div>
 
-    ${section('Field combinations', 'POSTER STUDIES')}
-    <p class="t-micro">Black gives isolated signals room. Standby and fault can cut to a full field of solid colour.</p>
-    <div class="spec-grid">
-      ${spec({
-        code: 'CB-01',
-        title: 'Stand by lockup · acid on cobalt',
-        bodyCls: 'spec-body--flush',
-        body: `<div class="sig-poster" style="background:var(--c-cobalt)">${standbyLockup({ size: 7.5, seed: 11 })}</div>`,
-      })}
-      ${spec({
-        code: 'CB-02',
-        title: 'Runtime error poster · cobalt on crimson',
-        cls: 'faultPosterHTML() · mountFaultLoop()',
-        bodyCls: 'spec-body--flush',
-        body: `<div class="sig-fault">${faultPosterHTML({ embed: true })}</div>`,
-      })}
-      ${spec({
-        code: 'CB-03',
-        title: 'Ink on hazard',
-        bodyCls: 'spec-body--flush',
-        body: `<div class="sig-poster" style="background:var(--c-hazard);color:var(--c-void)">
-          <span>${icon('eject', { size: 46 })}</span>
-          <b class="t-display t-wide" style="font-size:40px">Eject<br>transf</b>
-        </div>`,
-      })}
-      ${spec({
-        code: 'CB-04',
-        title: 'Cobalt triangles + alarm',
-        bodyCls: 'spec-body--flush',
-        body: `<div class="sig-poster" style="background:#000;padding:0;gap:0">
-          <span style="color:var(--c-cobalt-lo);flex:1;display:block;line-height:0">${triTile(10, 5, 9, { size: 400, alt: '#000' }).replace('width="400"', 'width="100%"').replace(/height="\d+"/, 'height="100%" preserveAspectRatio="none"')}</span>
-          <span style="color:var(--c-crimson);padding:0 18px">${dotMatrix(3, 6, () => true, { size: 30 }).replace(/r="1.3"/g, 'r="1.5"')}</span>
-        </div>`,
-      })}
-    </div>
   </section>`;
 
   b.add(hydrate(root));
-  b.add(mountFaultLoop($('.sig-fault', root)));
   $$<HTMLButtonElement>('.sig-sw', root).forEach((btn) =>
     b.add(
       on(btn, 'click', async () => {

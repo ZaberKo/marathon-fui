@@ -7,12 +7,15 @@
  *   faultPosterHTML({ embed })   the whole poster (field, marks, band, cluster, strip)
  *   mountFaultPoster(root) → { paint(elapsed), dispose }   drive it from your clock
  *   mountFaultLoop(root) → cleanup                         self-running 10 s loop for embeds
+ *   faultOverlayHTML() + mountFaultOverlay(el) → { trigger, dispose }   full-screen fault with recovery
  *
  * The canvas layer carries the dashed hairline rows, the paired-dot grid and
  * the pixel dropout that eats the field. Everything steps at the caller's
  * frame rate; nothing fades.
  */
-import { crispCanvas, stepLoop } from './util';
+import { icon } from './icons';
+import { notify } from './toast';
+import { crispCanvas, on, pad, stepLoop } from './util';
 
 const WORDS = ['WARNING_', 'COGNITION_', 'RUNTIME_', 'ERROR_'];
 let uid = 0;
@@ -134,10 +137,9 @@ export function mountFaultPoster(root: HTMLElement) {
   const haz = overlay.querySelector<SVGPatternElement>('.flt-cluster pattern')!;
   const { ctx, size, dispose } = crispCanvas(canvas, 1);
 
-  /** elapsed in seconds; words cycle every 0.9 s and ERROR pushes in on 2-frame steps */
+  /** elapsed in seconds; words cycle every 0.9 s; the frame never moves */
   const paint = (elapsed: number) => {
     const phase = Math.floor(elapsed / 0.9) % WORDS.length;
-    const zoom = phase === 3 ? Math.min(1, Math.floor((elapsed % 0.9) * 6) / 3) : 0;
     const word = WORDS[phase].repeat(6);
     marquee.classList.toggle('is-cobalt', phase % 2 === 1);
     for (const span of words) if (span.textContent !== word) span.textContent = word;
@@ -166,7 +168,7 @@ export function mountFaultPoster(root: HTMLElement) {
 
     // pixel dropout: sparse from the start, eating in after 6 s and on ERROR
     const cell = Math.max(10, Math.round(w / 96));
-    const density = 0.006 + 0.13 * Math.min(1, Math.max(0, (elapsed - 6) / 4)) ** 2 + 0.05 * zoom;
+    const density = 0.006 + 0.13 * Math.min(1, Math.max(0, (elapsed - 6) / 4)) ** 2;
     const seed = Math.floor(f / 3);
     for (let y = 0; y < h; y += cell) {
       const inBand = y + cell > b0 && y < b1;
@@ -185,9 +187,70 @@ export function mountFaultPoster(root: HTMLElement) {
     for (const g of blinks) g.style.visibility = hash(f, +(g.dataset.b ?? 1)) > 0.82 ? 'hidden' : '';
     if (f % 2 === 0) for (const [i, t] of nums.entries()) t.textContent = String(Math.floor(hash(f, i) * 1000)).padStart(3, '0');
     haz.setAttribute('patternTransform', `rotate(45) translate(${(f % 4) * 4} 0)`);
-    poster.style.setProperty('--zoom', String(1 + 0.16 * zoom));
     poster.style.setProperty('--strip', `${-(f % 8) * 5}px`);
   };
 
   return { paint, dispose };
+}
+
+/* ------------------------------------------------------------------ */
+/* Full-screen overlay                                                 */
+/* ------------------------------------------------------------------ */
+export function faultOverlayHTML() {
+  return `<div class="flt-overlay" data-state="fault" role="region" aria-label="Runtime fault" hidden>
+    ${faultPosterHTML()}
+    <div class="flt-foot">
+      <div class="flt-code t-mono">
+        <b>EXCEPTION 0x0000003F</b>
+        <span class="flt-count">AUTO-RECOVER IN <b data-flt-n>10</b></span>
+      </div>
+      <button class="k-btn k-btn--lg flt-ack" data-flt-ack>${icon('check', { size: 14 })} Acknowledge</button>
+    </div>
+  </div>`;
+}
+
+/** Runs the poster for 10 s over the stage; Acknowledge or Esc recovers early. */
+export function mountFaultOverlay(overlay: HTMLElement) {
+  const poster = mountFaultPoster(overlay);
+  const nEl = overlay.querySelector<HTMLElement>('[data-flt-n]')!;
+  const ack = overlay.querySelector<HTMLButtonElement>('[data-flt-ack]')!;
+  let stop: (() => void) | null = null;
+  let returnFocus: HTMLElement | null = null;
+  const paint = (elapsed: number) => {
+    poster.paint(elapsed);
+    const count = pad(Math.max(0, Math.ceil(10 - elapsed)));
+    if (nEl.textContent !== count) nEl.textContent = count;
+  };
+  const recover = () => {
+    if (overlay.hidden) return;
+    stop?.();
+    stop = null;
+    overlay.hidden = true;
+    returnFocus?.focus();
+    notify({ title: 'System restored', msg: 'Fault acknowledged · integrity 97%', state: 'nominal' });
+  };
+  const trigger = () => {
+    if (!overlay.hidden) return;
+    returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const started = performance.now() / 1000;
+    paint(0);
+    overlay.hidden = false;
+    ack.focus();
+    stop = stepLoop(12, (_, now) => {
+      const elapsed = now - started;
+      paint(elapsed);
+      if (elapsed >= 10) recover();
+    });
+  };
+  const offAck = on(ack, 'click', recover);
+  const offKey = on(window, 'keydown', (e: KeyboardEvent) => e.key === 'Escape' && recover());
+  return {
+    trigger,
+    dispose() {
+      stop?.();
+      offAck();
+      offKey();
+      poster.dispose();
+    },
+  };
 }

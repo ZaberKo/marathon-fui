@@ -35,7 +35,7 @@ root.innerHTML = `
       <div class="cine-cap" id="cap" hidden><b>ORA//</b><span></span></div>
       <div class="cine-gate" id="gate">
         <div class="cine-gate__in">
-          <div class="cine-gate__code">RUNTIME//KIT · FILM 01 · ${Math.floor(DURATION / 60)}:${String(Math.round(DURATION % 60)).padStart(2, '0')}</div>
+          <div class="cine-gate__code">MARATHON//ART · FILM 01 · ${Math.floor(DURATION / 60)}:${String(Math.round(DURATION % 60)).padStart(2, '0')}</div>
           <div class="cine-gate__title">SHELL<span>07</span></div>
           <div class="cine-gate__msg" id="gate-msg">BUILDING SHOTS</div>
           <i class="cine-gate__bar"><i id="gate-bar"></i></i>
@@ -56,7 +56,7 @@ root.innerHTML = `
       <button id="b-mute" title="M">SOUND ON</button>
       <button id="b-q" title="Q">3D 1.0</button>
       <button id="b-fs" title="F">FULL</button>
-      <a href="./#/study" class="cine-back">KIT ↗</a>
+      <a href="./#/study" class="cine-back">ART ↗</a>
     </div>
   </div>`;
 

@@ -4,7 +4,6 @@ import { barcode, bitmap, brackets, checker, dotMatrix, locator, registration, t
 import { hydrate } from '../lib/hydrate';
 import { markNames, mountMark } from '../lib/marks';
 import { scramble } from '../lib/motion';
-import { initiatingLockup } from '../lib/initiating';
 import { bag, on, $, $$ } from '../lib/util';
 
 const mk = (kind: string, attrs: Record<string, string | number> = {}, cls = '') =>
@@ -23,7 +22,7 @@ export default function mount(root: HTMLElement) {
 
   root.innerHTML = `
   <section class="page">
-    ${pageHead('04', 'Vector<br><span class="t-outline">Glyphs</span>', ['SVG · SOLID GEOMETRY', 'ANIMATED · STEPPED', 'data-mark="…"'], 94)}
+    ${pageHead('03', 'Vector<br><span class="t-outline">Marks</span>', ['SVG · SOLID GEOMETRY', 'ANIMATED · STEPPED', 'data-mark="…"'], 94)}
     <p class="page-lede">Vectorheart marks: flat solid geometry, never small bitmaps — and they are never still. Locators flip, reticles tick round, plugs seat into sockets,
     barcodes mutate under a scan line, emblems re-roll. Every animated mark is <b>mountMark(el, kind, opts)</b> in <b>lib/marks.ts</b>
     (or just <b>&lt;span data-mark="reticle"&gt;</b> + <b>hydrate()</b>), updates at a fixed low frame rate and inherits <b>currentColor</b> / <b>--accent</b>.</p>
@@ -37,8 +36,7 @@ export default function mount(root: HTMLElement) {
       ${spec({ code: 'MK-07', title: 'Scan / alarm dots', cls: 'dots[mode=scan|alarm]', body: `<span class="c-bone">${mk('dots', { cols: 10, rows: 4, size: 100, mode: 'scan' })}</span><span class="c-crimson">${mk('dots', { cols: 3, rows: 6, size: 36, mode: 'alarm', fps: 4 })}</span>` })}
       ${spec({ code: 'MK-08', title: 'Triangle tile', cls: 'tri', body: `<span style="color:var(--c-cobalt)" data-state="caution">${mk('tri', { cols: 12, rows: 5, size: 260 })}</span>` })}
       ${spec({ code: 'MK-09', title: 'Block text decode', cls: 'blocktext[text]', bodyCls: 'spec-body--col', body: `<div class="c-acid" id="bt-out" style="display:grid;place-items:center;min-height:70px">${mk('blocktext', { text: 'SHELL 07', size: 240 })}</div><label class="k-field"><span class="k-field__box"><span class="k-field__prefix">&gt;</span><input id="bt-in" value="SHELL 07" maxlength="14"></span></label>` })}
-      ${spec({ code: 'MK-10', title: 'Initiating signal tear', cls: 'initiatingLockup()', bodyCls: 'spec-body--flush', body: `<div class="gly-initiating" data-initiating>${initiatingLockup()}</div>`, foot: 'Same lockup as TC-01: vertical type, torn cobalt bands, micro rows. Loops while visible.' })}
-      ${spec({ code: 'MK-12', title: 'Pins / chevrons / bars', cls: 'connector · chevrons · bars', body: `<span class="c-lime">${mk('connector', { pins: 4, size: 60 })}</span><span class="c-bone">${mk('chevrons', { count: 6, size: 110 })}</span><span class="c-acid">${mk('bars', { count: 8, size: 64 })}</span>` })}
+      ${spec({ code: 'MK-12', title: 'Register / target / seal', cls: 'register · targets · seal', body: `<span class="c-bone">${mk('register', { size: 84 })}</span><span class="c-acid" data-state="nominal">${mk('targets', { size: 200 })}</span><span class="c-lime">${mk('seal', { size: 80 })}</span>`, foot: 'From the fault poster and the completion dial: the register inverts and turns, targets lock and lead, the seal bore steps.' })}
     </div>
 
     ${section('Icons', `lib/icons.ts · icon(name) · ${iconNames.length} glyphs · click → copy SVG`)}

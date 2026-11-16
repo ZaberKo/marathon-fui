@@ -1,4 +1,5 @@
 import '@fontsource-variable/archivo/wdth.css';
+import '@fontsource/instrument-serif/400.css';
 import '@fontsource/ibm-plex-mono/400.css';
 import '@fontsource/ibm-plex-mono/500.css';
 import '@fontsource/ibm-plex-mono/700.css';
@@ -9,7 +10,7 @@ import './styles/fx.css';
 import './styles/pages.css';
 import './styles/menu.css';
 
-import { ROUTES } from './routes';
+import { ALIASES, ROUTES } from './routes';
 import { scramble, sliceGlitchTransition } from './lib/motion';
 import { crosshair } from './lib/glyphs';
 import { icon } from './lib/icons';
@@ -23,7 +24,7 @@ app.innerHTML = `
 <div class="shell">
   <a class="brand" href="#/" aria-label="Home">${icon('grid', { size: 22 })}</a>
   <header class="topbar">
-    <div class="tb-title">RUNTIME//KIT</div>
+    <div class="tb-title">MARATHON//ART</div>
     <div class="tb-route"><span id="tb-route">SYS.BOOT</span></div>
     <div class="tb-hide-m">BUF <span class="tb-val" id="tb-buf">0000</span></div>
     <div class="tb-spacer"></div>
@@ -36,7 +37,7 @@ app.innerHTML = `
     ${ROUTES.map((r) => `<a href="#/${r.id}" data-id="${r.id}"><span class="r-num">${r.num}</span><span class="r-label">${r.label}</span></a>`).join('')}
   </nav>
   <main class="stage" id="stage"></main>
-  <footer class="ticker"><div class="k-marquee" style="--dur:60s"><div class="k-marquee__track">${'<span>RUNTIME//KIT — GRAPHIC REALISM COMPONENT LIBRARY ▚ STEPPED READOUTS ▚ CONTINUOUS TRACKS ▚ PURE BLACK NEGATIVE SPACE ▚ COLOUR ENCODES STATE ▚ ASSERT SHELL.INTEGRITY ▚ LIMINAL BUFFER STABLE ▚ </span>'.repeat(4)}</div></div></footer>
+  <footer class="ticker"><div class="k-marquee" style="--dur:60s"><div class="k-marquee__track">${'<span>MARATHON//ART — GRAPHIC REALISM 2D ART STUDY ▚ STEPPED READOUTS ▚ CONTINUOUS TRACKS ▚ PURE BLACK NEGATIVE SPACE ▚ COLOUR ENCODES STATE ▚ ASSERT SHELL.INTEGRITY ▚ LIMINAL BUFFER STABLE ▚ </span>'.repeat(4)}</div></div></footer>
 </div>
 <div class="reticle" aria-hidden="true">${crosshair({ size: 30, gap: 4 })}<span id="ret-xy"></span></div>
 `;
@@ -54,9 +55,9 @@ function revealCurrentModule() {
 
 async function go() {
   let id = location.hash.replace(/^#\/?/, '').split('?')[0];
-  if (id === 'telemetry/dials') {
-    id = 'telemetry';
-    history.replaceState(history.state, '', '#/telemetry');
+  if (ALIASES[id]) {
+    id = ALIASES[id];
+    history.replaceState(history.state, '', `#/${id}`);
   }
   const route = ROUTES.find((r) => r.id === id) ?? ROUTES[0];
   const token = ++navToken;
@@ -79,7 +80,7 @@ async function go() {
         else a.removeAttribute('aria-current');
       });
       revealCurrentModule();
-      document.title = `${route.num} ${route.label.toUpperCase()} — RUNTIME//KIT`;
+      document.title = `${route.num} ${route.label.toUpperCase()} — MARATHON//ART`;
       const readout = `${route.num} / ${route.code}`;
       if (reducedMotion()) routeEl.textContent = readout;
       else void scramble(routeEl, readout, { duration: 0.4, signal });

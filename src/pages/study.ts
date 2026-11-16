@@ -27,7 +27,7 @@ export default function mount(root: HTMLElement) {
   const b = bag();
   root.innerHTML = `
   <section class="page">
-    ${pageHead('09', 'Film<br><span class="t-outline">Shell 07</span>', ['WEB FILM', `${SHOTS.length} SHOTS / ${Math.round(DURATION)}S`, 'SEEKABLE'], 191)}
+    ${pageHead('08', 'Film<br><span class="t-outline">Shell 07</span>', ['WEB FILM', `${SHOTS.length} SHOTS / ${Math.round(DURATION)}S`, 'SEEKABLE'], 191)}
     <p class="page-lede">A support AI reassembles a dead runner into a newly printed shell, and finds the old shell is still walking.
     The film runs in the browser as a timeline where each frame depends only on the time.</p>
     <ul class="st-facts">

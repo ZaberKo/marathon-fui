@@ -253,17 +253,18 @@ const STATS = [
 ] as const;
 const BLOCKS = 13;
 
-export function cradleHTML() {
-  return `<div class="k-cradle">
+/** `controls` adds −/+ per track; `bare` drops the slab padding for embedding in a menu screen. */
+export function cradleHTML({ controls = false, bare = false } = {}) {
+  return `<div class="k-cradle${controls ? ' k-cradle--ctl' : ''}${bare ? ' k-cradle--bare' : ''}">
     <div class="k-cradle__head">
       <div>
         <h3 class="k-cradle__title">The Relay</h3>
         <p class="k-cradle__lede">Route energy into colony tracks to tune each shell. Contracts and converted matter raise the cap.</p>
       </div>
       <div class="k-level">
-        <div><b>LEVEL 50</b><span>5482/11K <small>XP</small></span></div>
+        <div><b>LEVEL <span data-lvl>50</span></b><span><span data-xp>5482</span>/11K <small>XP</small></span></div>
         <i class="k-level__bar"></i><i class="k-level__haz"></i>
-        <span class="k-level__tile">${icon('battery', { size: 16 })}<b data-cradle-pool>0</b></span>
+        <span class="k-level__tile">${icon('battery', { size: 16 })}<b data-cradle-pool data-pool>0</b></span>
       </div>
     </div>
     ${STATS.map((s, r) => `<div class="k-stat" style="--stat:${s.ink};--stat-dark:${s.dark}" data-stat="${r}">
@@ -273,23 +274,37 @@ export function cradleHTML() {
         <div class="k-stat__nodes">${s.nodes.map((n) => `<span class="k-stat__node" style="--at:${n}" data-node="${n}">${icon(s.icons[n % 2], { size: 16 })}</span>`).join('')}</div>
         <div class="k-stat__blocks">${Array.from({ length: BLOCKS }, (_, i) => `<i data-b="${i}"></i>`).join('')}</div>
       </div>
+      ${controls ? `<div class="k-stat__ctl"><button data-step="-1" aria-label="Remove energy from ${s.name.toLowerCase()}">−</button><button data-step="1" aria-label="Add energy to ${s.name.toLowerCase()}">+</button></div>` : ''}
     </div>`).join('')}
   </div>`;
 }
 
-export function mountCradle(root: HTMLElement, { fps = 10 } = {}) {
+export const CRADLE_STATS = STATS;
+export const CRADLE_BLOCKS = BLOCKS;
+
+/**
+ * `auto` lets one track take or give a block every 1.2 s (the board demo).
+ * Pass your own `values` and `auto: false` to drive the tracks from a UI;
+ * call `flash(row)` after a change to light the new block for three frames.
+ */
+export function mountCradle(root: HTMLElement, { fps = 10, auto = true, values = STATS.map((s) => s.value) as number[] } = {}) {
   const b = bag();
-  const values: number[] = STATS.map((s) => s.value);
   const rows = $$<HTMLElement>('.k-stat', root);
   const pool = $('[data-cradle-pool]', root);
   const views = rows.map((row) => ({ row, cv: crispCanvas($<HTMLCanvasElement>('canvas', row)), blocks: $$<HTMLElement>('[data-b]', row), nodes: $$<HTMLElement>('[data-node]', row) }));
   views.forEach((v) => b.add(v.cv.dispose));
   let flash = -1;
   let flashRow = -1;
+  let pending = -1;
 
   b.add(stepLoop(fps, (f) => {
     // every 1.2 s one track takes or loses a block
-    if (f % Math.round(fps * 1.2) === 0) {
+    if (pending >= 0) {
+      flashRow = pending;
+      flash = f;
+      pending = -1;
+    }
+    if (auto && f % Math.round(fps * 1.2) === 0) {
       const r = Math.floor(hash(f, 3) * STATS.length);
       const up = values[r] < BLOCKS && (hash(f, 5) > 0.3 || values[r] < 3);
       values[r] = Math.max(1, Math.min(BLOCKS, values[r] + (up ? 1 : -1)));
@@ -303,7 +318,8 @@ export function mountCradle(root: HTMLElement, { fps = 10 } = {}) {
       v.blocks.forEach((el, i) => {
         el.className = i < n ? (r === flashRow && i === n - 1 && f - flash < 3 ? 'is-new' : 'is-on') : '';
       });
-      v.nodes.forEach((el) => el.classList.toggle('is-on', Number(el.dataset.node) < n));
+      // a node lights the moment the fill reaches its block
+      v.nodes.forEach((el) => el.classList.toggle('is-on', n >= Number(el.dataset.node)));
       // braided lines up to the fill edge
       const { ctx, size } = v.cv;
       const { w, h } = size;
@@ -325,7 +341,7 @@ export function mountCradle(root: HTMLElement, { fps = 10 } = {}) {
       }
     });
   }, root));
-  return b.dispose;
+  return Object.assign(b.dispose, { flash: (row: number) => (pending = row) });
 }
 
 /* ------------------------------------------------------------------ */

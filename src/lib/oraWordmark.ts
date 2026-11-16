@@ -100,11 +100,17 @@ export function paintOraKit(ctx: CanvasRenderingContext2D, t: number, w: number,
   const x = (w - L.width) / 2;
   const y = h / 2;
   const seat = ease(t, 0.05, 0.75);
-  const rise = ease(t, 0.3, 0.9);
-  const shoulder = ease(t, 0.9, 1.4) * Math.PI * 0.5;
-  const bowlIn = ease(t, 1.15, 1.4);
-  const bowl = ease(t, 1.25, 2.0);
-  const aStem = ease(t, 1.8, ORA_BUILD_DURATION);
+  // The R is one stroke: the stem rises, then the same pen turns into the
+  // shoulder. A single ease over the whole path keeps the speed continuous
+  // through the corner instead of stopping between two separate moves.
+  const stemRun = R * 1.105 + L.stroke / 2;
+  const arcRun = R * 0.65 * (Math.PI / 2);
+  const pen = ease(t, 0.28, 1.4) * (stemRun + arcRun);
+  const rise = Math.min(1, pen / stemRun);
+  const shoulder = Math.max(0, pen - stemRun) / (R * 0.65);
+  const bowlIn = ease(t, 1.1, 1.36);
+  const bowl = ease(t, 1.16, 2.0);
+  const aStem = ease(t, 1.78, ORA_BUILD_DURATION);
 
   // ring: from the canvas centre at its RD-06 size to its seat in the mark
   const r = R * (1.2 - 0.2 * seat);

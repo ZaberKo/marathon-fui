@@ -440,8 +440,59 @@ const connector: MarkFn = (el, o) => {
   }, el);
 };
 
+/* ------------------------------------------------------------------ */
+/** Checker-H register mark from the fault poster: inverts, then turns a quarter. */
+const register: MarkFn = (el, o) => {
+  const s = svgRoot(el, 300, 300, Number(o.size ?? 72), false);
+  const g = S('g', {}, s);
+  const ink = S('path', { d: 'M0 0H300V60H0ZM0 240H300V300H0ZM0 120H60V180H0ZM240 120H300V180H240ZM60 120A60 60 0 0 1 120 60H180A60 60 0 0 1 240 120V180A60 60 0 0 1 180 240H120A60 60 0 0 1 60 180Z', fill: 'currentColor' }, g);
+  S('path', { d: 'M60 120H120V180H60ZM180 120H240V180H180ZM120 30H180V270H120Z', fill: '#000' }, g);
+  return stepLoop(Number(o.fps ?? 6), (f) => {
+    const k = f % 16;
+    const inv = k >= 8 && k < 12;
+    ink.setAttribute('fill', inv ? ACC : 'currentColor');
+    g.setAttribute('transform', `rotate(${Math.floor(f / 16) % 4 * 90 + (k >= 12 ? 90 : 0)} 150 150)`);
+  }, el);
+};
+
+/** Target set from the poster cluster: a locked ring, a leader ring, a cross. */
+const targets: MarkFn = (el, o) => {
+  const s = svgRoot(el, 120, 44, Number(o.size ?? 180), false);
+  S('circle', { cx: 18, cy: 22, r: 15, fill: 'none', stroke: 'currentColor', 'stroke-width': 3.5 }, s);
+  const core = S('circle', { cx: 18, cy: 22, r: 7, fill: 'currentColor' }, s);
+  S('circle', { cx: 56, cy: 22, r: 13, fill: 'none', stroke: 'currentColor', 'stroke-width': 2.5 }, s);
+  const lead = S('rect', { x: 69, y: 21, width: 0, height: 2.5, fill: 'currentColor' }, s);
+  const cross = S('g', {}, s);
+  S('rect', { x: 102, y: 10, width: 2.5, height: 24, fill: 'currentColor' }, cross);
+  S('rect', { x: 91, y: 20.75, width: 24, height: 2.5, fill: 'currentColor' }, cross);
+  S('circle', { cx: 103.25, cy: 22, r: 4.5, fill: 'currentColor' }, cross);
+  return stepLoop(Number(o.fps ?? 8), (f) => {
+    const k = f % 12;
+    core.setAttribute('r', k % 4 < 2 ? '7' : '4');
+    core.setAttribute('fill', k < 6 ? 'currentColor' : ACC);
+    lead.setAttribute('width', String(Math.min(4, k) * 4));
+    cross.setAttribute('visibility', k === 9 || k === 10 ? 'hidden' : 'visible');
+  }, el);
+};
+
+/** The relay seal from the completion dial: quarter turns, the bore steps. */
+const seal: MarkFn = (el, o) => {
+  const s = svgRoot(el, 74, 74, Number(o.size ?? 74), false);
+  const g = S('g', {}, s);
+  S('path', { d: 'M0 0H23V24H0ZM0 51H23V74H0ZM51 0H74V23H51ZM51 51H74V74H51Z', fill: 'currentColor' }, g);
+  const ring = S('circle', { cx: 37, cy: 37, r: 22.5, fill: 'none', stroke: 'currentColor', 'stroke-width': 19 }, g);
+  return stepLoop(Number(o.fps ?? 6), (f) => {
+    const k = f % 12;
+    const bore = [13, 10, 6, 10][Math.floor(k / 3)];
+    ring.setAttribute('r', String((32 + bore) / 2));
+    ring.setAttribute('stroke-width', String(32 - bore));
+    g.setAttribute('transform', `rotate(${Math.floor(f / 12) % 4 * 90} 37 37)`);
+    ring.setAttribute('stroke', k === 6 ? ACC : 'currentColor');
+  }, el);
+};
+
 const MARKS: Record<string, MarkFn> = {
-  checker, locator, crosshair, reticle, target, barcode, link, segring, dots, tri, sigil,
+  checker, locator, crosshair, reticle, target, barcode, link, segring, dots, tri, sigil, register, targets, seal,
   blocktext: blocktextMark, scanblock, glyphnoise, countring, chevrons, bars, connector,
 };
 export const markNames = Object.keys(MARKS);

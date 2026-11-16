@@ -1,4 +1,4 @@
-# RUNTIME//KIT
+# MARATHON//ART
 
 A demo library of interface elements in the **graphic-realism** 2D idiom: Vectorheart marks on a Swiss grid,
 flat high-contrast inks on black (no chrome, gloss or gradients), in-game menu slabs, stepped readouts
@@ -24,18 +24,20 @@ pnpm build      # typecheck + production build → dist/
 
 ## Pages
 
-| #  | Route        | Contents |
-|----|--------------|----------|
-| 00 | `#/`         | Boot sequence, contour-runner hero, live marks, module index |
-| 01 | `#/type`     | Type scale, lockups (INITIATING tear, cropped, slab, micro-copy texture, capsule wordmark), kinetic type incl. the ORA build |
-| 02 | `#/signal`   | Palette, colour ratio, `data-state` themes, poster studies (stand-by lockup, runtime-error poster) |
-| 03 | `#/controls` | In-game menu idiom (`.mu-*`, styles/menu.css): status pill bar, screen tabs, menu buttons with bone selection, hold, tooltip, contracts with lime claim bars, item grid with bracket focus, price tags, loadout (weapon mounts, backpack, filter rail, selection bar), convert-matter level bar, rare tiles with word texture, armory list with refresh timer and tiered offers, track blocks, settings rows, stepped-block CTAs, footer key hints |
-| 04 | `#/glyphs`   | Animated marks incl. the INITIATING signal tear (MK-10), Vectorheart icons, re-rolling emblems, static generators, CSS patterns |
-| 05 | `#/telemetry`| Radial sequences (the film dials in a fixed-camera kit framing) and the board: pixel world map with live times, capsule countdown, relay tracks, green relay terminal, swarm and dash-field posters, faction grid |
-| 06 | `#/motion`   | Easing comparison, transition monitor, wide animated fields (transfer window, swarm sweep, sector lock, defrag index), glyph noise, text wall, marquees |
-| 07 | `#/spatial`  | 8 compact WebGPU scenes (below), lazy-mounted, with FPS and pixel-scale controls and a wide toggle on each card |
-| 08 | `#/fault`    | Full-screen runtime-error poster: register marks, dashed rows, cropped warning letters, diagnostic cluster, sprocket strip, pixel dropout; alerts, modal |
-| 09 | `#/study`    | Film page for SHELL 07: synopsis, design notes, and a shot list (with its voice-over) that deep-links into the player |
+| #  | Route         | Contents |
+|----|---------------|----------|
+| 00 | `#/`          | Index: boot sequence, contour-runner hero, live marks, chapter index |
+| 01 | `#/type`      | Type scale, lockups (INITIATING tear, cropped, slab, micro-copy texture, capsule wordmark), kinetic type incl. the ORA build |
+| 02 | `#/colour`    | Palette, colour ratio, `data-state` themes |
+| 03 | `#/marks`     | Animated marks (incl. register / target / seal), Vectorheart icons, re-rolling emblems, static generators, CSS patterns |
+| 04 | `#/interface` | A playable in-game menu drawn at 1280×720 and scaled whole (shell select, vault with matter converter, armory with purchase, relay tracks with braided lines and nodes, contracts with codex; shared coins / energy / level; Q/E and arrow keys), then buttons, settings, alerts and toasts, confirm modal |
+| 05 | `#/data`      | The film's radial sequences on a fixed camera, and the board: pixel world map with live times, capsule countdown, relay terminal, faction grid |
+| 06 | `#/fields`    | Full-field posters (stand by, runtime error with a full-screen fault, hazard, triangles, swarm, dash field), wide animated strips, transitions, glyph noise, text wall, marquees |
+| 07 | `#/spatial`   | 8 compact WebGPU scenes (below), lazy-mounted, with FPS and pixel-scale controls and a wide toggle on each card |
+| 08 | `#/study`     | Film page for SHELL 07: synopsis, design notes, and a shot list (with its voice-over) that deep-links into the player |
+
+Chapters run from elements (type, colour, marks) to the compositions built from them (interface, data, fields).
+Old chapter ids (`#/signal`, `#/controls`, `#/glyphs`, `#/telemetry`, `#/dials`, `#/motion`, `#/fault`) redirect to their new homes.
 
 ### 3D scenes (`src/three/scenes/`)
 
@@ -69,7 +71,7 @@ src/lib/initiating.ts      INITIATING signal tear (TC-01): use the whole lockup 
 src/lib/board.ts           board modules: launch map, cradle tracks, swarm / dash posters, faction grid, capsule countdown, relay terminal
 src/lib/dotType.ts         capsule dot-matrix type (5×7, each run of lit pixels is one pill)
 src/lib/faultPoster.ts     runtime-error poster: faultPosterHTML(), mountFaultPoster(root).paint(t), mountFaultLoop(root)
-src/lib/wide.ts            wide animated poster strips for the motion page (mountTransferField…)
+src/lib/wide.ts            wide animated poster strips for the Fields chapter (mountTransferField…)
 src/lib/landMask.ts        110 m land mask without three.js (antimeridian rings unwrapped)
 src/lib/standby.ts         STAND BY lockup: ECH tags, checker flags, sigil, micro code, LINK pill, word ↔ PLEASE, green garble noise, ticks
 src/lib/defrag.ts          defrag ring: sorted span behind a read head, fragments moved one per step, notches, hatch, scale
@@ -123,7 +125,7 @@ scripts/                   offline audio pipeline (Lyria needs GOOGLE_API_KEY in
 1. **Colour is state.** Components read `--accent` / `--frame`. Set `data-state="nominal|link|caution|critical|cobalt|fault"` on any ancestor to re-theme.
 2. **Nothing glides.** Use `steps(n)` in CSS and GSAP, and `stepLoop(fps, …)` for canvas and SVG marks. 3D time is `floor(t·fps)/fps`.
 3. **Black stays dominant** (about 80% of a frame). Use one main signal colour plus one counterpoint. Red only appears for a fault, and then it fills the whole field.
-4. **Three type voices:** a wide or condensed display grotesque (Archivo variable, `wdth` 62–125), mono micro-copy as texture, and capsule dot type for big readouts. No small bitmap fonts in the kit.
+4. **Three type voices:** a wide or condensed display grotesque (Archivo variable, `wdth` 62–125), mono micro-copy as texture, and capsule dot type for big readouts. Menu screen titles add a regular-weight condensed serif (Instrument Serif). No small bitmap fonts.
 5. **3D is drafted, not rendered.** No PBR and no lights. Use black occluders, 1px contours, dither dots and wire, then add a vector layer of triangles, rings, brackets and connector lines on top.
 
 **Corrections learned while making the film:**
@@ -137,10 +139,11 @@ scripts/                   offline audio pipeline (Lyria needs GOOGLE_API_KEY in
 - **The 2D layer is its own idiom.** Vector marks, a Swiss grid and flat high-contrast inks (acid, cobalt, violet,
   red, bone on black). No chrome, no gloss, no soft gradients or alpha fades. A tonal ramp is only allowed as a dither
   of pure-colour cells. Type sits in stepped label tabs on hairline rules.
-- **Kit dials keep a fixed camera.** The telemetry gallery plays the film's dial painters with `{ fixed: true }`: axis,
+- **Kit dials keep a fixed camera.** The Data chapter plays the film's dial painters with `{ fixed: true }`: axis,
   radius and framing hold still and the close-up cuts are dropped. The film calls them without the option and is unchanged.
 - **Icons are solid vector geometry.** Circles, squares, 45° cuts and thick strokes (`lib/icons.ts`). Pixels only
   appear as large cells — maps, stepped block type, register marks, dropout — never as small 8×8 bitmap icons.
+- **Chapters never link sideways.** A demo stays on its page; only the index and the film page navigate.
 - **Kit UI follows the in-game menus, not generic sci-fi.** Dark grey slabs with small radii, bone fill for selection,
   white corner brackets for focus, lime claim bars, coloured price tags, a serif for screen titles.
 - **Pick the render style per shot.** One skeleton can be drawn as contour, x-ray, cel, halftone, voxels or triangle
