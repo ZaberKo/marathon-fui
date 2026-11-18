@@ -5,7 +5,7 @@
 import * as THREE from 'three/webgpu';
 import type { C2, Frame } from '../engine';
 import { clamp01, hash } from '../engine';
-import { C, F, bitmap, measure, rect, text, type TextOpts } from '../draw';
+import { C, F, bitmap, measure, rect, text, type TextOpts } from '../../graphics/draw';
 
 export const persp = (fov = 30, near = 0.01, far = 400) => new THREE.PerspectiveCamera(fov, 16 / 9, near, far);
 

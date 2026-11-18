@@ -8,17 +8,20 @@
  * A stepped scan slice climbs the skull; the camera yaws in hard steps.
  */
 import * as THREE from 'three/webgpu';
-import { createStage, makeTag } from '../core';
+import { makeTag, type Stage } from '../core';
 import { contourMaterial } from '../materials';
 import { LineBatch } from '../overlay';
 import { brainGeometry } from '../procedural';
-import { PAL, type SceneHandle, type SceneOpts } from './common';
-import { BRAIN_S, H2, head2Geometry, opticPathway, wireEye } from '../../cine/models/head2';
-import { flowMaterial } from '../../cine/models/flow';
+import { mountStage, PAL, type SceneHandle, type SceneOpts } from './common';
+import { BRAIN_S, H2, head2Geometry, opticPathway, wireEye } from '../models/head2';
+import { flowMaterial } from '../models/flow';
 
-export async function mountHeadscan(host: HTMLElement, { fps = 12, pixel = 1, labels = true }: SceneOpts = {}): Promise<SceneHandle> {
+export async function mountHeadscan(host: HTMLElement, { fps = 12, pixel = 1, labels = true, signal }: SceneOpts = {}): Promise<SceneHandle> {
   const camera = new THREE.PerspectiveCamera(28, 1, 0.01, 10);
-  const stage = await createStage(host, { label: 'HEADSCAN', fps, pixel, camera });
+  return mountStage(host, { label: 'HEADSCAN', fps, pixel, camera, signal }, (stage) => setupHeadscan(stage, camera, host, labels));
+}
+
+function setupHeadscan(stage: Stage, camera: THREE.PerspectiveCamera, host: HTMLElement, labels: boolean) {
   const { scene } = stage;
   const add = { blending: THREE.AdditiveBlending, transparent: true, depthWrite: false };
 
@@ -133,13 +136,11 @@ export async function mountHeadscan(host: HTMLElement, { fps = 12, pixel = 1, la
   });
 
   return {
-    stage,
-    set(key, val) {
+    set(key: string, val: unknown) {
       if (key === 'sweep') sweep = Boolean(val);
     },
     dispose() {
       tags.forEach((t) => t.remove());
-      stage.dispose();
     },
   };
 }

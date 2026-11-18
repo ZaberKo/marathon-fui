@@ -3,8 +3,8 @@ import { icon } from '../lib/icons';
 
 import { hydrate } from '../lib/hydrate';
 import { bag } from '../lib/util';
-import { SHOTS } from '../cine/film';
-import { DURATION, LINES } from '../cine/film/cues';
+import { SHOT_LIST } from '../content/shell-07/shot-list';
+import { DURATION, LINES } from '../content/shell-07/cues';
 
 const fmt = (t: number) => `${String(Math.floor(t / 60)).padStart(1, '0')}:${(t % 60).toFixed(1).padStart(4, '0')}`;
 
@@ -27,7 +27,7 @@ export default function mount(root: HTMLElement) {
   const b = bag();
   root.innerHTML = `
   <section class="page">
-    ${pageHead('08', 'Film<br><span class="t-outline">Shell 07</span>', ['WEB FILM', `${SHOTS.length} SHOTS / ${Math.round(DURATION)}S`, 'SEEKABLE'], 191)}
+    ${pageHead('08', 'Film<br><span class="t-outline">Shell 07</span>', ['WEB FILM', `${SHOT_LIST.length} SHOTS / ${Math.round(DURATION)}S`, 'SEEKABLE'], 191)}
     <p class="page-lede">A support AI reassembles a dead runner into a newly printed shell, and finds the old shell is still walking.
     The film runs in the browser as a timeline where each frame depends only on the time.</p>
     <ul class="st-facts">
@@ -57,7 +57,7 @@ export default function mount(root: HTMLElement) {
 
     ${section('Shot list', 'CLICK TO OPEN AT TIME')}
     <div class="st-shots">
-      ${SHOTS.map((s) => {
+      ${SHOT_LIST.map((s) => {
         const vo = LINES.filter((l) => l.t >= s.t0 && l.t < s.t1).map((l) => l.en).join(' ');
         return `
         <a class="st-row" href="./cinema.html?t=${(s.t0 + 0.05).toFixed(2)}">

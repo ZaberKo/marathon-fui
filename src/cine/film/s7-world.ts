@@ -10,19 +10,19 @@
 import * as THREE from 'three/webgpu';
 import type { Frame, ShotDef } from '../engine';
 import { clamp01, hash } from '../engine';
-import { C, F, line, plus, rect, text, tri } from '../draw';
-import { makeBody } from '../models/body';
+import { C, F, line, plus, rect, text, tri } from '../../graphics/draw';
+import { makeBody } from '../../three/models/body';
 import { Hard, toonLit } from '../models/hard';
 import { stationModel } from '../models/station';
 import { SimplexNoise } from 'three/addons/math/SimplexNoise.js';
 import { isoSegments, terrainMaterial } from '../../three/procedural';
 import { glitchToon, lineMat, screenDots, xray } from '../mats';
-import { addStickers } from '../models/stickers';
-import { VectorPlate } from '../models/vector-plate';
+import { addStickers } from '../../three/models/stickers';
+import { VectorPlate } from '../../three/models/vector-plate';
 import { WireCubes, voxelPositions, voxelize } from '../models/voxels';
-import { ANCHORS, cue } from './cues';
-import { ST } from './times';
+import { ANCHORS, cue } from '../../content/shell-07/cues';
 import { easeInOutCubic, persp, px, smooth, span, vlabel } from './kit';
+import { shotInfo } from '../../content/shell-07/shot-list';
 
 const G = '#2fd62a';
 const lerpHex = (a: number, b: number, k: number) => `#${new THREE.Color(a).lerp(new THREE.Color(b), k).getHexString()}`;
@@ -60,11 +60,7 @@ function plate(fg: CanvasRenderingContext2D, x: number, y: number, lines: [strin
 
 export const s7: ShotDef[] = [
   {
-    id: 'S14',
-    t0: ST.S14[0],
-    t1: ST.S14[1],
-    title: 'Periapt IV — from the system to the drop',
-    note: 'One camera move: a drafted system chart (a corona star that dwarfs its planets, orbits with ticks and lanes, a ringed giant) → the planet, at an exactly matched scale handoff from dithered schematic to sensor imagery → high orbit behind the station, shown as an angular ring and two wing outlines. It drops runners down arcs onto every remaining signal; the camera follows one drop down toward its zone. Labels sit on dark plates beside the planet and move to a side panel once the planet fills the view.',
+    ...shotInfo('S14'),
     build: () => {
       /* ---------------- scene A: system chart ---------------- */
       const A = new THREE.Scene();
@@ -336,11 +332,7 @@ export const s7: ShotDef[] = [
   },
   /* ---------------------------------------------------------------- */
   {
-    id: 'S15',
-    t0: ST.S15[0],
-    t1: ST.S15[1],
-    title: 'Drop zone survey',
-    note: 'A contour map of the drop zone: marching-squares isolines of the terrain, each lifted to its height and coloured by elevation, index contours brighter, a ground grid with coordinates; the colony ruins are map symbols, not models. Pods fall in on their trails and land on their marks; the camera tilts from straight down (the dive) to an oblique survey view.',
+    ...shotInfo('S15'),
     build: () => {
       const scene = new THREE.Scene();
       const cam = persp(32, 0.05, 200);
@@ -469,11 +461,7 @@ export const s7: ShotDef[] = [
   },
   /* ---------------------------------------------------------------- */
   {
-    id: 'S16',
-    t0: ST.S16[0],
-    t1: ST.S16[1],
-    title: 'The Authority',
-    note: 'An Authority soldier runs the ruins, its body broken into red outline voxels with cyan plates; at the end it turns and locks on the camera — on us.',
+    ...shotInfo('S16'),
     build: async (k) => {
       const scene = new THREE.Scene();
       const cam = persp(32, 0.05, 200);

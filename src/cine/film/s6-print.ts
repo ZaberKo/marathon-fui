@@ -6,26 +6,22 @@ import * as THREE from 'three/webgpu';
 import { abs, float, fract, mix, positionWorld, smoothstep, step, uniform, vec3 } from 'three/tsl';
 import type { ShotDef } from '../engine';
 import { clamp01, hash, q } from '../engine';
-import { C, F, checker, frameRect, line, microRows, rect, ring, stripes, text } from '../draw';
+import { C, F, checker, frameRect, line, microRows, rect, ring, stripes, text } from '../../graphics/draw';
 import { backdrop, PAL_BLUE } from '../backdrop';
-import { ASSERT_DURATION, ASSERT_REVEAL, assertionDial } from '../rings';
-import { makeBody, POSES } from '../models/body';
-import { brainGeometry } from '../models/anatomy';
+import { ASSERT_DURATION, ASSERT_REVEAL, assertionDial } from '../../graphics/rings';
+import { makeBody, POSES } from '../../three/models/body';
+import { brainGeometry } from '../../three/models/anatomy';
 import { segmentsToLines, skinnedPositions, sliceAxis } from '../models/slices';
-import { VectorPlate } from '../models/vector-plate';
+import { VectorPlate } from '../../three/models/vector-plate';
 import { contourMaterial } from '../../three/materials';
-import { ANCHORS } from './cues';
-import { ST } from './times';
+import { ANCHORS } from '../../content/shell-07/cues';
 import { easeInOutCubic, persp, pixelCluster, px, smooth, span } from './kit';
+import { shotInfo } from '../../content/shell-07/shot-list';
 
 
 export const s6: ShotDef[] = [
   {
-    id: 'S12',
-    t0: ST.S12[0],
-    t1: ST.S12[1],
-    title: 'A new shell is printed',
-    note: 'No machine, just the work. The body lies on its back, long axis up the frame, arms resting at its sides, divided into eight segments by cross-section frames. Every segment prints at once — layer lines behind a moving front with its real cross-section contour — and every frame is wired back to the psyche: the brain on its grid at left, feeding all fronts through one bus.',
+    ...shotInfo('S12'),
     build: async () => {
       const scene = new THREE.Scene();
       const cam = persp(30, 0.05, 60);
@@ -208,11 +204,7 @@ export const s6: ShotDef[] = [
   },
   /* ---------------------------------------------------------------- */
   {
-    id: 'S13',
-    t0: ST.S13[0],
-    t1: ST.S13[1],
-    title: 'Please stand by',
-    note: 'Hold frame. A full cobalt field — no black at all — the new shell idling in white contour lines; the lockup alternates PLEASE / STAND BY. The score drops out; the picture waits with you.',
+    ...shotInfo('S13'),
     build: async () => {
       const scene = new THREE.Scene();
       const cam = persp(28);

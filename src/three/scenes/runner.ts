@@ -6,12 +6,12 @@
  * to DOM labels. A floor dial with a precision scale turns with the stride.
  */
 import * as THREE from 'three/webgpu';
-import { createStage, cornerBox, makeTag, ringLine } from '../core';
+import { cornerBox, makeTag, ringLine, type Stage } from '../core';
 import { contourMaterial } from '../materials';
 import { FillBatch, LineBatch } from '../overlay';
 import { fitHeight } from '../assets';
-import { PAL, type SceneHandle } from './common';
-import { makeBody } from '../../cine/models/body';
+import { mountStage, PAL, type SceneHandle, type SceneOpts } from './common';
+import { makeBody } from '../models/body';
 
 const BONES: [string, string][] = [
   ['Head', 'Neck'], ['Neck', 'Spine2'], ['Spine2', 'Spine'], ['Spine', 'Hips'],
@@ -22,9 +22,12 @@ const BONES: [string, string][] = [
 ];
 const JOINTS = [...new Set(BONES.flat())];
 
-export async function mountRunner(host: HTMLElement, { fps = 12, pixel = 1, labels = true } = {}): Promise<SceneHandle> {
+export async function mountRunner(host: HTMLElement, { fps = 12, pixel = 1, labels = true, signal }: SceneOpts = {}): Promise<SceneHandle> {
   const camera = new THREE.PerspectiveCamera(26, 1, 0.1, 100);
-  const stage = await createStage(host, { label: 'RUNNER', fps, pixel, camera });
+  return mountStage(host, { label: 'RUNNER', fps, pixel, camera, signal }, (stage) => setupRunner(stage, camera, host, labels));
+}
+
+async function setupRunner(stage: Stage, camera: THREE.PerspectiveCamera, host: HTMLElement, labels: boolean) {
   const { scene } = stage;
 
   // contours: fine lines + index contours (5×) in cobalt-hi, rim, scan band
@@ -126,8 +129,7 @@ export async function mountRunner(host: HTMLElement, { fps = 12, pixel = 1, labe
   });
 
   return {
-    stage,
-    set(key, val) {
+    set(key: string, val: unknown) {
       if (key === 'freq') C.u.freq.value = Number(val);
       if (key === 'speed') speed = Number(val);
       if (key === 'orbit') orbit = Boolean(val);
@@ -136,7 +138,6 @@ export async function mountRunner(host: HTMLElement, { fps = 12, pixel = 1, labe
     dispose() {
       tags.forEach((t) => t.remove());
       body.mixer.stopAllAction();
-      stage.dispose();
     },
   };
 }

@@ -8,7 +8,7 @@
  */
 import * as THREE from 'three/webgpu';
 import { meshSDF, toGeometry, type Prim } from './sdf';
-import { hash } from '../engine';
+import { hash } from '../../graphics/frame';
 
 /**
  * Proportions (adult): vertex→chin 0.235, breadth 0.154, length 0.2,

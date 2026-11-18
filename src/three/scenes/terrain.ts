@@ -9,15 +9,18 @@
  */
 import * as THREE from 'three/webgpu';
 import { SimplexNoise } from 'three/addons/math/SimplexNoise.js';
-import { createStage, makeTag } from '../core';
+import { makeTag, type Stage } from '../core';
 import { LineBatch } from '../overlay';
 import { isoSegments } from '../procedural';
-import { PAL, type SceneHandle, type SceneOpts } from './common';
+import { mountStage, PAL, type SceneHandle, type SceneOpts } from './common';
 import { rng } from '../../lib/util';
 
-export async function mountTerrain(host: HTMLElement, { fps = 12, pixel = 1, labels = true }: SceneOpts = {}): Promise<SceneHandle> {
+export async function mountTerrain(host: HTMLElement, { fps = 12, pixel = 1, labels = true, signal }: SceneOpts = {}): Promise<SceneHandle> {
   const camera = new THREE.PerspectiveCamera(32, 1, 0.05, 200);
-  const stage = await createStage(host, { label: 'TERRAIN', fps, pixel, camera });
+  return mountStage(host, { label: 'TERRAIN', fps, pixel, camera, signal }, (stage) => setupTerrain(stage, camera, host, labels));
+}
+
+function setupTerrain(stage: Stage, camera: THREE.PerspectiveCamera, host: HTMLElement, labels: boolean) {
   const { scene } = stage;
   const r = rng(23);
   const noise = new SimplexNoise({ random: r });
@@ -154,11 +157,9 @@ export async function mountTerrain(host: HTMLElement, { fps = 12, pixel = 1, lab
   });
 
   return {
-    stage,
     dispose() {
       tags.forEach((t) => t.remove());
       survey?.remove();
-      stage.dispose();
     },
   };
 }

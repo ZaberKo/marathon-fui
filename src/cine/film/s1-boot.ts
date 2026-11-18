@@ -3,13 +3,13 @@
  */
 import type { Frame, ShotDef } from '../engine';
 import { FPS, q } from '../engine';
-import { C, F, checker, dashStack, kDots, line, microRows, rect, text } from '../draw';
+import { C, F, checker, dashStack, kDots, line, microRows, rect, text } from '../../graphics/draw';
 import { SCAN_BLOCK, scanBlockFrame } from '../../lib/scanBlock';
 import { backdrop } from '../backdrop';
-import { protocolDial, protocolFlash } from '../rings';
-import { ST } from './times';
+import { protocolDial, protocolFlash } from '../../graphics/rings';
 import { printFigure } from './figure';
 import { easeInOutCubic, easeOutExpo, smooth, span, typeOn } from './kit';
+import { shotInfo } from '../../content/shell-07/shot-list';
 
 const MINT = C.mint;
 
@@ -68,11 +68,7 @@ function initiating(f: Frame, slide: number, zoom: number, zx: number, zy: numbe
 
 export const s1: ShotDef[] = [
   {
-    id: 'S00',
-    t0: ST.S00[0],
-    t1: ST.S00[1],
-    title: 'Boot',
-    note: 'The runtime posts its checks into black and arms the defragmentation queue.',
+    ...shotInfo('S00'),
     build: () => ({
       draw(f) {
         const { fg, t } = f;
@@ -89,11 +85,7 @@ export const s1: ShotDef[] = [
     }),
   },
   {
-    id: 'S01',
-    t0: ST.S01[0],
-    t1: ST.S01[1],
-    title: 'Initiating',
-    note: 'The cached psyche acquires the Shell 07 link. Its wire preview resolves beside the initiating bands before the defragmentation ring takes over.',
+    ...shotInfo('S01'),
     build: async (k) => {
       const fig = await printFigure(k, { color: 0x2ee866 });
       return {
@@ -121,11 +113,7 @@ export const s1: ShotDef[] = [
     },
   },
   {
-    id: 'S02',
-    t0: ST.S02[0],
-    t1: ST.S02[1],
-    title: 'Defragmentation ring',
-    note: 'A single-frame metal wheel gives way to three concentric tracks. Their cobalt and green plates seat separately as the register swings into place. Open protocol lettering flashes solid, then overflows the frame.',
+    ...shotInfo('S02'),
     build: () => ({ draw: (f) => protocolDial(f.fg, f.t, f.dur) }),
   },
 ];

@@ -4,17 +4,20 @@
  * figure, drawing in one by one (stepped), endpoints marked with dots.
  */
 import * as THREE from 'three/webgpu';
-import { createStage, makeTag } from '../core';
+import { makeTag, type Stage } from '../core';
 import { contourMaterial } from '../materials';
 import { FillBatch, LineBatch } from '../overlay';
 import { fitHeight, loadModel, meshesOf, sampleVerts, vertexWorld } from '../assets';
 import { brainGeometry, cerebellumGeometry } from '../procedural';
-import { PAL, type SceneHandle, type SceneOpts } from './common';
+import { mountStage, PAL, type SceneHandle, type SceneOpts } from './common';
 import { rng } from '../../lib/util';
 
-export async function mountPsyche(host: HTMLElement, { fps = 12, pixel = 1, labels = true }: SceneOpts = {}): Promise<SceneHandle> {
+export async function mountPsyche(host: HTMLElement, { fps = 12, pixel = 1, labels = true, signal }: SceneOpts = {}): Promise<SceneHandle> {
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
-  const stage = await createStage(host, { label: 'PSYCHE', fps, pixel, camera });
+  return mountStage(host, { label: 'PSYCHE', fps, pixel, camera, signal }, (stage) => setupPsyche(stage, camera, host, labels));
+}
+
+async function setupPsyche(stage: Stage, camera: THREE.PerspectiveCamera, host: HTMLElement, labels: boolean) {
   const { scene } = stage;
 
   /* brain ------------------------------------------------------------ */
@@ -116,11 +119,9 @@ export async function mountPsyche(host: HTMLElement, { fps = 12, pixel = 1, labe
   });
 
   return {
-    stage,
     dispose() {
       tag?.remove();
       mixer.stopAllAction();
-      stage.dispose();
     },
   };
 }

@@ -544,13 +544,17 @@ export function countdownHTML() {
 export function mountCountdown(root: HTMLElement) {
   const main = $('[data-count-main]', root);
   const code = $('[data-count-code]', root);
+  const paint = (svg: Element, text: string, size: number) => {
+    if (svg.getAttribute('aria-label') !== text) svg.outerHTML = capsuleText(text, { size });
+  };
   return stepLoop(2, (f) => {
     // count to the top of the next hour, live
     const now = new Date();
     const left = 3600 - (now.getMinutes() * 60 + now.getSeconds());
     const t = `T-00:${pad(Math.floor(left / 60), 2)}:${pad(left % 60, 2)}`;
-    main.innerHTML = capsuleText(t, { size: 520 }) + capsuleText(f % 4 < 3 ? 'UNTIL CLOSE /' : 'UNTIL CLOSE  ', { size: 520 });
-    code.innerHTML = capsuleText('LINK', { size: 110 }) + capsuleText('WINDOW', { size: 110 }) + capsuleText(`${pad(now.getUTCHours(), 2)}-${pad(left, 4)}`, { size: 110 });
+    paint(main.children[0], t, 520);
+    paint(main.children[1], f % 4 < 3 ? 'UNTIL CLOSE /' : 'UNTIL CLOSE  ', 520);
+    paint(code.children[2], `${pad(now.getUTCHours(), 2)}-${pad(left, 4)}`, 110);
   }, root);
 }
 

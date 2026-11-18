@@ -1,5 +1,5 @@
-import type { C2 } from './engine';
-import { FPS, H, W, clamp01, easeInOut, easeOut, hash, lerp } from './engine';
+import type { C2 } from './frame';
+import { FPS, H, W, clamp01, easeInOut, easeOut, hash, lerp } from './frame';
 import { C, F, arc, checker, clipped, line, microRows, plus, rect, ring, text } from './draw';
 
 const TAU = Math.PI * 2;

@@ -18,7 +18,7 @@
  */
 import type { C2 } from './engine';
 import { hash } from './engine';
-import { POSES, posedJoints } from './models/body';
+import { POSES, posedJoints } from '../three/models/body';
 
 type P2 = [number, number];
 export type Muscle = { name: string; poly: P2[]; group: string; angle: number };

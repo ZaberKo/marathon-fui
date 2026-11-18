@@ -1,5 +1,5 @@
 import type { C2 } from '../engine';
-import { F, checker, clipped, kDots, line, microRows, ring, stripes, text } from '../draw';
+import { F, checker, clipped, kDots, line, microRows, ring, stripes, text } from '../../graphics/draw';
 
 const glyphs = {
   '3': { width: 72, path: new Path2D('M4 15 19 0H56L70 14V37L59 49 72 61V84L56 100H18L3 85V72H21V79L27 84H47L53 78V64L47 58H27V42H47L52 36V22L46 16H28L22 22V28H4Z') },

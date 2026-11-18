@@ -32,6 +32,9 @@ export function loadRig() {
           joints.set(short, new THREE.Vector3().setFromMatrixPosition(o.matrixWorld));
         });
         return { scene, clips: g.animations as unknown as THREE.AnimationClip[], names, joints };
+      }).catch((error) => {
+        rigP = null;
+        throw error;
       });
   return rigP;
 }
@@ -138,6 +141,9 @@ export function bodyGeometry(variant: BodyVariant, cell = 0.008) {
       skinFromPrims(g, prims, 0.016);
       console.info(`[body] ${variant} ${g.getAttribute('position').count} verts in ${(performance.now() - t0).toFixed(0)}ms`);
       return g;
+    }).catch((error) => {
+      geoCache.delete(key);
+      throw error;
     });
     geoCache.set(key, p);
   }
@@ -160,6 +166,9 @@ export function bodyHeadGeometry(variant: HeadVariant) {
       geometry.translate(-origin.x, -origin.y, -origin.z);
       const boneFromHead = bone.matrixWorld.clone().invert().multiply(new THREE.Matrix4().makeTranslation(origin.x, origin.y, origin.z));
       return { geometry, boneFromHead };
+    }).catch((error) => {
+      headCache.delete(variant);
+      throw error;
     });
     headCache.set(variant, head);
   }

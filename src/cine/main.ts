@@ -15,14 +15,16 @@ import '@fontsource/ibm-plex-mono/700.css';
 import '@fontsource/silkscreen/400.css';
 import '../styles/tokens.css';
 import './cinema.css';
-import { H, Timeline, W, createGL, type Frame } from './engine';
-import { loadFonts } from './draw';
+import { H, Timeline, W, type Frame } from './engine';
+import { createGL } from '../three/frame-renderer';
+import { loadFonts } from '../graphics/draw';
 import { SHOTS } from './film';
-import { AUDIO_SRC, DURATION, LINES } from './film/cues';
+import { DURATION, LINES } from '../content/shell-07/cues';
 import { mountPerfHud } from '../lib/perfHud';
 import { startPageMeter } from '../lib/perf';
 
 const params = new URLSearchParams(location.search);
+const AUDIO_SRC = 'audio/film.mp3';
 const capture = params.has('capture');
 
 const root = document.getElementById('cine')!;

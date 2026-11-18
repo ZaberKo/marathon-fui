@@ -8,15 +8,15 @@
 import * as THREE from 'three/webgpu';
 import type { Frame, ShotDef } from '../engine';
 import { clamp01, hash } from '../engine';
-import { C, F, frameRect, line, microRows, rect, ring, text } from '../draw';
-import { makeBody, POSES, type Body } from '../models/body';
-import { brainGeometry } from '../models/anatomy';
+import { C, F, frameRect, line, microRows, rect, ring, text } from '../../graphics/draw';
+import { makeBody, POSES, type Body } from '../../three/models/body';
+import { brainGeometry } from '../../three/models/anatomy';
 import { Hard, deck, toonLit } from '../models/hard';
-import { ASSERT_DURATION, ASSERT_REVEAL, assertionDial } from '../rings';
+import { ASSERT_DURATION, ASSERT_REVEAL, assertionDial } from '../../graphics/rings';
 import { WireCubes, burst, voxelPositions, voxelize, type VoxelSet } from '../models/voxels';
-import { ANCHORS } from './cues';
-import { ST } from './times';
+import { ANCHORS } from '../../content/shell-07/cues';
 import { easeInOutCubic, persp, px, smooth, span, vlabel } from './kit';
+import { shotInfo } from '../../content/shell-07/shot-list';
 
 const HIT = ANCHORS.impact;
 const WALK_IN = ANCHORS.hush + ASSERT_REVEAL.loss;
@@ -139,11 +139,7 @@ function psycheDraw(f: Frame, set: DeathSet, cam: THREE.Camera, centre: THREE.Ve
 
 export const s5: ShotDef[] = [
   {
-    id: 'S10',
-    t0: ST.S10[0],
-    t1: ST.S10[1],
-    title: 'Terminated in the field',
-    note: 'The cropped assertion register holds through the spoken ASSERT. It lifts to reveal the previous shell walking into the reticle. On impact the voxel shell turns red, falls and breaks across the deck.',
+    ...shotInfo('S10'),
     build: async () => {
       const set = await deathSet();
       const cam = persp(32, 0.05, 200);
@@ -211,11 +207,7 @@ export const s5: ShotDef[] = [
     },
   },
   {
-    id: 'S11',
-    t0: ST.S11[0],
-    t1: ST.S11[1],
-    title: 'Psyche ejected',
-    note: 'Above the red voxel debris the psyche hangs as a slow cloud of points, caught in a containment bracket — the only part of the runner that survived.',
+    ...shotInfo('S11'),
     build: async () => {
       const set = await deathSet();
       const cam = persp(34, 0.05, 200);

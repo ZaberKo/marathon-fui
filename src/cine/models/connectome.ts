@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { attribute, exp, float, fract, max, mix, sin, smoothstep, step, uniform } from 'three/tsl';
 import { hash } from '../engine';
-import { brainGeometry } from './anatomy';
+import { brainGeometry } from '../../three/models/anatomy';
 import { sliceAxis } from './slices';
 
 /** Projection fibres rise from the base and fan through the actual brain cross-sections. */

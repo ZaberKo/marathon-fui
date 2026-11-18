@@ -1,10 +1,9 @@
-import { loadFonts } from '../cine/draw';
-import { H, W, createGL, type C2, type GL } from '../cine/engine';
-import { ASSERT_DURATION, assertionDial, protocolDial } from '../cine/rings';
-import { BUFFER_LOAD_DURATION, BUFFER_LOCK_DURATION, BUFFER_RETURN_DURATION, bufferTracks, createBufferDial } from '../cine/film/buffer-dial';
-import { completionDial } from '../cine/film/completion-dial';
-import { ANCHORS } from '../cine/film/cues';
-import { ST } from '../cine/film/times';
+import { loadFonts } from '../graphics/draw';
+import { H, W, type C2 } from '../graphics/frame';
+import { ASSERT_DURATION, assertionDial, protocolDial } from '../graphics/rings';
+import { BUFFER_LOAD_DURATION, BUFFER_LOCK_DURATION, bufferTracks } from '../graphics/buffer-tracks';
+import { completionDial } from '../graphics/completion-dial';
+import type { GL } from '../three/frame-renderer';
 import { $, $$, bag, on } from '../lib/util';
 import { section, spec } from './_ui';
 
@@ -21,14 +20,17 @@ type Dial = {
 
 // The kit holds the camera still: axis, radius and framing stay put; motion lives in the wheel.
 const KIT = { fixed: true } as const;
-const protocolDuration = ST.S02[1] - ST.S02[0] + 2;
+// Preview timings are authored here so edits to the film do not retime the demos.
+const BUFFER_PREVIEW = { ...KIT, countAt: 1.17 };
+const protocolDuration = 6;
 const returnAt = BUFFER_LOAD_DURATION + BUFFER_LOCK_DURATION;
-const completionDuration = ST.S21[1] - ANCHORS.downbeat;
+const bufferReturnDuration = 3.8199;
+const completionDuration = 6.08;
 const DIAL_GROUPS: readonly (readonly Dial[])[] = [
   [{ code: 'RD-01', title: 'Defrag protocol', shots: 'S02', api: 'protocolDial()', duration: protocolDuration, still: 4.1,
     note: 'Three metal rings counter-rotate as their read heads sweep. The plates expand along the same axis and lock into cobalt and green tracks.',
     paint: (ctx, elapsed) => protocolDial(ctx, elapsed, protocolDuration, { ringIntro: true, fixed: true }) }],
-  [{ code: 'RD-02', title: 'Liminal buffer', shots: 'S06 · S21', api: 'createBufferDial(KIT)', duration: returnAt + BUFFER_RETURN_DURATION, still: 5.5,
+  [{ code: 'RD-02', title: 'Liminal buffer', shots: 'S06 · S21', api: 'createBufferDial(KIT)', duration: returnAt + bufferReturnDuration, still: 5.5,
     note: 'Load to 26%, seat the red lock and yellow insert, then return at 100% and break the tracks apart.',
     paint: 'buffer' }],
   [
@@ -67,17 +69,26 @@ function mountDial(card: HTMLElement, group: readonly Dial[], fonts: Promise<voi
   let raf = 0;
   let last = 0;
   let gl: GL | null = null;
-  let loadPortrait: (() => void) | undefined;
+  let loadPortrait: (() => Promise<void>) | undefined;
   let drawBuffer: ((time: number) => void) | undefined;
 
   if (dial.paint === 'buffer') {
     const bg = $<HTMLCanvasElement>('.tel-dial__field', view).getContext('2d')!;
     const host = $('.tel-dial__portrait', view);
     layers.unshift(bg);
-    let tracks = bufferTracks(undefined, KIT);
-    loadPortrait = () => {
+    let tracks = bufferTracks(BUFFER_PREVIEW);
+    loadPortrait = async () => {
       loadPortrait = undefined;
-      void Promise.allSettled([createBufferDial(KIT), createGL(host, quality(), 'BUFFER DIAL')]).then(([model, renderer]) => {
+      try {
+        const [{ createBufferDial }, { createGL }] = await Promise.all([
+          import('../three/buffer-portrait'),
+          import('../three/frame-renderer'),
+        ]);
+        if (disposed) return;
+        const [model, renderer] = await Promise.allSettled([
+          createBufferDial(BUFFER_PREVIEW),
+          createGL(host, quality(), 'BUFFER DIAL'),
+        ]);
         const portrait = model.status === 'fulfilled' ? model.value : null;
         const device = renderer.status === 'fulfilled' ? renderer.value : null;
         if (disposed || !portrait || !device) {
@@ -90,13 +101,15 @@ function mountDial(card: HTMLElement, group: readonly Dial[], fonts: Promise<voi
         b.add(() => portrait.dispose());
         b.add(() => device.dispose());
         fit();
-      });
+      } catch (error) {
+        if (!disposed) console.warn('[data] Buffer portrait unavailable', error);
+      }
     };
     drawBuffer = (t) => {
       const frame = { bg, fg: ink, t, three: null };
       if (t < BUFFER_LOAD_DURATION) tracks.load(frame);
       else if (t < returnAt) tracks.lock(frame, t - BUFFER_LOAD_DURATION);
-      else tracks.resume(frame, t - returnAt, BUFFER_RETURN_DURATION);
+      else tracks.resume(frame, t - returnAt, bufferReturnDuration);
       gl?.render(frame.three);
     };
   }
@@ -199,7 +212,7 @@ function mountDial(card: HTMLElement, group: readonly Dial[], fonts: Promise<voi
   const visibility = new IntersectionObserver(([entry]) => {
     if (disposed) return;
     visible = entry.isIntersecting;
-    if (visible) loadPortrait?.();
+    if (visible) void loadPortrait?.();
     syncClock();
   });
   visibility.observe(view);

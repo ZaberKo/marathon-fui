@@ -6,21 +6,21 @@ import * as THREE from 'three/webgpu';
 export type ModelName = 'soldier' | 'xbot' | 'head';
 
 /**
- * Models are generated in-house (src/cine/models): SDF bodies skinned to a
+ * Models are generated in-house (three/models): SDF bodies skinned to a
  * motion-only rig (public/anim/rig.glb — Mixamo clips, no meshes) and an SDF
  * head. The names are kept for the scenes that use them:
  *   soldier → armoured runner · xbot → slim runner · head → head bust
  */
 export async function loadModel(name: ModelName) {
   if (name === 'head') {
-    const { headGeometry } = await import('../cine/models/anatomy');
+    const { headGeometry } = await import('./models/anatomy');
     const root = new THREE.Group();
     const mesh = new THREE.Mesh(headGeometry().clone(), new THREE.MeshBasicMaterial());
     mesh.name = 'head';
     root.add(mesh);
     return { root: root as THREE.Object3D, clips: [] as THREE.AnimationClip[] };
   }
-  const { makeBody } = await import('../cine/models/body');
+  const { makeBody } = await import('./models/body');
   const body = await makeBody(name === 'soldier' ? 'armor' : 'runner', new THREE.MeshBasicMaterial());
   body.mesh.name = 'surface';
   return { root: body.root, clips: body.clips };

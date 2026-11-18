@@ -5,23 +5,24 @@
 import * as THREE from 'three/webgpu';
 import type { C2, Frame, ShotDef } from '../engine';
 import { H, W, clamp01, hash } from '../engine';
-import { C, F, arc, clipped, frameRect, line, rect, ring, text } from '../draw';
+import { C, F, arc, clipped, frameRect, line, rect, ring, text } from '../../graphics/draw';
 import { backdrop, PAL_BLUE, PAL_GREEN } from '../backdrop';
-import { COMPLETION_RADIUS, completionDial } from './completion-dial';
-import { bodyHeadGeometry, makeBody } from '../models/body';
-import { flowMaterial } from '../models/flow';
+import { COMPLETION_RADIUS, completionDial } from '../../graphics/completion-dial';
+import { bodyHeadGeometry, makeBody } from '../../three/models/body';
+import { flowMaterial } from '../../three/models/flow';
 import { ascendingBundles, connectomeMaterial } from '../models/connectome';
-import { opticPathway, wireEye, type HeadAnatomy } from '../models/head2';
+import { opticPathway, wireEye, type HeadAnatomy } from '../../three/models/head2';
 import { HAZE } from '../models/hard';
 import { buildColony } from '../models/colony';
 import { contourMaterial } from '../../three/materials';
 import { pixelSurfaceMaterial } from '../../three/procedural';
 import { ORA_INK, oraBuildAt, oraWordmarkLayout, paintOraLetters, paintOraRing } from '../../lib/oraWordmark';
-import { ANCHORS, LINES } from './cues';
-import { ST } from './times';
+import { ANCHORS, LINES } from '../../content/shell-07/cues';
+import { ST } from '../../content/shell-07/times';
 import { easeInOutCubic, persp, px, smooth, span } from './kit';
 import { BUFFER_RETURN_DURATION, BUFFER_RETURN_FLASH, createBufferDial } from './buffer-dial';
 import { opticGlyph, transferMarks, type OpticGlyph } from './transfer-ui';
+import { shotInfo } from '../../content/shell-07/shot-list';
 
 const at = (id: string) => LINES.find((l) => l.id === id)!.t;
 const mix = THREE.MathUtils.lerp;
@@ -54,11 +55,7 @@ function contractWipe(fg: C2, T: number, cut: number) {
 
 export const s9: ShotDef[] = [
   {
-    id: 'S21',
-    t0: ST.S21[0],
-    t1: ST.S21[1],
-    title: 'Defragmentation complete',
-    note: 'Two red tracks reach 100 percent. The readout changes ink before the track fragments fall away. A lime relay sheds its teeth into a macro radial print, then the compact COMPLETE wheel resolves into the ORA ring.',
+    ...shotInfo('S21'),
     build: async () => {
       const buffer = await createBufferDial();
       const downbeat = BUFFER_RETURN_FLASH + BUFFER_RETURN_DURATION;
@@ -83,11 +80,7 @@ export const s9: ShotDef[] = [
     },
   },
   {
-    id: 'S22',
-    t0: ST.S22[0],
-    t1: ST.S22[1],
-    title: 'ORA',
-    note: 'The completed ring grows into the ORA wordmark on the introduction. The mark docks with its support readout, then the O expands into the outline of Periapt IV.',
+    ...shotInfo('S22'),
     build: () => ({
       draw(f) {
         const { bg, fg, t, T, dur } = f;
@@ -141,11 +134,7 @@ export const s9: ShotDef[] = [
     }),
   },
   {
-    id: 'S23',
-    t0: ST.S23[0],
-    t1: ST.S23[1],
-    title: 'Contract — target: shell 06',
-    note: 'The orbital view picks up the ORA ring. A surface pointer traces into the contract readout as its fields resolve, then the view dives to the ruins and scans the moving target.',
+    ...shotInfo('S23'),
     build: async () => {
       const scene = new THREE.Scene();
       const cam = persp(ORBIT_FOV, 0.05, 1000);
@@ -293,22 +282,14 @@ export const s9: ShotDef[] = [
   },
   /* ---------------------------------------------------------------- */
   {
-    id: 'S24',
-    t0: ST.S24[0],
-    t1: ST.S24[1],
-    title: 'Consciousness transfer',
-    note: 'The camera circles the shell, then keeps moving into the brain along the optic route throughout the countdown.',
+    ...shotInfo('S24'),
     build: async () => {
       const rig = await headRig();
       return { draw: (f) => rig.transfer(f) };
     },
   },
   {
-    id: 'S25',
-    t0: ST.S25[0],
-    t1: ST.S25[1],
-    title: 'Initiate',
-    note: 'INIT lights up in the internal optic view. The camera rushes toward the eyes, the two rings fuse into one and the field floods blue before the final blackout.',
+    ...shotInfo('S25'),
     build: async () => {
       const rig = await headRig();
       return { draw: (f) => rig.initiate(f) };

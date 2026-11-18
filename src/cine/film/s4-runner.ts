@@ -5,28 +5,25 @@
 import * as THREE from 'three/webgpu';
 import type { ShotDef } from '../engine';
 import { hash, q } from '../engine';
-import { C, F, checker, microRows, rect, ring, text } from '../draw';
+import { C, F, checker, microRows, rect, ring, text } from '../../graphics/draw';
 import { backdrop, PAL_BLUE } from '../backdrop';
-import { makeBody, POSES, type Body } from '../models/body';
+import { makeBody, POSES, type Body } from '../../three/models/body';
 import { toonLit } from '../models/hard';
 import { contourMaterial } from '../../three/materials';
 import { glitchToon } from '../mats';
-import { createSubject } from '../../three/scenes/subject';
-import { ASSERT_DURATION, assertionDial } from '../rings';
-import { addStickers } from '../models/stickers';
-import { ST } from './times';
+import { createSubject } from '../../three/subject';
+import { createSubjectDetails } from './subject-details';
+import { ASSERT_DURATION, assertionDial } from '../../graphics/rings';
+import { addStickers } from '../../three/models/stickers';
 import { barLabel, easeInOutCubic, persp, pixelCluster, px, smooth, span, typeOn, vlabel } from './kit';
+import { shotInfo } from '../../content/shell-07/shot-list';
 
 export const s4: ShotDef[] = [
   {
-    id: 'S07',
-    t0: ST.S07[0],
-    t1: ST.S07[1],
-    title: 'Subject is a runner',
-    note: 'The red and cobalt assertion dial cuts to a large pixel profile and a second silhouette. Green contours and lime fragments identify the subject as the definition types in.',
+    ...shotInfo('S07'),
     build: async (k) => {
       const cam = persp(26);
-      const subject = await createSubject(k.gl.renderer, cam, { film: true });
+      const subject = await createSubject(k.gl.renderer, cam, createSubjectDetails);
       return {
         draw(f) {
           const { fg, t } = f;
@@ -52,11 +49,7 @@ export const s4: ShotDef[] = [
   },
   /* ---------------------------------------------------------------- */
   {
-    id: 'S08',
-    t0: ST.S08[0],
-    t1: ST.S08[1],
-    title: 'A mind without a body',
-    note: 'A contour runner sprints while delayed copies trail behind it — the body as a sequence of time slices, the mind as the only constant.',
+    ...shotInfo('S08'),
     build: async () => {
       const scene = new THREE.Scene();
       const cam = persp(28);
@@ -100,11 +93,7 @@ export const s4: ShotDef[] = [
   },
   /* ---------------------------------------------------------------- */
   {
-    id: 'S09',
-    t0: ST.S09[0],
-    t1: ST.S09[1],
-    title: 'Leased to a printed shell',
-    note: 'Behind: the mind as a standing point-cloud human, twice life size. In front: the solid printed shell. Mapping lines connect each joint of the cloud to the same joint of the shell — the lease, made visible.',
+    ...shotInfo('S09'),
     build: async () => {
       const scene = new THREE.Scene();
       const cam = persp(30);

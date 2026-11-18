@@ -5,11 +5,11 @@
 import * as THREE from 'three/webgpu';
 import type { C2, ShotDef } from '../engine';
 import { clamp01, hash } from '../engine';
-import { C, F, frameRect, line, microRows, rect, ring, stripes, text, tri } from '../draw';
-import { makeBody, type Body } from '../models/body';
+import { C, F, frameRect, line, microRows, rect, ring, stripes, text, tri } from '../../graphics/draw';
+import { makeBody, type Body } from '../../three/models/body';
 import { contourMaterial } from '../../three/materials';
-import { ST } from './times';
 import { easeInOutCubic, easeOutExpo, persp, pixelCluster, px, scrollRow, smooth, span, vlabel } from './kit';
+import { shotInfo } from '../../content/shell-07/shot-list';
 
 const ORANGE = '#fc2c00';
 
@@ -21,11 +21,7 @@ function pixCross(fg: C2, x: number, y: number, u: number) {
 
 export const s8: ShotDef[] = [
   {
-    id: 'S17',
-    t0: ST.S17[0],
-    t1: ST.S17[1],
-    title: 'Cognition runtime error',
-    note: 'Fault = the whole frame floods orange-red. One continuous row on a black band — WARNING_WARNING_… → COGNITION_ → RUNTIME_ → ERROR_, evenly spaced by underscores — giant pixel-font letters are cropped behind it; pixel crosses mark the corners.',
+    ...shotInfo('S17'),
     build: () => ({
       draw(f) {
         const { bg, fg, t } = f;
@@ -64,11 +60,7 @@ export const s8: ShotDef[] = [
     }),
   },
   {
-    id: 'S18',
-    t0: ST.S18[0],
-    t1: ST.S18[1],
-    title: 'Shell 06 signal',
-    note: 'Back to the planet map: a ping rises from the ruins — the dead shell is still transmitting. The map pushes in on the source.',
+    ...shotInfo('S18'),
     build: () => ({
       draw(f) {
         const { fg, t } = f;
@@ -118,11 +110,7 @@ export const s8: ShotDef[] = [
     }),
   },
   {
-    id: 'S19',
-    t0: ST.S19[0],
-    t1: ST.S19[1],
-    title: 'Instance count: two',
-    note: 'Split frame: the new shell (white on cobalt) and the old one (red on black), the same body twice. They turn to face each other across the seam.',
+    ...shotInfo('S19'),
     build: async () => {
       const scene = new THREE.Scene();
       const cam = persp(28);
@@ -161,11 +149,7 @@ export const s8: ShotDef[] = [
     },
   },
   {
-    id: 'S20',
-    t0: ST.S20[0],
-    t1: ST.S20[1],
-    title: 'Suboptimal durability',
-    note: 'Restraint after the alarm: a near-empty black frame where durability sliders drop to compromised values and debris drifts. The AI decides to proceed anyway.',
+    ...shotInfo('S20'),
     build: () => ({
       draw(f) {
         const { fg, t } = f;

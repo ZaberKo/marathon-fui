@@ -19,6 +19,45 @@ export const hex = (n: number, len = 4) => Math.floor(n).toString(16).toUpperCas
 export const reducedMotion = () =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+/** Schedule frames only while the document and optional target are visible. */
+export function frameLoop(cb: FrameRequestCallback, watch?: Element, onActive?: (active: boolean) => void): Cleanup {
+  let raf = 0;
+  let visible = true;
+  let stopped = false;
+  let active: boolean | undefined;
+  const tick = (now: number) => {
+    raf = 0;
+    sync();
+    if (active) cb(now);
+  };
+  const sync = () => {
+    const next = !stopped && visible && !document.hidden;
+    if (next) {
+      if (!raf) raf = requestAnimationFrame(tick);
+    } else if (raf) {
+      cancelAnimationFrame(raf);
+      raf = 0;
+    }
+    if (next !== active) {
+      active = next;
+      onActive?.(next);
+    }
+  };
+  const observer = watch ? new IntersectionObserver((entries) => {
+    visible = entries.at(-1)?.isIntersecting ?? visible;
+    sync();
+  }) : null;
+  if (watch) observer?.observe(watch);
+  document.addEventListener('visibilitychange', sync);
+  sync();
+  return () => {
+    stopped = true;
+    document.removeEventListener('visibilitychange', sync);
+    observer?.disconnect();
+    sync();
+  };
+}
+
 /**
  * Fixed-rate loop — the core of "stepped" animation.
  * The callback only fires at `fps`, so motion reads as discrete frames.
@@ -29,27 +68,14 @@ export function stepLoop(
   cb: (frame: number, t: number) => void,
   watch?: Element,
 ) {
-  let raf = 0;
   let last = 0;
   let frame = 0;
-  let visible = true;
   const interval = 1000 / fps;
-  const io = watch
-    ? new IntersectionObserver(([e]) => (visible = e.isIntersecting))
-    : null;
-  if (watch && io) io.observe(watch);
-  const tick = (now: number) => {
-    raf = requestAnimationFrame(tick);
-    if (!visible) return;
+  return frameLoop((now) => {
     if (now - last < interval) return;
     last = now - ((now - last) % interval);
     cb(frame++, now / 1000);
-  };
-  raf = requestAnimationFrame(tick);
-  return () => {
-    cancelAnimationFrame(raf);
-    io?.disconnect();
-  };
+  }, watch);
 }
 
 /** Make a canvas match its CSS box at device pixel ratio. Returns 2D ctx + size getter. */
@@ -62,8 +88,10 @@ export function crispCanvas(canvas: HTMLCanvasElement, maxDpr = 2) {
     size.w = Math.max(1, Math.round(r.width));
     size.h = Math.max(1, Math.round(r.height));
     size.dpr = dpr;
-    canvas.width = Math.round(size.w * dpr);
-    canvas.height = Math.round(size.h * dpr);
+    const width = Math.round(size.w * dpr);
+    const height = Math.round(size.h * dpr);
+    if (canvas.width !== width) canvas.width = width;
+    if (canvas.height !== height) canvas.height = height;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   };
   fit();

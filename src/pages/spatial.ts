@@ -64,9 +64,11 @@ export default async function mount(root: HTMLElement) {
       key,
       mountGL(
         host,
-        (h) => def.mount(h, { fps, pixel: px }),
+        (h, signal) => def.mount(h, { fps, pixel: px, signal }),
         (h) => {
           handles.set(key, h);
+          h.stage.setFps(fps);
+          h.stage.setPixel(px);
           if (key === 'subject') h.set?.('style', subjectStyles.querySelector<HTMLElement>('[aria-pressed="true"]')?.dataset.value);
           $('#sp-backend', root).textContent = h.stage.backend;
         },
@@ -88,6 +90,8 @@ export default async function mount(root: HTMLElement) {
   b.add(() => {
     io.disconnect();
     cleanups.forEach((fn) => fn());
+    cleanups.clear();
+    handles.clear();
   });
 
   // per-card fps readout

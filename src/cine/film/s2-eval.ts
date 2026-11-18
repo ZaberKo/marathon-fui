@@ -3,21 +3,17 @@
  */
 import type { ShotDef } from '../engine';
 import { hash } from '../engine';
-import { C, F, checker, dashStack, line, microRows, rect, ring, scanlines, text } from '../draw';
+import { C, F, checker, dashStack, line, microRows, rect, ring, scanlines, text } from '../../graphics/draw';
 import { backdrop, PAL_BLUE, PAL_GREEN } from '../backdrop';
 import { ANAT_BLUE, ANAT_LIME, anatomyFigure, drawFigure, prepareFigure, toPx, type Place } from '../anatomy2d';
 import { span } from './kit';
-import { ST } from './times';
+import { shotInfo } from '../../content/shell-07/shot-list';
 
 export const s2: ShotDef[] = [
   /* ---------------------------------------------------------------- */
   /* ---------------------------------------------------------------- */
   {
-    id: 'S03',
-    t0: ST.S03[0],
-    t1: ST.S03[1],
-    title: 'Vital signs',
-    note: 'An anatomical plate in smooth 2D line work: nerve bundles of many strands in several colours (fanning into fingers and toes), muscles filled with fibre lines, hatched organs, the brain and the optic pathway. Signals run out along the nerves, muscle groups light in sequence, a scan band travels down, a heart trace runs beside it.',
+    ...shotInfo('S03'),
     build: async () => {
       const fig = await anatomyFigure();
       const s = 500;
@@ -78,11 +74,7 @@ export const s2: ShotDef[] = [
   },
   /* ---------------------------------------------------------------- */
   {
-    id: 'S04',
-    t0: ST.S04[0],
-    t1: ST.S04[1],
-    title: 'Recognition response',
-    note: 'Same plate, lime skin, close: the eyes track a stimulus with a measured lag; the vertical RESPONSE label resolves into an OK plate. Framed by the boot slab pieces — the kit is one system across shots.',
+    ...shotInfo('S04'),
     build: async () => {
       const fig = await anatomyFigure();
       const crop: [number, number, number, number] = [-0.38, 0.98, 0.38, 1.86];

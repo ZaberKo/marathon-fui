@@ -5,25 +5,11 @@
 import * as THREE from 'three/webgpu';
 import { abs, float, fract, mix, positionWorld, smoothstep, step, uniform, vec3 } from 'three/tsl';
 import type { Frame, Kit } from '../engine';
-import { H, W, clamp01, hash } from '../engine';
-import { makeBody, POSES } from '../models/body';
+import { clamp01, hash } from '../engine';
+import { makeBody, POSES } from '../../three/models/body';
 import { skinnedPositions } from '../models/slices';
 import { contourMaterial } from '../../three/materials';
-
-/**
- * Orthographic camera such that world point `anchor` lands on frame px (x, y)
- * and 1 world unit = `s` px. Camera looks down -Z (or along `dir`).
- */
-export function pxOrtho(cam: THREE.OrthographicCamera, x: number, y: number, s: number, anchor = new THREE.Vector3()) {
-  cam.left = -x / s;
-  cam.right = (W - x) / s;
-  cam.top = y / s;
-  cam.bottom = -(H - y) / s;
-  cam.position.set(anchor.x, anchor.y, anchor.z + 10);
-  cam.near = 0.01;
-  cam.far = 40;
-  cam.updateProjectionMatrix();
-}
+import { pxOrtho } from '../../three/frame-camera';
 
 /**
  * The empty shell in the opening: green link lines come down from above into

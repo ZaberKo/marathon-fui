@@ -10,7 +10,7 @@
  * dynamic LineSegments, so thousands stay cheap.
  */
 import * as THREE from 'three/webgpu';
-import type { Body } from './body';
+import type { Body } from '../../three/models/body';
 import { hash } from '../engine';
 
 export type VoxelSet = { cell: number; verts: Int32Array; count: number };

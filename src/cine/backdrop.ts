@@ -1,6 +1,6 @@
 import type { C2 } from './engine';
 import { H, W, hash } from './engine';
-import { clipped, kDots } from './draw';
+import { clipped, kDots } from '../graphics/draw';
 import registrationTile from '../styles/registration-screen.svg?raw';
 
 type Palette = { plate: string; edge: string; dots: string };

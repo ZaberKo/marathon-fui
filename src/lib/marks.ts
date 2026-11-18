@@ -162,13 +162,17 @@ const barcode: MarkFn = (el, o) => {
   const H = 24;
   const s = svgRoot(el, W, H + 7, Number(o.size ?? 220));
   const g = S('g', {}, s);
+  const bars = Array.from({ length: Math.ceil(widths.length / 2) }, () => S('rect', { y: 0, height: H, fill: 'currentColor' }, g));
   const scan = S('rect', { y: 0, width: 1, height: H, fill: ACC }, s);
   const label = S('text', { x: 0, y: H + 6.5, 'font-size': 5.5, fill: 'currentColor', 'font-family': 'IBM Plex Mono, monospace', 'letter-spacing': 0.5 }, s);
   const draw = () => {
-    g.innerHTML = '';
     let x = 0;
     widths.forEach((w, i) => {
-      if (i % 2 === 0) S('rect', { x, y: 0, width: w, height: H, fill: 'currentColor' }, g);
+      if (i % 2 === 0) {
+        const bar = bars[i / 2];
+        bar.setAttribute('x', String(x));
+        bar.setAttribute('width', String(w));
+      }
       x += w;
     });
   };
@@ -305,6 +309,7 @@ const sigil: MarkFn = (el, o) => {
   el.classList.add('mk');
   return stepLoop(Number(o.fps ?? 8), (f) => {
     const phase = f % 16;
+    if (phase > 3) return;
     if (phase === 0) seed++;
     // frames 0-2 cycle candidates, then the emblem holds
     const sd = phase < 3 ? seed * 1000 + f : seed;

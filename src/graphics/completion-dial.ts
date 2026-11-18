@@ -1,8 +1,8 @@
-import type { C2 } from '../engine';
-import { H, W, clamp01, easeOut, hash, lerp } from '../engine';
-import { C, F, arc, microRows, plus, ring, text } from '../draw';
-import { dialField } from '../rings';
-import { bufferField, yellowBufferGuide } from './buffer-dial';
+import type { C2 } from './frame';
+import { H, W, clamp01, easeOut, hash, lerp } from './frame';
+import { C, F, arc, microRows, plus, ring, text } from './draw';
+import { dialField } from './rings';
+import { bufferField, yellowBufferGuide } from './buffer-tracks';
 
 const TAU = Math.PI * 2;
 const RAD = Math.PI / 180;

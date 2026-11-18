@@ -73,7 +73,8 @@ export function countTo(el: HTMLElement, to: number, { from = 0, steps = 14, dur
  * Horizontal slice glitch: duplicates the element's content into
  * clipped layers and jitters them for a few frames.
  */
-export function glitch(el: HTMLElement, { frames = 8, fps = 24, intensity = 18, colors = ['#2424ff', '#ff2a17', '#7dff1a'] } = {}) {
+export function glitch(el: HTMLElement, { frames = 8, fps = 24, intensity = 18, colors = ['#2424ff', '#ff2a17', '#7dff1a'], signal }: { frames?: number; fps?: number; intensity?: number; colors?: string[]; signal?: AbortSignal } = {}) {
+  if (signal?.aborted) return Promise.resolve();
   const host = el;
   const prevPos = getComputedStyle(host).position;
   if (prevPos === 'static') host.style.position = 'relative';
@@ -88,6 +89,14 @@ export function glitch(el: HTMLElement, { frames = 8, fps = 24, intensity = 18, 
     layers.push(l);
   }
   return new Promise<void>((resolve) => {
+    const finish = () => {
+      stop();
+      signal?.removeEventListener('abort', finish);
+      layers.forEach((l) => l.remove());
+      host.style.transform = '';
+      if (prevPos === 'static') host.style.position = '';
+      resolve();
+    };
     const stop = stepLoop(fps, (f) => {
       layers.forEach((l) => {
         const y0 = Math.random() * 100;
@@ -97,14 +106,9 @@ export function glitch(el: HTMLElement, { frames = 8, fps = 24, intensity = 18, 
         l.style.opacity = Math.random() < 0.15 ? '0' : '1';
       });
       host.style.transform = Math.random() < 0.3 ? `translateX(${(Math.random() - 0.5) * 6}px)` : '';
-      if (f >= frames) {
-        stop();
-        layers.forEach((l) => l.remove());
-        host.style.transform = '';
-        if (prevPos === 'static') host.style.position = '';
-        resolve();
-      }
+      if (f >= frames) finish();
     });
+    signal?.addEventListener('abort', finish, { once: true });
   });
 }
 
@@ -156,8 +160,30 @@ export function reveal(el: HTMLElement | HTMLElement[], { from = 'left', steps =
   );
 }
 
+/** Wait for a timeline, releasing its targets if the caller unmounts. */
+export function waitForTimeline(timeline: gsap.core.Timeline, signal?: AbortSignal) {
+  if (!signal) return timeline.then(() => {});
+  return new Promise<void>((resolve) => {
+    const finish = () => {
+      signal.removeEventListener('abort', cancel);
+      timeline.eventCallback('onComplete', null);
+      resolve();
+    };
+    const cancel = () => {
+      timeline.kill();
+      finish();
+    };
+    if (signal.aborted) cancel();
+    else {
+      timeline.eventCallback('onComplete', finish);
+      signal.addEventListener('abort', cancel, { once: true });
+    }
+  });
+}
+
 /** Page-level wipe built from N bars. `swap` runs while screen is covered. */
-export async function barWipe(overlay: HTMLElement, swap: () => void | Promise<void>) {
+export async function barWipe(overlay: HTMLElement, swap: () => void | Promise<void>, signal?: AbortSignal) {
+  if (signal?.aborted) return;
   const bars = Array.from(overlay.children) as HTMLElement[];
   const order = bars.map((_, i) => i).sort(() => Math.random() - 0.5);
   const tl = gsap.timeline();
@@ -165,14 +191,16 @@ export async function barWipe(overlay: HTMLElement, swap: () => void | Promise<v
   order.forEach((idx, i) => {
     tl.to(bars[idx], { scaleX: 1, duration: 0.12, ease: 'steps(3)' }, i * 0.018);
   });
-  await tl.then();
+  await waitForTimeline(tl, signal);
+  if (signal?.aborted) return;
   await swap();
+  if (signal?.aborted) return;
   const tl2 = gsap.timeline();
   gsap.set(bars, { transformOrigin: 'right' });
   order.forEach((idx, i) => {
     tl2.to(bars[idx], { scaleX: 0, duration: 0.12, ease: 'steps(3)' }, 0.04 + i * 0.018);
   });
-  await tl2.then();
+  await waitForTimeline(tl2, signal);
 }
 
 type Slice = readonly [top: number, height: number, shift: number];

@@ -4,7 +4,7 @@
  */
 import * as THREE from 'three/webgpu';
 import { meshSDF, toGeometry, type Prim } from './sdf';
-import { brainGeometry } from '../../three/procedural';
+import { brainGeometry } from '../procedural';
 
 /* ------------------------------------------------------------------ */
 /* Head (SDF) — neutral, roughly 0.24 m tall, eyes on +Z               */

@@ -9,7 +9,7 @@ import { mountDashField, mountSwarm } from '../lib/board';
 import { hydrate } from '../lib/hydrate';
 import { markOptsFrom, mountMark } from '../lib/marks';
 import { animateTextWall, textWall } from '../lib/compose';
-import { barWipe, glitch, scramble } from '../lib/motion';
+import { barWipe, glitch, scramble, waitForTimeline } from '../lib/motion';
 import { mountDefragField, mountSectorField, mountSwarmField, mountTransferField } from '../lib/wide';
 import { bag, on, $, $$ } from '../lib/util';
 
@@ -25,6 +25,8 @@ const SLIDES = [
 
 export default function mount(root: HTMLElement) {
   const b = bag();
+  const lifecycle = new AbortController();
+  const { signal } = lifecycle;
   root.innerHTML = `
   <section class="page">
     ${pageHead('06', 'Full<br><span class="t-outline">Fields</span>', ['POSTERS · HOLD FRAMES', 'FAULT STATE', 'STEPPED · NO FADES'], 136)}
@@ -86,7 +88,7 @@ export default function mount(root: HTMLElement) {
     ${section('Transitions', 'CLICK TO CUT TO NEXT FRAME')}
     <div class="mo-monitor-wrap">
       <div class="mo-monitor" id="mon">
-        <div class="mo-stage" id="mon-stage">${SLIDES[0]}</div>
+        <div class="mo-stage" id="mon-stage"></div>
         <div class="mo-wipe" id="mon-wipe">${'<i></i>'.repeat(7)}</div>
         <div class="mo-mon-hud t-micro"><span id="mon-idx">FRAME 01/${String(SLIDES.length).padStart(2, '0')}</span><span id="mon-fx">—</span></div>
       </div>
@@ -149,25 +151,29 @@ export default function mount(root: HTMLElement) {
   const fxEl = $('#mon-fx', root);
   let idx = 0;
   let busy = false;
-  let slideStops: (() => void)[] = [];
-  b.add(() => slideStops.forEach((f) => f()));
+  const slide = bag();
+  b.add(slide.dispose);
   b.add(animateTextWall($('#mo-wall .k-textwall', root), ['COHESION_', 'FAILURE_', 'ESTABLISHING_', 'LINK_']));
-  const next = () => {
-    idx = (idx + 1) % SLIDES.length;
-    slideStops.forEach((f) => f());
+  const paintSlide = () => {
+    if (signal.aborted) return;
+    slide.dispose();
     stageEl.innerHTML = SLIDES[idx];
-    slideStops = [
-      ...$$('[data-mark]', stageEl).map((el) => mountMark(el, el.dataset.mark!, markOptsFrom(el))),
-      ...$$('.k-standby', stageEl).map((el) => mountStandby(el)),
-      ...(stageEl.querySelector('.flt-poster') ? [mountFaultLoop(stageEl)] : []),
-    ];
+    $$('[data-mark]', stageEl).forEach((el) => slide.add(mountMark(el, el.dataset.mark!, markOptsFrom(el))));
+    $$('.k-standby', stageEl).forEach((el) => slide.add(mountStandby(el)));
+    if (stageEl.querySelector('.flt-poster')) slide.add(mountFaultLoop(stageEl));
     idxEl.textContent = `FRAME ${String(idx + 1).padStart(2, '0')}/${String(SLIDES.length).padStart(2, '0')}`;
   };
+  paintSlide();
+  const next = () => {
+    idx = (idx + 1) % SLIDES.length;
+    paintSlide();
+  };
+  let cutTimer = 0;
   const run = async (fx: string) => {
-    if (busy) return;
+    if (busy || signal.aborted) return;
     busy = true;
-    scramble(fxEl, fx.toUpperCase(), { duration: 0.2 });
-    if (fx === 'wipe') await barWipe(wipeEl, next);
+    scramble(fxEl, fx.toUpperCase(), { duration: 0.2, signal });
+    if (fx === 'wipe') await barWipe(wipeEl, next, signal);
     if (fx === 'flip') {
       const tl = gsap.timeline();
       ['#2424ff', '#7dff1a', '#000', '#ececec', '#000'].forEach((c, i) => tl.set(mon, { backgroundColor: c }, i * 0.05));
@@ -175,18 +181,22 @@ export default function mount(root: HTMLElement) {
       tl.call(next, [], 0.15);
       tl.set(stageEl, { opacity: 1 }, 0.26);
       tl.set(mon, { backgroundColor: '' }, 0.26);
-      await tl.then();
+      await waitForTimeline(tl, signal);
     }
     if (fx === 'glitch') {
-      await glitch(stageEl, { frames: 6, intensity: 40 });
+      await glitch(stageEl, { frames: 6, intensity: 40, signal });
+      if (signal.aborted) return;
       next();
-      await glitch(stageEl, { frames: 4, intensity: 24 });
+      await glitch(stageEl, { frames: 4, intensity: 24, signal });
     }
     if (fx === 'cut') {
       next();
       mon.style.filter = 'invert(1)';
-      await new Promise((r) => setTimeout(r, 50));
-      mon.style.filter = '';
+      cutTimer = window.setTimeout(() => {
+        mon.style.filter = '';
+        busy = false;
+      }, 50);
+      return;
     }
     busy = false;
   };
@@ -201,6 +211,10 @@ export default function mount(root: HTMLElement) {
     }),
   );
   b.add(() => clearInterval(autoT));
+  b.add(() => {
+    lifecycle.abort();
+    clearTimeout(cutTimer);
+  });
 
   return b.dispose;
 }

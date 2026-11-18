@@ -54,6 +54,9 @@ export function loadLandMask() {
       };
       return inside(x) || inside(x + 360) || inside(x - 360);
     };
-  })();
+  })().catch((error) => {
+    landP = null;
+    throw error;
+  });
   return landP;
 }

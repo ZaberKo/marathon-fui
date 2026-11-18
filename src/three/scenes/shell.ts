@@ -8,13 +8,13 @@
  */
 import * as THREE from 'three/webgpu';
 import { abs, dot, float, mix, normalView, normalWorld, step, uniform, vec3 } from 'three/tsl';
-import { createStage } from '../core';
+import type { Stage } from '../core';
 import { LineBatch, FillBatch } from '../overlay';
 import { fitHeight, sampleVerts, vertexWorld } from '../assets';
-import { PAL, type SceneHandle, type SceneOpts } from './common';
+import { mountStage, PAL, type SceneHandle, type SceneOpts } from './common';
 import { rng } from '../../lib/util';
-import { makeBody } from '../../cine/models/body';
-import { addStickers } from '../../cine/models/stickers';
+import { makeBody } from '../models/body';
+import { addStickers } from '../models/stickers';
 
 const v3 = (hex: number) => {
   const c = new THREE.Color(hex);
@@ -42,9 +42,12 @@ function celShell() {
 const NORMAL = { lit: 0x5a60ff, mid: 0x2424ff, shade: 0x0c0e5a };
 const FLOOD = { lit: 0x16163a, mid: 0x07071c, shade: 0x000000 };
 
-export async function mountShell(host: HTMLElement, { fps = 12, pixel = 1, labels = true }: SceneOpts = {}): Promise<SceneHandle> {
+export async function mountShell(host: HTMLElement, { fps = 12, pixel = 1, labels = true, signal }: SceneOpts = {}): Promise<SceneHandle> {
   const camera = new THREE.PerspectiveCamera(24, 1, 0.1, 100);
-  const stage = await createStage(host, { label: 'SHELL', fps, pixel, camera });
+  return mountStage(host, { label: 'SHELL', fps, pixel, camera, signal }, (stage) => setupShell(stage, camera, host, labels));
+}
+
+async function setupShell(stage: Stage, camera: THREE.PerspectiveCamera, host: HTMLElement, labels: boolean) {
   const { scene, renderer } = stage;
 
   const cel = celShell();
@@ -157,11 +160,9 @@ export async function mountShell(host: HTMLElement, { fps = 12, pixel = 1, label
   });
 
   return {
-    stage,
     dispose() {
       word?.remove();
       body.mixer.stopAllAction();
-      stage.dispose();
     },
   };
 }

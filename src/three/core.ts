@@ -11,6 +11,7 @@
  */
 import * as THREE from 'three/webgpu';
 import { adapter, registerStage } from '../lib/perf';
+import { frameLoop, type Cleanup } from '../lib/util';
 
 /* ------------------------------------------------------------------ */
 /* Backend preference + fallback                                       */
@@ -58,6 +59,7 @@ export type StageOpts = {
   hiDpi?: boolean;
   camera?: THREE.Camera;
   clear?: number;
+  signal?: AbortSignal;
 };
 
 export type Stage = {
@@ -78,35 +80,51 @@ export type Stage = {
 };
 
 export async function createStage(host: HTMLElement, opts: StageOpts = {}): Promise<Stage> {
+  const { signal } = opts;
+  signal?.throwIfAborted();
   const canvas = document.createElement('canvas');
   canvas.className = 'gl-canvas';
   host.appendChild(canvas);
 
   const triedWebGL = preferWebGL;
   const renderer = new THREE.WebGPURenderer({ canvas, antialias: false, alpha: false, forceWebGL: triedWebGL });
+  const removeCanvas = () => canvas.remove();
+  signal?.addEventListener('abort', removeCanvas, { once: true });
   try {
     await renderer.init();
   } catch (err) {
     // A canvas that already holds a 'webgpu' context can't become WebGL2 —
     // retry on a fresh canvas with the WebGL2 backend.
     canvas.remove();
+    const backend = renderer.backend as typeof renderer.backend & { dispose(): Promise<void> };
+    void backend.dispose().catch(() => {});
+    signal?.throwIfAborted();
     if (triedWebGL) throw err;
     gpuFallback(`init: ${(err as Error)?.message ?? err}`);
     return createStage(host, opts);
+  } finally {
+    signal?.removeEventListener('abort', removeCanvas);
+  }
+  if (signal?.aborted) {
+    void renderer.dispose().catch(() => {});
+    signal.throwIfAborted();
   }
   renderer.setClearColor(opts.clear ?? 0x000000, 1);
   const backend = (renderer.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend ? 'WebGPU' : 'WebGL2';
   describeAdapter(renderer, backend);
 
   let disposed = false;
-  if (backend === 'WebGPU') {
-    // minimal structural typing — avoids depending on @webgpu/types
-    const device = (renderer.backend as unknown as { device?: EventTarget & { lost: Promise<{ reason: string; message: string }> } }).device;
-    device?.addEventListener('uncapturederror', (e) => gpuFallback(String((e as unknown as { error?: { message?: string } }).error?.message ?? 'uncaptured error')));
-    device?.lost.then((info) => {
-      if (!disposed) gpuFallback(`device lost: ${info.message || info.reason}`);
-    });
-  }
+  // Minimal structural typing avoids depending on @webgpu/types.
+  const device = backend === 'WebGPU'
+    ? (renderer.backend as unknown as { device?: EventTarget & { lost: Promise<{ reason: string; message: string }> } }).device
+    : undefined;
+  const onGpuError = (event: Event) => {
+    if (!disposed) gpuFallback((event as Event & { error?: { message?: string } }).error?.message ?? 'uncaptured error');
+  };
+  device?.addEventListener('uncapturederror', onGpuError);
+  device?.lost.then((info) => {
+    if (!disposed) gpuFallback(`device lost: ${info.message || info.reason}`);
+  });
 
   const { stats, unregister } = registerStage(opts.label ?? 'STAGE');
   stats.backend = backend;
@@ -120,16 +138,19 @@ export async function createStage(host: HTMLElement, opts: StageOpts = {}): Prom
   stats.targetFps = fps;
 
   const resize = () => {
+    if (disposed) return;
     const r = host.getBoundingClientRect();
-    size.w = Math.max(1, Math.floor(r.width));
-    size.h = Math.max(1, Math.floor(r.height));
+    const width = Math.max(1, Math.floor(r.width));
+    const height = Math.max(1, Math.floor(r.height));
     const base = opts.hiDpi ? Math.min(window.devicePixelRatio || 1, 2) : 1;
     const pr = base / pixel;
-    renderer.setPixelRatio(pr);
-    renderer.setSize(size.w, size.h, false);
+    canvas.style.imageRendering = pr < (window.devicePixelRatio || 1) ? 'pixelated' : 'auto';
+    if (stats.w && width === size.w && height === size.h && pr === stats.dpr) return;
+    size.w = width;
+    size.h = height;
+    renderer.setDrawingBufferSize(width, height, pr);
     canvas.style.width = `${size.w}px`;
     canvas.style.height = `${size.h}px`;
-    canvas.style.imageRendering = pr < (window.devicePixelRatio || 1) ? 'pixelated' : 'auto';
     stats.w = Math.round(size.w * pr);
     stats.h = Math.round(size.h * pr);
     stats.dpr = pr;
@@ -148,19 +169,11 @@ export async function createStage(host: HTMLElement, opts: StageOpts = {}): Prom
   const ro = new ResizeObserver(resize);
   ro.observe(host);
 
-  let visible = true;
-  const io = new IntersectionObserver(([e]) => {
-    visible = e.isIntersecting;
-    stats.visible = visible;
-    if (!visible) stats.fps = 0;
-  });
-  io.observe(host);
-
-  let raf = 0;
+  let stopLoop: Cleanup | undefined;
   let last = 0;
   let frame = 0;
   let forceRender = true;
-  let updateFn: (t: number, frame: number, dt: number) => void = () => {};
+  let updateFn: ((t: number, frame: number, dt: number) => void) | null = null;
   let renderFn: (() => void) | null = null;
   const t0 = performance.now();
   // fps measurement window
@@ -169,8 +182,6 @@ export async function createStage(host: HTMLElement, opts: StageOpts = {}): Prom
   let lastT = 0;
 
   const loop = (now: number) => {
-    raf = requestAnimationFrame(loop);
-    if (!visible) return;
     const interval = 1000 / fps;
     if (!forceRender && now - last < interval * 0.92) return;
     forceRender = false;
@@ -179,7 +190,7 @@ export async function createStage(host: HTMLElement, opts: StageOpts = {}): Prom
     const dt = Math.max(0, t - lastT);
     lastT = t;
     const c0 = performance.now();
-    updateFn(t, frame++, dt);
+    updateFn?.(t, frame++, dt);
     if (renderFn) renderFn();
     else renderer.render(scene, camera);
     const cpu = performance.now() - c0;
@@ -214,35 +225,51 @@ export async function createStage(host: HTMLElement, opts: StageOpts = {}): Prom
       return fps;
     },
     setFps(n) {
+      if (disposed) return;
       fps = n;
       stats.targetFps = n;
     },
     setPixel(n) {
+      if (disposed) return;
       pixel = n;
       resize();
     },
     start(update) {
+      if (disposed) return;
       updateFn = update;
-      raf = requestAnimationFrame(loop);
+      stopLoop ??= frameLoop(loop, host, (active) => {
+        stats.visible = active;
+        stats.fps = 0;
+        winStart = performance.now();
+        winFrames = 0;
+      });
     },
     setRender(fn) {
+      if (disposed) return;
       renderFn = fn;
       forceRender = true;
     },
     dispose() {
+      if (disposed) return;
       disposed = true;
       unregister();
-      cancelAnimationFrame(raf);
+      stopLoop?.();
+      stopLoop = undefined;
+      updateFn = null;
+      renderFn = null;
       ro.disconnect();
-      io.disconnect();
+      device?.removeEventListener('uncapturederror', onGpuError);
+      const materials = new Set<THREE.Material>();
       scene.traverse((o) => {
-        const m = o as THREE.Mesh;
-        m.geometry?.dispose?.();
-        const mat = m.material as THREE.Material | THREE.Material[] | undefined;
-        if (Array.isArray(mat)) mat.forEach((x) => x.dispose());
-        else mat?.dispose?.();
+        const mesh = o as Partial<THREE.SkinnedMesh>;
+        mesh.skeleton?.dispose();
+        if (Array.isArray(mesh.material)) mesh.material.forEach((material) => materials.add(material));
+        else if (mesh.material) materials.add(mesh.material);
       });
-      renderer.dispose();
+      materials.forEach((material) => material.dispose());
+      scene.clear();
+      // The renderer releases its own geometry buffers, including uploads of shared geometry.
+      void renderer.dispose().catch((error) => console.warn('[stage] Renderer cleanup failed', error));
       canvas.remove();
     },
   };

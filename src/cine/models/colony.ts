@@ -8,7 +8,7 @@
 import * as THREE from 'three/webgpu';
 import { hash } from '../engine';
 import { Hard, toonLit } from './hard';
-import { VectorPlate } from './vector-plate';
+import { VectorPlate } from '../../three/models/vector-plate';
 
 export type ColonyOpts = { seed?: number; haze?: boolean; ruined?: number };
 

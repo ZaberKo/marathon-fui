@@ -18,6 +18,8 @@ pnpm build      # typecheck + production build → dist/
 - **Lab viewer (dev only):** `/lab.html?s=runner` renders one scene full-window. Keys: `runner`,
   `shell`, `psyche`, `orbital`, `dropzone`, `headscan`, `terrain`, `subject`.
 - **Film — SHELL 07:** `/cinema.html` plays a 2:27 web film built from the kit, with sound (see below).
+  - The player is a separate entry from the gallery. The Film chapter links to it using the shot list and captions in
+    `src/content/shell-07/`. Data uses shared painters with its own preview timings and loads its 3D portrait on demand.
   - Keys: Space play/pause · ←/→ 1 s (Shift: 1 frame) · C captions EN/中文/off · M mute · F fullscreen · Q 3D quality.
   - URL: `?t=81` opens paused at that time; `?capture` shows a bare 1920×1080 frame (no audio, no UI);
     `?perf` shows the perf tag.
@@ -86,29 +88,34 @@ src/three/materials.ts     contourMaterial(): TSL iso-lines (fwidth), 2nd family
 src/three/overlay.ts       LineBatch / FillBatch: billboarded px-sized marks, connectors, beziers, rings
 src/three/procedural.ts    brain, satellite, marching squares, pixel planet texture
 src/three/assets.ts        generated-model loader, skinned vertex sampling, Natural Earth land mask
+src/three/frame-renderer.ts shared WebGPU/WebGL2 canvas for the player and Data portrait
+src/three/models/sdf.ts   SDF primitives, Surface Nets mesher, skin weights from primitive proximity
+src/three/models/body.ts  SDF humanoid on the motion rig (runner / armor / slim), authored poses
+src/three/models/anatomy.ts neutral SDF head for the scene library; brain geometry re-export
+src/three/models/flow.ts  line material with pulses flowing along an arc-length attribute
+src/three/models/stickers.ts stencil decals laid on the body surface, parented to bones
+src/three/models/head2.ts SDF head at real proportions, wire eyes, internal wiring, the visual pathway (~70 fibres/eye)
+
+src/graphics/frame.ts     logical frame size, stepped-time helpers, layer types
+src/graphics/draw.ts      Canvas2D palette, type, registration ink, patterns and glyphs
+src/graphics/rings.ts     shared protocol and assertion dials
+src/graphics/buffer-tracks.ts  buffer dial painters with caller-supplied timing
+src/graphics/completion-dial.ts completion relay wheel
+src/content/shell-07/      shot list, cut times and generated voice/music cues for the player and Film chapter
 
 src/cine/main.ts           film player: the audio clock drives the picture, gate, captions, scrubber
-src/cine/engine.ts         seekable shot timeline, shared WebGPU/WebGL2 renderer, stepped-time helpers
+src/cine/engine.ts         seekable shot timeline
 src/cine/backdrop.ts       sparse UI-panel groups on two parallax layers, clipped per shot
 src/cine/anatomy2d.ts      2D anatomical plate in smooth line work: nerve bundles in several colours, hatched
                            muscles, organs, brain with gyri, optic pathway; live nerve pulses and scan
-src/cine/draw.ts           Canvas2D frame kit: palette, type, local registration ink, scanlines, stripes,
-                           checkers, bitmap/sigil glyphs, triangle field
-src/cine/rings.ts          defragRing (frame-scale, stepped, re-sorting) · streakRing · progressRing
 src/cine/mats.ts           xray (additive fresnel) · toon (two-tone cel) · screenDots
-src/cine/models/sdf.ts     SDF primitives, Surface Nets mesher, skin weights from primitive proximity
-src/cine/models/body.ts    SDF humanoid on the motion rig (runner / armor / slim), authored poses
-src/cine/models/anatomy.ts neutral SDF head for the scene library; brain geometry re-export
 src/cine/models/hard.ts    hard-surface kit: decks, plinths, ribs, any merged geometry; world-lit toon; sweep
 src/cine/models/connectome.ts brain tractography (callosal, projection, association, U-fibres) + activation/flow material
-src/cine/models/flow.ts    line material with pulses flowing along an arc-length attribute
 src/cine/models/station.ts orbital station (hub, habitat ring, truss, solar wings, drop bays)
 src/cine/models/voxels.ts  uniform voxel bodies from the mesh grid + WireCubes renderer + analytic burst
-src/cine/models/stickers.ts stencil decals laid on the body surface, parented to bones
 src/cine/models/colony.ts  the colony set: domes, habitat tubes, towers, pad, solar rows, wall, rubble
-src/cine/models/head2.ts   SDF head at real proportions, wire eyes, internal wiring, the visual pathway (~70 fibres/eye)
 src/cine/models/slices.ts  cross-sections of a posed skinned mesh along any axis (print fronts)
-src/cine/film/*.ts         the film's 26 shots, times.ts (shot boundaries) + cues.ts (generated cue sheet: VO timings, music anchors)
+src/cine/film/*.ts         the film's 26 shots and narrative graphics
 
 scripts/                   offline audio pipeline (Lyria needs GOOGLE_API_KEY in .env; voice needs edge-tts; mixing needs ffmpeg):
   film-script.mjs            voice-over script (EN + 中文 captions) and delivery notes
@@ -151,7 +158,7 @@ scripts/                   offline audio pipeline (Lyria needs GOOGLE_API_KEY in
 
 ## Credits
 
-- **All meshes are generated in code** (`src/cine/models/`). No third-party geometry is included.
+- **All meshes are generated in code** (`src/three/models/` and `src/cine/models/`). No third-party geometry is included.
 - `public/anim/rig.glb` holds only the skeleton and motion clips, with every mesh stripped. The clips are Mixamo
   animations as distributed with the three.js examples (`Xbot.glb`).
 - Land outlines come from `world-atlas` (Natural Earth, public domain). See `public/anim/CREDITS.md`.

@@ -8,13 +8,14 @@
 import * as THREE from 'three/webgpu';
 import type { Frame, ShotDef } from '../engine';
 import { clamp01, hash, q } from '../engine';
-import { C, F, checker, line, microRows, rect, text } from '../draw';
+import { C, F, checker, line, microRows, rect, text } from '../../graphics/draw';
 import { backdrop, PAL_BLUE } from '../backdrop';
 import { ascendingBundles, connectomeMaterial } from '../models/connectome';
 import { BUFFER_LOAD_DURATION, BUFFER_LOCK_DURATION, createBufferDial } from './buffer-dial';
-import { ANCHORS, cue } from './cues';
-import { ST } from './times';
+import { ANCHORS, cue } from '../../content/shell-07/cues';
+import { ST } from '../../content/shell-07/times';
 import { easeInOutCubic, persp, scrollRow, span, vlabel } from './kit';
+import { shotInfo } from '../../content/shell-07/shot-list';
 
 type P2 = [number, number];
 type Cell = {
@@ -204,11 +205,7 @@ function buildModule(g: THREE.Group) {
 
 export const s3: ShotDef[] = [
   {
-    id: 'S05',
-    t0: ST.S05[0],
-    t1: ST.S05[1],
-    title: 'Loading memory packages',
-    note: 'Seen from almost straight above, the memory module is a chip array of mixed cells — notched packages, chamfered cells, two dies, bosses, contact rows, edge pins — drawn in 3D lines with hidden lines removed. Loaded cells become flat lemon graphics laid over their projected tops (with their details cut out in black), column by column under a write head. One fragment fails cohesion: the passphrase wall flashes, it is marked and skipped.',
+    ...shotInfo('S05'),
     build: () => {
       const scene = new THREE.Scene();
       const cam = persp(28, 0.1, 100);
@@ -321,11 +318,7 @@ export const s3: ShotDef[] = [
   },
   /* ---------------------------------------------------------------- */
   {
-    id: 'S06',
-    t0: ST.S06[0],
-    t1: ST.S06[1],
-    title: 'Liminal buffer 26%',
-    note: 'The buffer holds at the spoken 26 percent while the scan completes. The hemispheres activate, then the red lock wheel and yellow insert confirm readiness.',
+    ...shotInfo('S06'),
     build: async () => {
       const buffer = await createBufferDial();
       const scene = new THREE.Scene();

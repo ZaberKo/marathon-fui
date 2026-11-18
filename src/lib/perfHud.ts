@@ -4,15 +4,14 @@
  * Expanded: frame-time graph, adapter, heap, per-stage render stats.
  * Position + state persist in localStorage.
  */
-import { adapter, fmtBytes, fmtK, listStages, pageMeter, startPageMeter } from './perf';
-import { stepLoop } from './util';
+import { adapter, fmtBytes, fmtK, listStages, pageMeter, startPageMeter, stopPageMeter } from './perf';
+import { stepLoop, type Cleanup } from './util';
 
 const KEY = 'rk-perf-hud';
 type Saved = { x: number; y: number; open: boolean; on: boolean };
 
 /** `reserveBottom`: keep the window clear of a bottom bar (px); `key`: separate saved position */
 export function mountPerfHud(o: { reserveBottom?: number; key?: string; dock?: 'top' | 'bottom'; defaultOn?: boolean } = {}) {
-  startPageMeter();
   const skey = o.key ?? KEY;
   const saved: Saved = { x: -1, y: -1, open: false, on: o.defaultOn ?? true, ...JSON.parse(localStorage.getItem(skey) ?? '{}') };
   const save = () => localStorage.setItem(skey, JSON.stringify(saved));
@@ -71,10 +70,8 @@ export function mountPerfHud(o: { reserveBottom?: number; key?: string; dock?: '
     el.classList.toggle('is-open', open);
     tog.textContent = open ? '−' : '+';
     tog.setAttribute('aria-expanded', String(open));
-    requestAnimationFrame(place);
+    if (saved.on) requestAnimationFrame(place);
   };
-  setOpen(saved.open);
-  setVisible(saved.on);
 
   let drag: { dx: number; dy: number } | null = null;
   bar.addEventListener('pointerdown', (e) => {
@@ -110,8 +107,8 @@ export function mountPerfHud(o: { reserveBottom?: number; key?: string; dock?: '
 
   /* --- update loop (4 Hz, stepped) ----------------------------------- */
   const heap = (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory;
-  stepLoop(4, () => {
-    if (!saved.on) return;
+  let stopUpdate: Cleanup | undefined;
+  const update = () => {
     const st = listStages();
     const vis = st.filter((s) => s.visible);
     const be = adapter.backend || (st[0]?.backend !== '—' ? st[0]?.backend : '') || '';
@@ -144,11 +141,13 @@ export function mountPerfHud(o: { reserveBottom?: number; key?: string; dock?: '
       )
       .join('');
     drawGraph();
-  });
+  };
 
   function drawGraph() {
-    const w = (canvas.width = canvas.clientWidth);
-    const h = (canvas.height = canvas.clientHeight);
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    if (canvas.width !== w) canvas.width = w;
+    if (canvas.height !== h) canvas.height = h;
     ctx.clearRect(0, 0, w, h);
     const hist = pageMeter.history;
     const bw = w / hist.length;
@@ -166,8 +165,19 @@ export function mountPerfHud(o: { reserveBottom?: number; key?: string; dock?: '
   function setVisible(on: boolean) {
     saved.on = on;
     el.hidden = !on;
-    if (on) requestAnimationFrame(place);
+    if (on) {
+      startPageMeter();
+      stopUpdate ??= stepLoop(4, update);
+      requestAnimationFrame(place);
+    } else {
+      stopUpdate?.();
+      stopUpdate = undefined;
+      stopPageMeter();
+    }
   }
+
+  setOpen(saved.open);
+  setVisible(saved.on);
 
   return {
     get on() {

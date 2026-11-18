@@ -5,8 +5,8 @@
  * saturated pixels per hue band) — the previous kit's colours were close in
  * hue but too dark/desaturated, and it lacked the big flat colour *fields*.
  */
-import type { C2 } from './engine';
-import { hash } from './engine';
+import type { C2 } from './frame';
+import { hash } from './frame';
 
 export const C = {
   black: '#000000',

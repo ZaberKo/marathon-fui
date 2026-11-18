@@ -1,3 +1,5 @@
+import { frameLoop, type Cleanup } from './util';
+
 /**
  * Performance registry — deliberately free of any three.js import so the
  * floating HUD can live in the main bundle while 3D stays lazy-loaded.
@@ -72,15 +74,18 @@ export const pageMeter = {
   history: [] as number[],
 };
 
-let meterOn = false;
+let stopMeter: Cleanup | undefined;
 export function startPageMeter(historyLen = 90) {
-  if (meterOn) return;
-  meterOn = true;
-  let last = performance.now();
+  if (stopMeter) return;
+  let last: number | undefined;
   let acc = 0;
   let frames = 0;
   let worst = 0;
-  const tick = (now: number) => {
+  stopMeter = frameLoop((now) => {
+    if (last === undefined) {
+      last = now;
+      return;
+    }
     const dt = now - last;
     last = now;
     pageMeter.history.push(dt);
@@ -96,9 +101,17 @@ export function startPageMeter(historyLen = 90) {
       frames = 0;
       worst = 0;
     }
-    requestAnimationFrame(tick);
-  };
-  requestAnimationFrame(tick);
+  }, undefined, () => {
+    last = undefined;
+    acc = frames = worst = 0;
+  });
+}
+
+export function stopPageMeter() {
+  stopMeter?.();
+  stopMeter = undefined;
+  pageMeter.fps = pageMeter.frameMs = pageMeter.worstMs = 0;
+  pageMeter.history.length = 0;
 }
 
 export const fmtBytes = (b: number) =>

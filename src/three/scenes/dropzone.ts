@@ -4,16 +4,19 @@
  * from an orbital source cluster to each target, drawing in step by step.
  */
 import * as THREE from 'three/webgpu';
-import { createStage, makeTag } from '../core';
+import { makeTag, type Stage } from '../core';
 import { contourMaterial } from '../materials';
 import { FillBatch, LineBatch } from '../overlay';
 import { pixelSurfaceMaterial } from '../procedural';
-import { PAL, type SceneHandle, type SceneOpts } from './common';
+import { mountStage, PAL, type SceneHandle, type SceneOpts } from './common';
 import { rng } from '../../lib/util';
 
-export async function mountDropzone(host: HTMLElement, { fps = 12, pixel = 1, labels = true }: SceneOpts = {}): Promise<SceneHandle> {
+export async function mountDropzone(host: HTMLElement, { fps = 12, pixel = 1, labels = true, signal }: SceneOpts = {}): Promise<SceneHandle> {
   const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
-  const stage = await createStage(host, { label: 'DROPZONE', fps, pixel, camera });
+  return mountStage(host, { label: 'DROPZONE', fps, pixel, camera, signal }, (stage) => setupDropzone(stage, camera, host, labels));
+}
+
+function setupDropzone(stage: Stage, camera: THREE.PerspectiveCamera, host: HTMLElement, labels: boolean) {
   const { scene } = stage;
 
   const R = 9;
@@ -96,11 +99,9 @@ export async function mountDropzone(host: HTMLElement, { fps = 12, pixel = 1, la
   });
 
   return {
-    stage,
     dispose() {
       dz?.remove();
       src?.remove();
-      stage.dispose();
     },
   };
 }

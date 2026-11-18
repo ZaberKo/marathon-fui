@@ -6,12 +6,12 @@
  * stations that are above its horizon.
  */
 import * as THREE from 'three/webgpu';
-import { closedLine, createStage, makeTag } from '../core';
+import { closedLine, makeTag, type Stage } from '../core';
 import { occluder } from '../materials';
 import { FillBatch, LineBatch } from '../overlay';
 import { latLon, loadLandMask } from '../assets';
 import { satellite } from '../procedural';
-import { PAL, type SceneHandle, type SceneOpts } from './common';
+import { mountStage, PAL, type SceneHandle, type SceneOpts } from './common';
 import { rng } from '../../lib/util';
 
 const STATIONS: [string, number, number][] = [
@@ -23,9 +23,12 @@ const STATIONS: [string, number, number][] = [
   ['GS-06', 1.3, 103.8],
 ];
 
-export async function mountOrbital(host: HTMLElement, { fps = 12, pixel = 1, labels = true }: SceneOpts = {}): Promise<SceneHandle> {
+export async function mountOrbital(host: HTMLElement, { fps = 12, pixel = 1, labels = true, signal }: SceneOpts = {}): Promise<SceneHandle> {
   const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
-  const stage = await createStage(host, { label: 'ORBITAL', fps, pixel, camera });
+  return mountStage(host, { label: 'ORBITAL', fps, pixel, camera, signal }, (stage) => setupOrbital(stage, camera, host, labels));
+}
+
+async function setupOrbital(stage: Stage, camera: THREE.PerspectiveCamera, host: HTMLElement, labels: boolean) {
   const { scene } = stage;
   const isLand = await loadLandMask();
 
@@ -174,10 +177,8 @@ export async function mountOrbital(host: HTMLElement, { fps = 12, pixel = 1, lab
   });
 
   return {
-    stage,
     dispose() {
       tag?.remove();
-      stage.dispose();
     },
   };
 }

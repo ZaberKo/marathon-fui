@@ -90,8 +90,14 @@ abstract class Batch {
 
   end() {
     this.geo.setDrawRange(0, this.n);
-    (this.geo.attributes.position as THREE.BufferAttribute).needsUpdate = true;
-    (this.geo.attributes.color as THREE.BufferAttribute).needsUpdate = true;
+    if (this.n === 0) return this;
+    const count = this.n * 3;
+    for (const name of ['position', 'color']) {
+      const attribute = this.geo.getAttribute(name) as THREE.BufferAttribute;
+      attribute.clearUpdateRanges();
+      attribute.addUpdateRange(0, count);
+      attribute.needsUpdate = true;
+    }
     return this;
   }
 }
